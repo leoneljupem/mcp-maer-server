@@ -1339,7 +1339,7 @@ def _llm_diccionario_local(prompt: str) -> dict:
          "Prestaciones que incluye:\n"
          "• Pensión mensual vitalicia\n"
          "• Asistencia médica para el pensionado y su cónyuge\n"
-         "• Ayuda para gastos de funeral ($\$ cubiertos por IMSS)\n"
+         "• Ayuda para gastos de funeral ($$ cubiertos por IMSS)\n"
          "• Aguinaldo anual (proporcional al año de pensionamiento)\n\n"
          "Dónde tramitar:\n"
          "Acude a la Subdelegación IMSS con: CURP, NSS, acta de nacimiento,\n"

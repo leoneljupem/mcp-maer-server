@@ -2,72 +2,295 @@
    MAER 4.0 — Compact Styling
    BLOQUE 11 — Mobile-optimized and space-efficient layouts
    Leonel Houssen Mojica — Ecatepec MX — 2026
-   ESTADO: PENDIENTE DE IMPLEMENTACIÓN
+   ESTADO: IMPLEMENTADO
 ══════════════════════════════════════════════════════════ */
 
-/* Compact Container */
-.compact {
-  /* TODO: Define compact layout base styles */
-  /* TODO: Reduce padding and margins */
-  /* TODO: Optimize for small screens */
+/* ── Base compacta ── */
+.compact * {
+  box-sizing: border-box;
 }
 
+.compact body {
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+  padding: 0;
+}
+
+/* ── Header compacto ── */
 .compact-header {
-  /* TODO: Compact header styling */
-  /* TODO: Reduced vertical space */
-  /* TODO: Stack elements efficiently */
+  padding: 6px 12px;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e5e7eb;
 }
 
+.compact-header h1 {
+  font-size: 15px;
+  margin: 0;
+}
+
+/* ── Navegacion compacta ── */
 .compact-nav {
-  /* TODO: Navigation bar optimizations */
-  /* TODO: Horizontal or vertical layout options */
-  /* TODO: Icon-only mode for narrow widths */
+  padding: 4px 8px;
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  align-items: center;
 }
 
+.compact-nav a,
+.compact-nav button {
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.compact-nav .icon-only span {
+  display: none;
+}
+
+/* ── Cards compactas ── */
 .compact-card {
-  /* TODO: Reduced card dimensions */
-  /* TODO: Minimal padding around content */
-  /* TODO: Efficient text truncation */
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  border: 1px solid #e5e7eb;
+  background: #fff;
 }
 
+.compact-card h2,
+.compact-card h3 {
+  font-size: 13px;
+  margin: 0 0 6px 0;
+}
+
+.compact-card p {
+  margin: 0 0 4px 0;
+  font-size: 12px;
+}
+
+/* ── Formularios compactos ── */
 .compact-form {
-  /* TODO: Form element spacing optimization */
-  /* TODO: Inline labels or label-less design */
-  /* TODO: Full-width inputs */
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
+.compact-form label {
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 2px;
+  display: block;
+}
+
+.compact-form input,
+.compact-form select,
+.compact-form textarea {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 12px;
+  border-radius: 4px;
+  border: 1px solid #d1d5db;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.compact-form input:focus,
+.compact-form select:focus,
+.compact-form textarea:focus {
+  border-color: #2563eb;
+}
+
+.compact-form textarea {
+  min-height: 60px;
+  resize: vertical;
+}
+
+/* ── Botones compactos ── */
 .compact-button {
-  /* TODO: Smaller button sizes */
-  /* TODO: Reduced padding and font size */
-  /* TODO: Efficient icon integration */
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  font-weight: 500;
+  transition: opacity 0.15s;
 }
 
+.compact-button:hover {
+  opacity: 0.85;
+}
+
+.compact-button.primary   { background: #2563eb; color: #fff; }
+.compact-button.secondary { background: #6b7280; color: #fff; }
+.compact-button.danger    { background: #dc2626; color: #fff; }
+.compact-button.success   { background: #16a34a; color: #fff; }
+
+/* ── Modal compacto ── */
 .compact-modal {
-  /* TODO: Modal sizing for small screens */
-  /* TODO: Full viewport height/width options */
-  /* TODO: Scrollable content areas */
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
 }
 
+.compact-modal .modal-box {
+  background: #fff;
+  border-radius: 8px;
+  padding: 16px;
+  width: 90vw;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+/* ── Lista compacta ── */
 .compact-list {
-  /* TODO: List item density */
-  /* TODO: Single-line vs multi-line options */
-  /* TODO: Reduced spacing between items */
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
+.compact-list li {
+  padding: 6px 8px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compact-list li:last-child {
+  border-bottom: none;
+}
+
+/* ── Grid compacto ── */
 .compact-grid {
-  /* TODO: Grid column count optimization */
-  /* TODO: Responsive grid gaps */
-  /* TODO: Item sizing for compact mode */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
 }
 
+/* ── Texto compacto ── */
 .compact-text {
-  /* TODO: Font size reductions */
-  /* TODO: Line height adjustments */
-  /* TODO: Text truncation with ellipsis */
+  font-size: 12px;
+  line-height: 1.4;
 }
 
+.compact-text.small { font-size: 11px; }
+.compact-text.muted { color: #6b7280; }
+
+.compact-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 200px;
+}
+
+/* ── Badge compacto ── */
 .compact-badge {
-  /* TODO: Smaller badge styling */
-  /* TODO: Compact inline display */
-  /* TODO: Minimal padding */
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  border-radius: 9999px;
+  line-height: 1;
+}
+
+.compact-badge.info    { background: #dbeafe; color: #1d4ed8; }
+.compact-badge.success { background: #dcfce7; color: #15803d; }
+.compact-badge.warning { background: #fef9c3; color: #a16207; }
+.compact-badge.danger  { background: #fee2e2; color: #b91c1c; }
+
+/* ── Tabla compacta ── */
+.compact-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.compact-table th,
+.compact-table td {
+  padding: 5px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  text-align: left;
+}
+
+.compact-table th {
+  font-weight: 600;
+  background: #f9fafb;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ── Responsive <768px ── */
+@media (max-width: 768px) {
+  .compact-nav {
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    padding: 4px;
+  }
+
+  .compact-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-modal .modal-box {
+    width: 95vw;
+    padding: 12px;
+  }
+}
+
+/* ── Modo oscuro ── */
+@media (prefers-color-scheme: dark) {
+  .compact-card {
+    background: #1f2937;
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .compact-header {
+    border-color: #374151;
+  }
+
+  .compact-form input,
+  .compact-form select,
+  .compact-form textarea {
+    background: #374151;
+    border-color: #4b5563;
+    color: #f9fafb;
+  }
+
+  .compact-table th {
+    background: #1f2937;
+    color: #d1d5db;
+  }
+
+  .compact-table td {
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .compact-list li {
+    border-color: #374151;
+    color: #f9fafb;
+  }
+
+  .compact-modal .modal-box {
+    background: #1f2937;
+    color: #f9fafb;
+  }
 }
