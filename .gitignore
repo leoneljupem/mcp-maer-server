@@ -1,0 +1,45 @@
+# 🦁 MAER MCP Server
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.egg
+dist/
+build/
+
+# Node
+node_modules/
+npm-debug.log*
+
+# Environment
+.env
+.env.local
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# MAER generated
+maer_index.json
+maer_ocr_cache.json
+maer_faces_index.json
+maer_image_index.json
+*.maer.bak
+
+# Data (user files)
+data/inputs/
+data/reports/
+
+# Models cache
+~/.EasyOCR/
+~/.paddleocr/

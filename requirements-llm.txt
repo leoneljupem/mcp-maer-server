@@ -1,0 +1,6 @@
+# 🦁 MAER MCP Server — Local LLM Requirements
+# Ejecutar con: CMAKE_ARGS="-DGGML_METAL=on" pip3 install -r requirements-llm.txt 
+# para aprovechar la aceleración nativa (Apple Silicon)
+
+llama-cpp-python>=0.2.56
+huggingface-hub>=0.21.0

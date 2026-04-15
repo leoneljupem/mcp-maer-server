@@ -1,0 +1,51 @@
+{
+  "name": "MAER — Asistente IMSS",
+  "short_name": "MAER",
+  "description": "Asistente de pensión IMSS — Analiza documentos, verifica CURP/NSS, semanas cotizadas y expediente de retiro.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0f172a",
+  "theme_color": "#00703c",
+  "lang": "es-MX",
+  "categories": ["finance", "productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/static/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/static/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Analizar documento",
+      "short_name": "Analizar",
+      "description": "Analiza un documento IMSS",
+      "url": "/?tab=archivos",
+      "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Verificar CURP",
+      "short_name": "CURP",
+      "description": "Verifica y decodifica tu CURP",
+      "url": "/?tab=poder",
+      "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]
+    },
+    {
+      "name": "Consultar SINAVID",
+      "short_name": "SINAVID",
+      "description": "Consulta vigencia de derechos IMSS",
+      "url": "/?tab=sinavid",
+      "icons": [{"src": "/static/icons/icon-192.png", "sizes": "192x192"}]
+    }
+  ]
+}

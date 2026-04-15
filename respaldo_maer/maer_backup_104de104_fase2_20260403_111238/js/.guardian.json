@@ -1,0 +1,97 @@
+{
+  "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend/web_ui/static/js",
+  "creado": "2026-04-02 03:39:31",
+  "maer_ver": "3.1",
+  "archivos": {
+    "maer.ajustes.js": {
+      "sha256": "21adce2229459300a59a009adb165a7ec52dc2ebe399f8f771983ef6f21fe787",
+      "bytes": 9189,
+      "modificado": "2026-04-01 14:25:10"
+    },
+    "maer.aprendizaje.js": {
+      "sha256": "7ed0d044f2a8ba8c95933759fdb3e8b1828ba34d76c260ff84d5fee2c3702b35",
+      "bytes": 10411,
+      "modificado": "2026-04-01 14:14:02"
+    },
+    "maer.archivos.js": {
+      "sha256": "b407b26d3704834436edbaec737836def827437ceea5e2594cfe070060af874d",
+      "bytes": 8599,
+      "modificado": "2026-04-01 14:17:19"
+    },
+    "maer.busqueda.js": {
+      "sha256": "2fc76888664ce087fa47d7592a5bc3675e530849a542b33fd46473898d1c5667",
+      "bytes": 8201,
+      "modificado": "2026-04-01 14:18:05"
+    },
+    "maer.chat.js": {
+      "sha256": "3356188ae609afa7b4e1eeba8ff7f90d71eac68e29093ada50a3ebd01cff6f95",
+      "bytes": 7654,
+      "modificado": "2026-04-01 14:13:19"
+    },
+    "maer.core.js": {
+      "sha256": "420e7568d1b653e51aaed50a304329ddc804620227278e3c37069bd4ef8a8dd2",
+      "bytes": 11817,
+      "modificado": "2026-04-01 22:29:35"
+    },
+    "maer.diccionario.js": {
+      "sha256": "1bd4780d67829e76d5a6a4669ceaea3447dd1fd7ac0cc3f3768d21a3ba69a835",
+      "bytes": 36279,
+      "modificado": "2026-04-02 03:37:37"
+    },
+    "maer.exportar.js": {
+      "sha256": "fa24fb68f9ca89eb2765e336c154734410c41d72532abafeb261b6e79eb8e0b8",
+      "bytes": 10719,
+      "modificado": "2026-04-01 22:30:32"
+    },
+    "maer.guardian.js": {
+      "sha256": "2bf335deff78e8bd879ff86deb566fe9bfa662795de83ddd933e0228eb1bb6be",
+      "bytes": 9099,
+      "modificado": "2026-04-01 22:35:29"
+    },
+    "maer.imagenes.js": {
+      "sha256": "2fb8b367f38a635e3a2fb0fa749b3c9eba36eb0a2bcf7fe4da93314c68e0f358",
+      "bytes": 10366,
+      "modificado": "2026-04-01 14:19:46"
+    },
+    "maer.memoria.js": {
+      "sha256": "c92d32c3ca4fb21c770ea388c5290d5241a294646d530ce323390b6aa3bc167a",
+      "bytes": 7493,
+      "modificado": "2026-04-01 14:22:44"
+    },
+    "maer.notificaciones.js": {
+      "sha256": "5fb11038cf0f7131077e693aa21c00367aaae3c3917745c9bd35292f213e0ee1",
+      "bytes": 7272,
+      "modificado": "2026-04-01 22:25:15"
+    },
+    "maer.organizar.js": {
+      "sha256": "c26c66c20d668caa6bfd431cde7087f69b4ac3c83f1d68f2f71b4c1a21a6ddb3",
+      "bytes": 8302,
+      "modificado": "2026-04-01 14:18:49"
+    },
+    "maer.pension.js": {
+      "sha256": "9358b4129bb396d2e663c1920c934c58a15bb6e25d836cada2e38a408a5d76c6",
+      "bytes": 12550,
+      "modificado": "2026-04-01 14:20:57"
+    },
+    "maer.sistema.js": {
+      "sha256": "8755a1851f2129e534061f40043e0e9d30924316bba7d50969e59f0c2b3833ad",
+      "bytes": 10941,
+      "modificado": "2026-04-01 22:26:09"
+    },
+    "maer.tareas.js": {
+      "sha256": "d32d048837f776b86a11e15ab7077992af50225fc92ad740487038825da21a2b",
+      "bytes": 11565,
+      "modificado": "2026-04-01 22:36:29"
+    },
+    "maer.voz.js": {
+      "sha256": "3dba416b071c4d59ab0237bb0c4c185b6a17528e2f9291ded8de3d8440e907ed",
+      "bytes": 5777,
+      "modificado": "2026-04-01 14:11:42"
+    },
+    "maer.whatsapp.js": {
+      "sha256": "c6d24d3fe0fde0c4d7e630e43ffce6f0eee59acf3f213651c4faf474cbe51a84",
+      "bytes": 13160,
+      "modificado": "2026-04-01 22:18:30"
+    }
+  }
+}

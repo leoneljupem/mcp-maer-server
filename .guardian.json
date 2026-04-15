@@ -1,0 +1,102 @@
+{
+  "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server",
+  "creado": "2026-04-02 03:39:32",
+  "maer_ver": "3.1",
+  "archivos": {
+    "AUDITORIA_MAER_3.1.md": {
+      "sha256": "32f52d5f9867afecf063e7983ed88b8df960c916bb65392d03c26a5082a662d1",
+      "bytes": 11238,
+      "modificado": "2026-04-02 03:39:26"
+    },
+    "BITACORA.md": {
+      "sha256": "dc2c7462baf7d20e9e4c94d30d4c369d38b2ada296493cb1e3af39d77089539e",
+      "bytes": 8267,
+      "modificado": "2026-04-01 22:38:31"
+    },
+    "INSTALL.md": {
+      "sha256": "38b77d64e6c5828d6c41ca58a7d4ed3b6241e741849530094f607ca69485597d",
+      "bytes": 3477,
+      "modificado": "2026-03-31 10:29:03"
+    },
+    "MAER MCP - Claude.command": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "modificado": "2026-03-31 05:21:00"
+    },
+    "Miniforge3-MacOSX-arm64.sh": {
+      "sha256": "38e73713bc504e11cf2a70f8bc01de4a778c547e9191e682606ba76fa4397fd9",
+      "bytes": 65608245,
+      "modificado": "2026-03-31 13:32:48"
+    },
+    "Miniforge3-MacOSX-x86_64.sh": {
+      "sha256": "d81e77d8f3c104c64e0ab27256f901e58ac9965288ccec774db87bf1a98a03e7",
+      "bytes": 60414988,
+      "modificado": "2026-03-31 13:34:57"
+    },
+    "README.md": {
+      "sha256": "25f3bc83e760092468a96f158b616447b59e1e9d7f0214d68ea1a377f1aab1ff",
+      "bytes": 6825,
+      "modificado": "2026-03-31 10:35:46"
+    },
+    "TASKER_GUIA.md": {
+      "sha256": "395e381eeffffac76f71a3f43fe6399e723733a90f9c6138ec30d10daf3e6c93",
+      "bytes": 6050,
+      "modificado": "2026-04-01 22:19:44"
+    },
+    "index.mjs": {
+      "sha256": "b2cb33299d4ee3f9548d0cce0040bc601c79446639a38d297cd63754b991c574",
+      "bytes": 22400,
+      "modificado": "2026-03-31 13:39:28"
+    },
+    "maer_guardian.py": {
+      "sha256": "6befdfe0f117d70abe9f7051ccb762b05e0938d32144d9ceaf2675925930b24c",
+      "bytes": 17190,
+      "modificado": "2026-04-01 22:16:26"
+    },
+    "maer_index.json": {
+      "sha256": "0af130927aaf4bd08f094e4c002c99efa206cbb8409595ae2da5cfcfad4f64ab",
+      "bytes": 42454,
+      "modificado": "2026-04-01 02:31:24"
+    },
+    "maer_ocr_cache.json": {
+      "sha256": "11be70a610db4782dbb657230d2b170fc2e14a65eddf0d75127fbd78513b04b4",
+      "bytes": 104737,
+      "modificado": "2026-04-01 02:31:24"
+    },
+    "package-lock.json": {
+      "sha256": "bb18efd5ed84374fbd31a1499e38ffb58af56076d490768f8d8b566454423495",
+      "bytes": 40225,
+      "modificado": "2026-03-31 05:53:19"
+    },
+    "package.json": {
+      "sha256": "32916355b450c30202b78239f0d4f3d6d1ab8791c31d156ccdcf977d2231284d",
+      "bytes": 614,
+      "modificado": "2026-03-31 10:14:28"
+    },
+    "patch_html.py": {
+      "sha256": "1aaddbec313bba3f65113c1d1a26d892a807c1a338ef823ad6f26f6eb7d7278e",
+      "bytes": 2322,
+      "modificado": "2026-03-31 15:21:28"
+    },
+    "requirements-llm.txt": {
+      "sha256": "92f590b5d663d7feb4270f144884dc0e44c2df71ecc8765af5ddf965ee7e438e",
+      "bytes": 240,
+      "modificado": "2026-03-31 10:51:49"
+    },
+    "requirements.txt": {
+      "sha256": "081f45a1cab42f8dd66254520e39493ae877faf3690c7b273b94ab459a73a1dd",
+      "bytes": 752,
+      "modificado": "2026-03-31 10:14:03"
+    },
+    "start_dashboard.sh": {
+      "sha256": "6e571d225ea50be09b26d9797700c4951d43c942649db7afa6c60f3fcd60907d",
+      "bytes": 224,
+      "modificado": "2026-03-31 13:40:36"
+    },
+    "start_mcp.sh": {
+      "sha256": "49cf9d7bf63ffb11999e069002f3f72593f47fe599b044bee8fe8bad02f9f291",
+      "bytes": 113,
+      "modificado": "2026-03-31 13:40:38"
+    }
+  }
+}

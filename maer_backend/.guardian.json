@@ -1,0 +1,47 @@
+{
+  "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend",
+  "creado": "2026-04-02 03:39:31",
+  "maer_ver": "3.1",
+  "archivos": {
+    "__init__.py": {
+      "sha256": "302a46eb50635b626112fbea43b2eb3bdf09ec8c12aa51ddf7d51e258835ae9e",
+      "bytes": 50,
+      "modificado": "2026-03-31 10:21:54"
+    },
+    "image_analyzer.py": {
+      "sha256": "e3cfaf5883fc9325d3712b41eb1bf8daa03eb97535b50daeca83cac56a09627e",
+      "bytes": 12430,
+      "modificado": "2026-03-31 11:08:45"
+    },
+    "llm_engine.py": {
+      "sha256": "c46b06cc242f9778f0acd36be669b38d4e6d589d4e6f9088dfebb3dd0e523ed4",
+      "bytes": 5960,
+      "modificado": "2026-03-31 17:00:46"
+    },
+    "maer.py": {
+      "sha256": "b2e2f7012b1a2f93a0109704275b5b0250b32cca12dce1e96f5d899463650d95",
+      "bytes": 7110,
+      "modificado": "2026-03-31 10:21:56"
+    },
+    "maer_files.py": {
+      "sha256": "5cd134e53f4ee5a368199b1b6ca059bbe586139457bac7fa0e9ee688f3d97640",
+      "bytes": 40931,
+      "modificado": "2026-03-31 15:34:33"
+    },
+    "nlp_engine.py": {
+      "sha256": "2e2742faa867e4df69b707715e21ea9d1f0adf5a7e662b17fc6d83d6e15700a1",
+      "bytes": 6088,
+      "modificado": "2026-03-31 10:17:13"
+    },
+    "ocr_engine.py": {
+      "sha256": "c2cb2224c4f9adfce78d32443604be0187392fc79ca6d8fece8ee43ae1eca417",
+      "bytes": 12697,
+      "modificado": "2026-03-31 10:16:24"
+    },
+    "table_extractor.py": {
+      "sha256": "c2676739127115994c7d110048567ccc6f50e626a1684e3f3e1b7d447af2ceb2",
+      "bytes": 4580,
+      "modificado": "2026-03-31 10:17:11"
+    }
+  }
+}

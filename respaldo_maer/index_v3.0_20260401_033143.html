@@ -1,0 +1,1627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>🦁 MAER 3.0 — Inteligencia Personal</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{
+  --bg:#080d18;--bg2:#0f1623;--bg3:#151e2e;--bg4:#1a2540;
+  --accent:#38bdf8;--accent2:#818cf8;--gold:#f59e0b;--green:#34d399;--red:#f87171;--orange:#fb923c;
+  --text:#e2e8f0;--muted:#64748b;--border:#1e3050;
+  --shadow:0 4px 32px rgba(0,0,0,.6);--r:12px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;min-height:100vh;display:flex;flex-direction:column;overflow-x:hidden}
+/* HEADER */
+header{background:linear-gradient(90deg,var(--bg2),var(--bg3));border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:0 2px 20px rgba(56,189,248,.1)}
+.logo{display:flex;align-items:center;gap:12px}
+.logo-emblem{width:44px;height:44px;background:linear-gradient(135deg,#0f2d5a,#38bdf8);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:22px;box-shadow:0 0 18px rgba(56,189,248,.35)}
+.logo-name{font-size:20px;font-weight:800;color:var(--accent);letter-spacing:3px}
+.logo-sub{font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-top:1px}
+.hdr-right{display:flex;align-items:center;gap:16px;font-size:12px;color:var(--muted)}
+.pulse{width:8px;height:8px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+#hdr-status{color:var(--green);font-weight:600}
+#hdr-time{font-family:'JetBrains Mono',monospace;color:var(--text)}
+/* TABS NAV */
+nav.tabs{background:var(--bg2);border-bottom:1px solid var(--border);padding:0 16px;display:flex;gap:2px;overflow-x:auto;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+.tab-btn{background:none;border:none;color:var(--muted);padding:13px 16px;cursor:pointer;font-size:12.5px;font-weight:500;border-bottom:2px solid transparent;white-space:nowrap;transition:all .2s;letter-spacing:.3px}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--accent);border-bottom-color:var(--accent);background:rgba(56,189,248,.05)}
+/* MAIN */
+main{flex:1;padding:20px;max-width:1440px;width:100%;margin:0 auto;padding-bottom:50px}
+.panel{display:none;animation:fadeUp .25s ease}
+.panel.active{display:block}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:18px;margin-bottom:14px;box-shadow:var(--shadow)}
+.card-title{font-size:13px;font-weight:600;color:var(--accent);letter-spacing:.8px;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+@media(max-width:900px){.g2,.g3,.g4{grid-template-columns:1fr 1fr}}
+@media(max-width:600px){.g2,.g3,.g4{grid-template-columns:1fr}}
+/* STAT BOX */
+.stat{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;text-align:center}
+.stat .val{font-size:26px;font-weight:800;color:var(--accent)}
+.stat .lbl{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.5px}
+.stat.gold .val{color:var(--gold)}
+.stat.green .val{color:var(--green)}
+.stat.red .val{color:var(--red)}
+.stat.purple .val{color:var(--accent2)}
+/* BUTTONS */
+.btn{border:none;border-radius:8px;padding:9px 16px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover{opacity:.85;transform:translateY(-1px)}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.btn-success{background:var(--green);color:#000}
+.btn-danger{background:var(--red);color:#fff}
+.btn-gold{background:var(--gold);color:#000}
+.btn-sm{padding:6px 12px;font-size:12px}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+/* INPUTS */
+input[type=text],input[type=password],input[type=number],textarea,select{
+  background:var(--bg3);border:1px solid var(--border);border-radius:8px;
+  padding:9px 13px;color:var(--text);font-size:13px;outline:none;width:100%;
+  font-family:'Inter',sans-serif;transition:border-color .2s
+}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical;min-height:90px;line-height:1.6}
+label{font-size:12px;color:var(--muted);margin-bottom:5px;display:block;letter-spacing:.3px}
+.form-group{margin-bottom:14px}
+/* CHAT */
+.chat-wrap{display:flex;gap:14px;height:calc(100vh - 175px);min-height:400px}
+.chat-main{flex:1;display:flex;flex-direction:column;min-width:0}
+.chat-msgs{flex:1;overflow-y:auto;padding:14px;background:var(--bg3);border:1px solid var(--border);border-radius:var(--r) var(--r) 0 0;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:82%;padding:11px 15px;border-radius:10px;font-size:13.5px;line-height:1.65;word-break:break-word}
+.msg.user{align-self:flex-end;background:linear-gradient(135deg,#0f2d5a,#1e4080);border:1px solid rgba(56,189,248,.4)}
+.msg.maer{align-self:flex-start;background:var(--bg2);border:1px solid var(--border)}
+.msg.sys{align-self:center;background:rgba(56,189,248,.08);border:1px solid rgba(56,189,248,.2);color:var(--accent);font-size:12px;text-align:center;max-width:100%;border-radius:6px}
+.msg .sender{font-size:10.5px;color:var(--accent);font-weight:700;margin-bottom:5px;letter-spacing:.8px}
+.chat-input-bar{display:flex;gap:8px;padding:10px;background:var(--bg2);border:1px solid var(--border);border-top:none;border-radius:0 0 var(--r) var(--r)}
+.chat-input-bar input{flex:1}
+.voice-btn{background:var(--bg3);border:2px solid var(--border);border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:all .2s;flex-shrink:0}
+.voice-btn:hover{border-color:var(--accent)}
+.voice-btn.listening{border-color:var(--red);box-shadow:0 0 14px rgba(248,113,113,.5);animation:blink .7s infinite}
+.chat-sidebar{width:240px;display:flex;flex-direction:column;gap:12px;flex-shrink:0}
+@media(max-width:800px){.chat-wrap{flex-direction:column}.chat-sidebar{width:100%;flex-direction:row;flex-wrap:wrap}}
+/* BADGE */
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.badge-blue{background:rgba(56,189,248,.15);color:var(--accent)}
+.badge-green{background:rgba(52,211,153,.15);color:var(--green)}
+.badge-gold{background:rgba(245,158,11,.15);color:var(--gold)}
+.badge-red{background:rgba(248,113,113,.15);color:var(--red)}
+.badge-purple{background:rgba(129,140,248,.15);color:var(--accent2)}
+/* TERMINAL */
+.terminal{background:#050810;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--green);max-height:280px;overflow-y:auto;line-height:1.8}
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid var(--border)}
+.toggle-row:last-child{border-bottom:none}
+.toggle-info h4{font-size:13px;margin-bottom:2px}
+.toggle-info p{font-size:11px;color:var(--muted)}
+.switch{position:relative;width:44px;height:22px;flex-shrink:0}
+.switch input{display:none}
+.slider{position:absolute;inset:0;background:var(--bg4);border-radius:22px;cursor:pointer;transition:.3s}
+.slider:before{content:'';position:absolute;width:16px;height:16px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.3s}
+input:checked+.slider{background:var(--accent)}
+input:checked+.slider:before{transform:translateX(22px)}
+/* DROP ZONE */
+.drop-zone{border:2px dashed var(--border);border-radius:var(--r);padding:36px;text-align:center;cursor:pointer;transition:all .3s;color:var(--muted)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--accent);background:rgba(56,189,248,.04);color:var(--text)}
+.drop-icon{font-size:42px;margin-bottom:10px}
+/* PROGRESS */
+.progress{background:var(--bg3);border-radius:4px;height:6px;overflow:hidden;margin:6px 0}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:4px;transition:width .5s}
+/* MODULE STATUS */
+.mod-item{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)}
+.mod-item:last-child{border-bottom:none}
+.mod-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.mod-dot.on{background:var(--green);box-shadow:0 0 6px var(--green)}
+.mod-dot.off{background:var(--red)}
+/* PENSION CHECKLIST */
+.check-item{display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:1px solid var(--border)}
+.check-item:last-child{border-bottom:none}
+.check-item input[type=checkbox]{width:16px;height:16px;margin-top:2px;accent-color:var(--accent);cursor:pointer;flex-shrink:0}
+.check-label{font-size:13px}
+.check-label small{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--accent)}
+/* STATUS BAR */
+.status-bar{position:fixed;bottom:0;left:0;right:0;background:var(--bg2);border-top:1px solid var(--border);padding:5px 20px;display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);z-index:150}
+/* RESULT */
+.result-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;margin-top:12px;font-size:12.5px;line-height:1.8;white-space:pre-wrap;word-break:break-all;max-height:400px;overflow-y:auto;font-family:'JetBrains Mono',monospace}
+/* QUICK ACTION CARDS */
+.qa-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:16px;cursor:pointer;transition:all .2s;text-align:center}
+.qa-card:hover{border-color:var(--accent);background:var(--bg4);transform:translateY(-2px)}
+.qa-icon{font-size:28px;margin-bottom:8px}
+.qa-title{font-size:12px;font-weight:600;color:var(--text)}
+.qa-desc{font-size:11px;color:var(--muted);margin-top:3px}
+/* PENSION SUBTABS */
+.subtab-nav{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
+.subtab-btn{background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:7px 13px;font-size:12px;color:var(--muted);cursor:pointer;transition:all .2s}
+.subtab-btn.active{background:rgba(56,189,248,.12);border-color:var(--accent);color:var(--accent)}
+.subpanel{display:none}
+.subpanel.active{display:block}
+/* ALERT */
+.alert{border-radius:8px;padding:12px 15px;font-size:13px;margin-bottom:12px;display:flex;gap:10px;align-items:flex-start}
+.alert-info{background:rgba(56,189,248,.1);border:1px solid rgba(56,189,248,.25);color:var(--accent)}
+.alert-warn{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);color:var(--gold)}
+.alert-success{background:rgba(52,211,153,.1);border:1px solid rgba(52,211,153,.25);color:var(--green)}
+.alert-danger{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.25);color:var(--red)}
+/* LOADER */
+.loader{display:inline-block;width:16px;height:16px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* TEXTAREA MONO */
+.mono{font-family:'JetBrains Mono',monospace;font-size:12px}
+/* IMAGE PREVIEW */
+.img-preview{max-width:100%;max-height:280px;border-radius:8px;border:1px solid var(--border);display:block;margin:0 auto}
+/* HISTORY ITEM */
+.hist-item{padding:10px 12px;background:var(--bg3);border-radius:8px;margin-bottom:8px;border-left:3px solid var(--accent)}
+.hist-q{font-size:12px;color:var(--muted);margin-bottom:4px}
+.hist-a{font-size:13px;color:var(--text)}
+.hist-time{font-size:10px;color:var(--muted);margin-top:4px}
+/* SECTION TITLE */
+.s-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.s-sub{font-size:12px;color:var(--muted);margin-bottom:18px}
+/* FILE ITEM */
+.file-item{display:flex;align-items:center;gap:12px;padding:11px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;margin-bottom:8px}
+.file-icon{font-size:22px;flex-shrink:0}
+.file-info{flex:1;min-width:0}
+.file-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.file-meta{font-size:11px;color:var(--muted);margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<header>
+  <div class="logo">
+    <div class="logo-emblem">🦁</div>
+    <div>
+      <div class="logo-name">MAER</div>
+      <div class="logo-sub">MEMORIA ACTIVA · EVOLUCIÓN REAL · V3.0</div>
+    </div>
+  </div>
+  <div class="hdr-right">
+    <div class="pulse"></div>
+    <span id="hdr-status">Iniciando...</span>
+    <span>|</span>
+    <span id="hdr-time">--:--:--</span>
+    <span>|</span>
+    <span id="hdr-backend" style="color:var(--muted)">⚡ Backend</span>
+  </div>
+</header>
+
+<!-- ══ TAB NAV ══ -->
+<nav class="tabs">
+  <button class="tab-btn active" onclick="MAER.tabs.show('inicio')">🏠 Inicio</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('chat')">💬 Chat IA</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('archivos')">📂 Archivos</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('imagenes')">🖼️ Imágenes</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('sistema')">⚙️ Sistema</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('pension')">⚖️ Pensión</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('memoria')">🧠 Memoria</button>
+  <button class="tab-btn" onclick="MAER.tabs.show('ajustes')">🔧 Ajustes</button>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+<!-- ════ INICIO ════ -->
+<div id="panel-inicio" class="panel active">
+  <div class="s-title">Panel de Control MAER</div>
+  <div class="s-sub">Todo en un solo lugar — análisis, chat, documentos y asistencia legal.</div>
+  <div class="g4" style="margin-bottom:16px">
+    <div class="stat"><div class="val" id="stat-msgs">0</div><div class="lbl">MENSAJES HOY</div></div>
+    <div class="stat green"><div class="val" id="stat-archivos">0</div><div class="lbl">ARCHIVOS ANALIZADOS</div></div>
+    <div class="stat gold"><div class="val" id="stat-docs">0</div><div class="lbl">DOCS PENSIÓN</div></div>
+    <div class="stat purple"><div class="val" id="stat-mem">0</div><div class="lbl">MEMORIA GUARDADA</div></div>
+  </div>
+  <div class="g2">
+    <div>
+      <div class="card-title">⚡ Acciones Rápidas</div>
+      <div class="g2">
+        <div class="qa-card" onclick="MAER.tabs.show('chat')"><div class="qa-icon">💬</div><div class="qa-title">Hablar con MAER</div><div class="qa-desc">Chat de IA personal</div></div>
+        <div class="qa-card" onclick="MAER.archivos.selectFile()"><div class="qa-icon">📄</div><div class="qa-title">Analizar Archivo</div><div class="qa-desc">Cualquier tipo de archivo</div></div>
+        <div class="qa-card" onclick="MAER.tabs.show('pension')"><div class="qa-icon">⚖️</div><div class="qa-title">Asistente Pensión</div><div class="qa-desc">Guía y documentos IMSS</div></div>
+        <div class="qa-card" onclick="MAER.sistema.refresh()"><div class="qa-icon">⚙️</div><div class="qa-title">Estado del Sistema</div><div class="qa-desc">Módulos y diagnóstico</div></div>
+      </div>
+    </div>
+    <div>
+      <div class="card-title">📡 Estado del Servidor</div>
+      <div id="inicio-modules" class="terminal" style="height:180px">Verificando módulos...</div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:8px" onclick="MAER.sistema.refresh()">🔄 Actualizar</button>
+    </div>
+  </div>
+  <div class="card" style="margin-top:14px">
+    <div class="card-title">📋 Actividad Reciente</div>
+    <div id="inicio-activity" style="color:var(--muted);font-size:13px">Sin actividad reciente.</div>
+  </div>
+</div>
+
+<!-- ════ CHAT IA ════ -->
+<div id="panel-chat" class="panel">
+  <div class="chat-wrap">
+    <div class="chat-main">
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="msg sys">🦁 MAER activo · Escribe o habla · Estoy contigo, Leonel.</div>
+      </div>
+      <div class="chat-input-bar">
+        <button class="voice-btn" id="voice-btn" onclick="MAER.voz.toggle()" title="Voz">🎤</button>
+        <input type="text" id="chat-input" placeholder="Escríbeme lo que necesitas..." onkeydown="if(event.key==='Enter')MAER.chat.send()">
+        <button class="btn btn-primary" onclick="MAER.chat.send()">Enviar ▶</button>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.chat.clear()">🗑️</button>
+      </div>
+    </div>
+    <div class="chat-sidebar">
+      <div class="card" style="padding:14px">
+        <div class="card-title" style="margin-bottom:10px">📎 Contexto</div>
+        <button class="btn btn-secondary btn-sm" style="width:100%;margin-bottom:8px" onclick="MAER.archivos.selectFile('chat')">📄 Adjuntar archivo</button>
+        <div id="chat-ctx-file" style="font-size:11px;color:var(--muted)">Sin archivo adjunto</div>
+      </div>
+      <div class="card" style="padding:14px">
+        <div class="card-title" style="margin-bottom:10px">🎛️ Modo</div>
+        <select id="chat-mode" style="font-size:12px">
+          <option value="general">🦁 MAER General</option>
+          <option value="pension">⚖️ Asistente Pensión</option>
+          <option value="doc">📄 Análisis de Documento</option>
+          <option value="legal">⚖️ Orientación Legal</option>
+        </select>
+      </div>
+      <div class="card" style="padding:14px">
+        <div class="card-title" style="margin-bottom:8px">🔊 Voz</div>
+        <div class="toggle-row" style="padding:5px 0">
+          <span style="font-size:12px">Respuesta hablada</span>
+          <label class="switch"><input type="checkbox" id="voz-toggle" checked onchange="MAER.config.vozActiva=this.checked"><span class="slider"></span></label>
+        </div>
+        <input type="range" id="voz-speed" min="0.5" max="2" step="0.1" value="1" style="width:100%;margin-top:8px" oninput="MAER.config.vozVel=this.value">
+        <div style="font-size:10px;color:var(--muted);margin-top:3px">Velocidad: <span id="voz-speed-val">1.0</span>x</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ ARCHIVOS ════ -->
+<div id="panel-archivos" class="panel">
+  <div class="s-title">Análisis de Archivos</div>
+  <div class="s-sub">Selecciona uno o varios archivos — MAER los analiza en profundidad.</div>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title">📂 Seleccionar Archivos</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
+          <button class="btn btn-primary" onclick="MAER.archivos.selectFile()">📄 Elegir Archivo</button>
+          <button class="btn btn-secondary" onclick="MAER.archivos.selectDir()">📁 Elegir Carpeta</button>
+          <button class="btn btn-secondary" onclick="MAER.archivos.fromInput()">⬆️ Subir Archivo</button>
+        </div>
+        <input type="file" id="file-input" multiple style="display:none" onchange="MAER.archivos.handleInputFiles(this.files)">
+        <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+          <div class="drop-icon">📂</div>
+          <div style="font-size:14px;font-weight:600">Arrastra archivos aquí</div>
+          <div style="font-size:12px;margin-top:6px">TXT, PDF, JS, JSON, ZIP, imágenes y más</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔍 Tipo de Análisis</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="an-texto" checked style="accent-color:var(--accent)"> Extraer texto</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="an-ids" checked style="accent-color:var(--accent)"> Detectar IDs (CURP/RFC)</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="an-nlp" style="accent-color:var(--accent)"> NLP Entidades</label>
+          <label style="display:flex;align-items:center;gap=6px;cursor:pointer;font-size:13px"><input type="checkbox" id="an-ocr" style="accent-color:var(--accent)"> OCR (si aplica)</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="an-tablas" style="accent-color:var(--accent)"> Tablas PDF</label>
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px"><input type="checkbox" id="an-zip" checked style="accent-color:var(--accent)"> Inspeccionar ZIP</label>
+        </div>
+        <button class="btn btn-primary" style="margin-top:14px;width:100%" onclick="MAER.archivos.analyze()" id="btn-analyze" disabled>🔍 Analizar</button>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="height:100%">
+        <div class="card-title">📋 Archivos Cargados</div>
+        <div id="file-list" style="min-height:80px;color:var(--muted);font-size:13px">Sin archivos.</div>
+        <div class="card-title" style="margin-top:16px">📊 Resultados</div>
+        <div id="file-results" class="result-box" style="min-height:200px">Los resultados aparecerán aquí...</div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔎 Buscar en Archivos Indexados</div>
+    <div style="display:flex;gap:8px">
+      <input type="text" id="search-query" placeholder="Buscar texto en todos los archivos indexados...">
+      <button class="btn btn-primary" onclick="MAER.archivos.search()">Buscar</button>
+    </div>
+    <div id="search-results" class="result-box" style="margin-top:10px;min-height:80px;display:none"></div>
+  </div>
+</div>
+
+<!-- ════ IMÁGENES ════ -->
+<div id="panel-imagenes" class="panel">
+  <div class="s-title">Análisis de Imágenes</div>
+  <div class="s-sub">OCR, reconocimiento facial, análisis de color, duplicados y metadatos.</div>
+  <div class="g2">
+    <div>
+      <div class="card">
+        <div class="card-title">🖼️ Cargar Imagen</div>
+        <button class="btn btn-primary" style="margin-bottom:12px" onclick="MAER.imagenes.selectImage()">📷 Elegir Imagen</button>
+        <input type="file" id="img-input" accept="image/*,application/pdf" style="display:none" onchange="MAER.imagenes.handleImage(this.files[0])">
+        <div id="img-preview-wrap" style="text-align:center;min-height:140px;color:var(--muted);display:flex;align-items:center;justify-content:center">
+          <span>Sin imagen cargada</span>
+        </div>
+        <div id="img-meta" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🔧 Herramientas</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button class="btn btn-secondary" onclick="MAER.imagenes.runOCR()">🔍 Extraer Texto (OCR)</button>
+          <button class="btn btn-secondary" onclick="MAER.imagenes.detectIDs()">🪪 Detectar CURP/RFC/INE</button>
+          <button class="btn btn-secondary" onclick="MAER.imagenes.detectFaces()">👤 Detectar Rostros</button>
+          <button class="btn btn-secondary" onclick="MAER.imagenes.analyzeColors()">🎨 Analizar Colores</button>
+          <button class="btn btn-gold" onclick="MAER.imagenes.sendToChat()">💬 Enviar al Chat</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Resultados del Análisis</div>
+      <div id="img-results" class="result-box" style="min-height:420px">Los resultados aparecerán aquí...</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔁 Buscar Imágenes Duplicadas en Carpeta</div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="text" id="dupes-dir" placeholder="Ruta de carpeta (o usa el selector)" style="flex:1">
+      <button class="btn btn-secondary" onclick="MAER.imagenes.selectDupesDir()">📁 Elegir</button>
+      <button class="btn btn-primary" onclick="MAER.imagenes.findDuplicates()">Buscar</button>
+    </div>
+    <div id="dupes-results" class="result-box" style="margin-top:10px;display:none;min-height:80px"></div>
+  </div>
+</div>
+
+<!-- ════ SISTEMA ════ -->
+<div id="panel-sistema" class="panel">
+  <div class="s-title">Estado del Sistema</div>
+  <div class="s-sub">Módulos instalados, rendimiento y diagnóstico del servidor MAER.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">🔌 Módulos del Servidor</div>
+      <div id="sys-modules">
+        <div style="color:var(--muted);font-size:13px">Cargando...</div>
+      </div>
+      <button class="btn btn-secondary btn-sm" style="margin-top:12px" onclick="MAER.sistema.refresh()">🔄 Actualizar</button>
+    </div>
+    <div class="card">
+      <div class="card-title">💻 Información del Navegador</div>
+      <div id="sys-browser" style="font-size:13px;line-height:2"></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">🚀 Rendimiento</div>
+      <div id="sys-perf" style="font-size:13px;line-height:2.2"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📡 Red y Conexión</div>
+      <div id="sys-net" style="font-size:13px;line-height:2.2"></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🖥️ Consola MAER</div>
+    <div class="terminal" id="sys-console">🦁 MAER 3.0 iniciado...<br></div>
+  </div>
+</div>
+
+<!-- ════ PENSIÓN ════ -->
+<div id="panel-pension" class="panel">
+  <div class="s-title">Asistente de Pensión IMSS</div>
+  <div class="s-sub">Guía completa para tu trámite de pensión — documentos, cartas, información y seguimiento.</div>
+  <div class="alert alert-info" style="margin-bottom:16px">ℹ️ <strong>MAER te apoya</strong> en todo tu proceso de pensión. Toda la información está basada en la Ley del IMSS vigente en México.</div>
+  <div class="subtab-nav">
+    <button class="subtab-btn active" onclick="MAER.pension.showSub('info')">📋 Información</button>
+    <button class="subtab-btn" onclick="MAER.pension.showSub('docs')">📁 Documentos</button>
+    <button class="subtab-btn" onclick="MAER.pension.showSub('cartas')">✉️ Cartas</button>
+    <button class="subtab-btn" onclick="MAER.pension.showSub('calc')">🔢 Calculadora</button>
+    <button class="subtab-btn" onclick="MAER.pension.showSub('notas')">📝 Notas</button>
+  </div>
+
+  <!-- INFO -->
+  <div class="subpanel active" id="subpanel-info">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">🏛️ Tipos de Pensión IMSS</div>
+        <div style="font-size:13px;line-height:2">
+          <div style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px"><strong style="color:var(--accent)">Vejez (65+ años)</strong><br>Requiere 500 semanas cotizadas. Ley 73 o Ley 97.</div>
+          <div style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px"><strong style="color:var(--green)">Cesantía en Edad Avanzada (60-64 años)</strong><br>Requiere 500 semanas y estar desempleado.</div>
+          <div style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px"><strong style="color:var(--gold)">Invalidez</strong><br>Incapacidad permanente. Mínimo 150 semanas.</div>
+          <div style="border-bottom:1px solid var(--border);padding-bottom:8px;margin-bottom:8px"><strong style="color:var(--accent2)">Viudez</strong><br>Para cónyuge o concubino del asegurado fallecido.</div>
+          <div><strong style="color:var(--orange)">Orfandad y Ascendentes</strong><br>Para hijos menores de 16 años o padres dependientes.</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">⚖️ Ley 73 vs Ley 97</div>
+        <div class="alert alert-warn" style="margin-bottom:12px">⚠️ Esta diferencia es CRUCIAL para calcular tu pensión.</div>
+        <div style="font-size:13px;line-height:1.9">
+          <div style="margin-bottom:10px"><strong style="color:var(--gold)">Ley 73 (antes del 1 julio 1997)</strong><br>El IMSS paga directamente tu pensión. Se calcula con el promedio del salario de los últimos 5 años. <strong>Generalmente más favorable.</strong></div>
+          <div><strong style="color:var(--accent)">Ley 97 (después del 1 julio 1997)</strong><br>Tu pensión sale de tu AFORE (cuenta individual). El IMSS solo paga si el saldo no alcanza la pensión mínima garantizada.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📞 Contactos y Recursos IMSS</div>
+      <div class="g3" style="font-size:13px">
+        <div style="background:var(--bg3);border-radius:8px;padding:14px"><strong>☎️ IMSS Informa</strong><br><span style="color:var(--accent)">800 623 23 23</span><br><small style="color:var(--muted)">Lun-Vie 8am-8pm</small></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:14px"><strong>🌐 Portal IMSS</strong><br><a href="https://serviciosdigitales.imss.gob.mx" target="_blank" style="color:var(--accent)">serviciosdigitales.imss.gob.mx</a><br><small style="color:var(--muted)">Consulta semanas en línea</small></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:14px"><strong>📍 AFORE Consulta</strong><br><a href="https://www.e-sar.com.mx" target="_blank" style="color:var(--accent)">e-sar.com.mx</a><br><small style="color:var(--muted)">Localiza tu AFORE</small></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOCUMENTOS -->
+  <div class="subpanel" id="subpanel-docs">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">📁 Documentos Obligatorios</div>
+        <div id="docs-checklist">
+          <div class="check-item"><input type="checkbox" id="doc1" onchange="MAER.pension.updateDocs()"><label for="doc1" class="check-label">Identificación oficial vigente (INE/IFE o pasaporte)<small>Con fotografía, no vencida</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc2" onchange="MAER.pension.updateDocs()"><label for="doc2" class="check-label">CURP (Clave Única de Registro de Población)<small>Vigente y en buen estado</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc3" onchange="MAER.pension.updateDocs()"><label for="doc3" class="check-label">Número de Seguridad Social (NSS)<small>Tarjeta o cualquier documento con tu NSS</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc4" onchange="MAER.pension.updateDocs()"><label for="doc4" class="check-label">Acta de Nacimiento (original)<small>Copia certificada del registro civil</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc5" onchange="MAER.pension.updateDocs()"><label for="doc5" class="check-label">Carta de Vigencia de Derechos IMSS<small>Se tramita en cualquier subdelegación IMSS</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc6" onchange="MAER.pension.updateDocs()"><label for="doc6" class="check-label">Estado de cuenta AFORE<small>Del mes más reciente</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc7" onchange="MAER.pension.updateDocs()"><label for="doc7" class="check-label">Comprobante de domicilio<small>No mayor a 3 meses (agua, luz, teléfono)</small></label></div>
+          <div class="check-item"><input type="checkbox" id="doc8" onchange="MAER.pension.updateDocs()"><label for="doc8" class="check-label">CLABE interbancaria (cuenta bancaria)<small>Para recibir el pago de pensión</small></label></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Progreso de Documentos</div>
+        <div style="text-align:center;margin:20px 0">
+          <div style="font-size:48px;font-weight:800;color:var(--accent)" id="docs-pct">0%</div>
+          <div style="color:var(--muted);font-size:13px;margin-top:6px">documentos listos</div>
+        </div>
+        <div class="progress"><div class="progress-fill" id="docs-progress" style="width:0%"></div></div>
+        <div style="font-size:12px;color:var(--muted);margin-top:10px" id="docs-count">0 de 8 documentos</div>
+        <div class="alert alert-info" style="margin-top:14px;font-size:12px">💡 Una vez que tengas todos los documentos, agenda cita en tu <strong>Subdelegación IMSS más cercana</strong> o llama al 800 623 23 23.</div>
+        <div class="card-title" style="margin-top:16px">📁 Documentos Adicionales</div>
+        <div class="check-item"><input type="checkbox" id="doc9" onchange="MAER.pension.updateDocs()"><label for="doc9" class="check-label">Avisos de afiliación anteriores<small>Si tienes múltiples empleos cotizados</small></label></div>
+        <div class="check-item"><input type="checkbox" id="doc10" onchange="MAER.pension.updateDocs()"><label for="doc10" class="check-label">Cartilla militar (hombres)<small>Si eres hombre entre 18 y 45 años</small></label></div>
+        <div class="check-item"><input type="checkbox" id="doc11" onchange="MAER.pension.updateDocs()"><label for="doc11" class="check-label">Acta de matrimonio (si aplica)<small>Para pensión de viudez o beneficiarios</small></label></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CARTAS -->
+  <div class="subpanel" id="subpanel-cartas">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">✉️ Datos para las Cartas</div>
+        <div class="form-group"><label>Tu nombre completo</label><input type="text" id="carta-nombre" value="Leonel Houssen Mojica" placeholder="Nombre completo"></div>
+        <div class="form-group"><label>NSS (Número de Seguridad Social)</label><input type="text" id="carta-nss" placeholder="Ej: 12345678901"></div>
+        <div class="form-group"><label>CURP</label><input type="text" id="carta-curp" placeholder="Ej: MOML700101HMCJXN00"></div>
+        <div class="form-group"><label>Domicilio</label><textarea id="carta-domicilio" style="min-height:60px" placeholder="Calle, número, colonia, municipio, estado, CP"></textarea></div>
+        <div class="form-group"><label>Fecha</label><input type="text" id="carta-fecha" value=""></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+          <button class="btn btn-primary btn-sm" onclick="MAER.pension.generarCarta('solicitud')">📄 Solicitud de Pensión</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.pension.generarCarta('semanas')">📄 Solicitud de Semanas</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.pension.generarCarta('queja')">📄 Carta de Queja</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.pension.generarCarta('inconformidad')">📄 Inconformidad</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">📋 Vista Previa de Carta</div>
+        <textarea id="carta-preview" class="mono" style="min-height:380px;width:100%;font-size:12px;line-height:1.7" readonly>Selecciona un tipo de carta para generar...</textarea>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn btn-primary btn-sm" onclick="MAER.pension.copiarCarta()">📋 Copiar</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.pension.imprimirCarta()">🖨️ Imprimir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CALCULADORA -->
+  <div class="subpanel" id="subpanel-calc">
+    <div class="g2">
+      <div class="card">
+        <div class="card-title">🔢 Estimador de Pensión (Orientativo)</div>
+        <div class="alert alert-warn" style="margin-bottom:14px">⚠️ Esta calculadora es <strong>aproximada</strong>. Los montos reales los determina el IMSS.</div>
+        <div class="form-group"><label>Ley aplicable</label>
+          <select id="calc-ley"><option value="73">Ley 73 (cotizaste antes de julio 1997)</option><option value="97">Ley 97 (cotizaste principalmente después de 1997)</option></select>
+        </div>
+        <div class="form-group"><label>Semanas cotizadas</label><input type="number" id="calc-semanas" value="500" min="150"></div>
+        <div class="form-group"><label>Salario promedio últimos 5 años (mensual, $MXN)</label><input type="number" id="calc-salario" value="8000" min="1"></div>
+        <div class="form-group"><label>Tu edad actual</label><input type="number" id="calc-edad" value="65" min="60"></div>
+        <button class="btn btn-primary" onclick="MAER.pension.calcular()">Calcular Estimación</button>
+        <div id="calc-resultado" style="margin-top:16px"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">📊 Tabla de Cuantías (Ley 73, referencia 2024)</div>
+        <div style="font-size:12px;line-height:2;color:var(--muted)">
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);padding-bottom:6px;margin-bottom:6px;color:var(--text);font-weight:600"><span>Semanas</span><span>Factor %</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);padding:3px 0"><span>500-549</span><span>70%</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);padding:3px 0"><span>550-599</span><span>72.5%</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);padding:3px 0"><span>600-649</span><span>75%</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;border-bottom:1px solid var(--border);padding:3px 0"><span>700-749</span><span>80%</span></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;padding:3px 0"><span>1000+</span><span>95% máx.</span></div>
+        </div>
+        <div class="alert alert-info" style="margin-top:14px;font-size:12px">💡 Pensión mínima garantizada 2024: aproximadamente <strong>$4,345 MXN/mes</strong>.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- NOTAS -->
+  <div class="subpanel" id="subpanel-notas">
+    <div class="card">
+      <div class="card-title">📝 Notas del Caso</div>
+      <textarea id="pension-notas" style="width:100%;min-height:300px;font-size:13px" placeholder="Escribe aquí notas importantes sobre tu caso: fechas de citas, personas con las que hablaste, documentos que ya entregaste, observaciones del IMSS, etc..." oninput="MAER.pension.guardarNotas()"></textarea>
+      <div style="display:flex;gap:8px;margin-top:10px;justify-content:space-between;align-items:center">
+        <span style="font-size:11px;color:var(--muted)" id="notas-guardado">Auto-guardado activado</span>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary btn-sm" onclick="MAER.pension.copiarNotas()">📋 Copiar</button>
+          <button class="btn btn-danger btn-sm" onclick="MAER.pension.limpiarNotas()">🗑️ Limpiar</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📅 Registro de Eventos</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <input type="date" id="evento-fecha" style="flex:0 0 auto;width:auto">
+        <input type="text" id="evento-texto" placeholder="Describe el evento o cita..." style="flex:1">
+        <button class="btn btn-primary btn-sm" onclick="MAER.pension.agregarEvento()">Agregar</button>
+      </div>
+      <div id="eventos-lista" style="font-size:13px;color:var(--muted)">Sin eventos registrados.</div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ MEMORIA ════ -->
+<div id="panel-memoria" class="panel">
+  <div class="s-title">Memoria de MAER</div>
+  <div class="s-sub">Historial de conversaciones y conocimiento acumulado.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">🕐 Historial de Conversaciones</div>
+      <div id="mem-history" style="max-height:500px;overflow-y:auto">
+        <div style="color:var(--muted);font-size:13px">Sin historial todavía.</div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px">
+        <button class="btn btn-secondary btn-sm" onclick="MAER.memoria.exportar()">📥 Exportar</button>
+        <button class="btn btn-danger btn-sm" onclick="MAER.memoria.limpiar()">🗑️ Limpiar</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🧠 Respuestas Aprendidas</div>
+      <div class="alert alert-info" style="margin-bottom:12px;font-size:12px">💡 MAER aprende de tus correcciones. Cuando digas "eso está mal, la respuesta correcta es..." guarda ese aprendizaje.</div>
+      <div id="mem-learned" style="font-size:13px;color:var(--muted)">Sin aprendizajes personalizados.</div>
+      <div class="card-title" style="margin-top:16px">➕ Enseñar a MAER</div>
+      <div class="form-group"><label>Cuando alguien diga...</label><input type="text" id="learn-trigger" placeholder="Ej: mi cumpleaños"></div>
+      <div class="form-group"><label>MAER responde...</label><textarea id="learn-response" style="min-height:60px" placeholder="Ej: Tu cumpleaños es el 15 de mayo"></textarea></div>
+      <button class="btn btn-primary btn-sm" onclick="MAER.memoria.aprender()">Enseñar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ AJUSTES ════ -->
+<div id="panel-ajustes" class="panel">
+  <div class="s-title">Ajustes de MAER</div>
+  <div class="s-sub">Personaliza y configura tu asistente.</div>
+  <div class="g2">
+    <div class="card">
+      <div class="card-title">🔌 Conexión al Servidor</div>
+      <div class="form-group"><label>URL del servidor MAER</label><input type="text" id="cfg-server" value="http://localhost:8765"></div>
+      <button class="btn btn-primary btn-sm" onclick="MAER.sistema.refresh()">🔄 Probar Conexión</button>
+      <div id="cfg-conn-status" style="margin-top:8px;font-size:12px"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎛️ Funciones</div>
+      <div class="toggle-row"><div class="toggle-info"><h4>Voz activa</h4><p>MAER habla sus respuestas</p></div><label class="switch"><input type="checkbox" id="cfg-voz" checked onchange="MAER.config.vozActiva=this.checked"><span class="slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><h4>Aprendizaje automático</h4><p>Guarda y aprende del historial</p></div><label class="switch"><input type="checkbox" id="cfg-learn" checked onchange="MAER.config.aprendizaje=this.checked"><span class="slider"></span></label></div>
+      <div class="toggle-row"><div class="toggle-info"><h4>Modo oscuro</h4><p>Tema visual oscuro (activo por defecto)</p></div><label class="switch"><input type="checkbox" checked disabled><span class="slider"></span></label></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔊 Configuración de Voz</div>
+      <div class="form-group"><label>Velocidad de voz</label><input type="range" id="cfg-vel" min="0.5" max="2" step="0.1" value="1" style="width:100%" oninput="document.getElementById('cfg-vel-val').textContent=this.value;MAER.config.vozVel=this.value"><span style="font-size:12px;color:var(--muted)">Velocidad: <strong id="cfg-vel-val">1</strong>x</span></div>
+      <div class="form-group"><label>Volumen</label><input type="range" id="cfg-vol" min="0" max="1" step="0.1" value="1" style="width:100%" oninput="document.getElementById('cfg-vol-val').textContent=Math.round(this.value*100)+'%';MAER.config.vozVol=this.value"><span style="font-size:12px;color:var(--muted)">Volumen: <strong id="cfg-vol-val">100%</strong></span></div>
+      <button class="btn btn-secondary btn-sm" onclick="MAER.voz.probar()">🔊 Probar</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🗑️ Datos y Privacidad</div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <button class="btn btn-secondary btn-sm" onclick="MAER.memoria.exportar()">📥 Exportar toda la memoria</button>
+        <button class="btn btn-danger btn-sm" onclick="MAER.memoria.limpiar()">🗑️ Limpiar historial de chat</button>
+        <button class="btn btn-danger btn-sm" onclick="if(confirm('¿Seguro? Esto borra TODO.'))localStorage.clear();location.reload()">⚠️ Resetear MAER completo</button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">ℹ️ Acerca de MAER</div>
+    <div style="font-size:13px;line-height:2;color:var(--muted)">
+      <strong style="color:var(--text)">MAER 3.0</strong> — Memoria Activa · Evolución Real<br>
+      Desarrollado para <strong style="color:var(--accent)">Leonel Houssen Mojica</strong> — Ecatepec, Estado de México<br>
+      Servidor: FastAPI + Python 3 · OCR: Tesseract/EasyOCR/PaddleOCR · NLP: spaCy · LLM: Llama.cpp<br>
+      <span style="color:var(--green)">Versión 3.0.0 · 2026</span>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<!-- ══ STATUS BAR ══ -->
+<div class="status-bar">
+  <span id="sb-mode">🖥️ Modo Local</span>
+  <span id="sb-server">⚡ Servidor: comprobando...</span>
+  <span id="sb-mem">🧠 Mem: 0</span>
+  <span id="sb-time2">--:--</span>
+</div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   MAER 3.0 — Motor principal
+   Leonel Houssen Mojica — Ecatepec MX — 2026
+══════════════════════════════════════════════════════════ */
+
+const MAER = {
+  version: '3.0',
+  API: 'http://localhost:8765',
+
+  config: {
+    vozActiva: true,
+    vozVel: 1.0,
+    vozVol: 1.0,
+    aprendizaje: true,
+    backendOK: false,
+  },
+
+  // ══ INIT ══
+  async init() {
+    this._restoreConfig();
+    this._startClock();
+    this._loadChecklistState();
+    this.pension._loadNotas();
+    this.pension._loadEventos();
+    this._updateStats();
+    this.memoria._render();
+    this.sistema._renderBrowser();
+    this.sistema._renderPerf();
+    this.sistema._renderNet();
+    await this.sistema.refresh();
+    this._log('🦁 MAER 3.0 listo.');
+    document.getElementById('voz-speed').addEventListener('input', e => {
+      document.getElementById('voz-speed-val').textContent = parseFloat(e.target.value).toFixed(1);
+      this.config.vozVel = e.target.value;
+    });
+    // Drop zone
+    const dz = document.getElementById('drop-zone');
+    dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+    dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); MAER.archivos.handleInputFiles(e.dataTransfer.files); });
+    // Fecha carta
+    document.getElementById('carta-fecha').value = new Date().toLocaleDateString('es-MX',{day:'2-digit',month:'long',year:'numeric'});
+    // Evento fecha default
+    document.getElementById('evento-fecha').value = new Date().toISOString().split('T')[0];
+  },
+
+  _restoreConfig() {
+    try {
+      const saved = JSON.parse(localStorage.getItem('maer_config') || '{}');
+      Object.assign(this.config, saved);
+      if (document.getElementById('cfg-voz')) document.getElementById('cfg-voz').checked = this.config.vozActiva;
+      if (document.getElementById('voz-toggle')) document.getElementById('voz-toggle').checked = this.config.vozActiva;
+    } catch(e) {}
+    const serverUrl = localStorage.getItem('maer_server');
+    if (serverUrl) {
+      this.API = serverUrl;
+      document.getElementById('cfg-server').value = serverUrl;
+    }
+  },
+
+  _saveConfig() {
+    localStorage.setItem('maer_config', JSON.stringify(this.config));
+    const s = document.getElementById('cfg-server').value.trim();
+    if (s) { this.API = s; localStorage.setItem('maer_server', s); }
+  },
+
+  _startClock() {
+    const tick = () => {
+      const now = new Date();
+      const t = now.toLocaleTimeString('es-MX');
+      document.getElementById('hdr-time').textContent = t;
+      document.getElementById('sb-time2').textContent = t;
+    };
+    tick();
+    setInterval(tick, 1000);
+  },
+
+  _log(msg) {
+    const c = document.getElementById('sys-console');
+    if (c) c.innerHTML += msg + '<br>';
+  },
+
+  _updateStats() {
+    const hist = JSON.parse(localStorage.getItem('maer_history') || '[]');
+    const today = new Date().toDateString();
+    const msgsHoy = hist.filter(h => new Date(h.ts).toDateString() === today).length;
+    document.getElementById('stat-msgs').textContent = msgsHoy;
+    document.getElementById('stat-archivos').textContent = localStorage.getItem('maer_files_count') || 0;
+    const docs = document.querySelectorAll('#docs-checklist input[type=checkbox]:checked');
+    document.getElementById('stat-docs').textContent = docs.length;
+    const learned = JSON.parse(localStorage.getItem('maer_learned') || '[]');
+    document.getElementById('stat-mem').textContent = hist.length + learned.length;
+    document.getElementById('sb-mem').textContent = `🧠 Mem: ${hist.length}`;
+  },
+
+  _loadChecklistState() {
+    for (let i = 1; i <= 11; i++) {
+      const el = document.getElementById(`doc${i}`);
+      if (el) el.checked = localStorage.getItem(`maer_doc${i}`) === '1';
+    }
+    this.pension.updateDocs();
+  },
+
+  // ══ TABS ══
+  tabs: {
+    show(name) {
+      document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(`panel-${name}`)?.classList.add('active');
+      const btns = document.querySelectorAll('.tab-btn');
+      btns.forEach(b => { if (b.textContent.toLowerCase().includes(name.substring(0,4))) b.classList.add('active'); });
+      if (name === 'sistema') MAER.sistema.refresh();
+      if (name === 'memoria') MAER.memoria._render();
+    }
+  },
+
+  // ══ API CALLS ══
+  async _call(endpoint, payload) {
+    try {
+      const url = this.API + endpoint;
+      const opts = payload
+        ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }
+        : { method: 'GET' };
+      const res = await fetch(url, opts);
+      return await res.json();
+    } catch(e) {
+      return { ok: false, msg: 'Sin conexión al servidor: ' + e.message };
+    }
+  },
+
+  // ══ CHAT ══
+  chat: {
+    ctx: null, // archivo adjunto
+    _typing: false,
+
+    send() {
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = '';
+      MAER.chat._addMsg('user', text);
+      MAER.chat._respond(text);
+      MAER._saveToHistory(text, '');
+    },
+
+    clear() {
+      if (!confirm('¿Limpiar el chat?')) return;
+      document.getElementById('chat-msgs').innerHTML = '<div class="msg sys">🦁 MAER activo · Chat limpiado.</div>';
+    },
+
+    _addMsg(who, html, speak=true) {
+      const msgs = document.getElementById('chat-msgs');
+      const div = document.createElement('div');
+      div.className = `msg ${who}`;
+      if (who === 'maer') {
+        div.innerHTML = `<div class="sender">🦁 MAER</div>${html}`;
+        if (speak && MAER.config.vozActiva) MAER.voz.hablar(html.replace(/<[^>]+>/g,'').substring(0,300));
+      } else if (who === 'sys') {
+        div.className = 'msg sys';
+        div.innerHTML = html;
+      } else {
+        div.innerHTML = html;
+      }
+      msgs.appendChild(div);
+      msgs.scrollTop = msgs.scrollHeight;
+    },
+
+    async _respond(userMsg) {
+      const modeEl = document.getElementById('chat-mode');
+      const mode = modeEl ? modeEl.value : 'general';
+
+      // Check custom learned responses first
+      const learned = JSON.parse(localStorage.getItem('maer_learned') || '[]');
+      for (const l of learned) {
+        if (new RegExp(l.trigger, 'i').test(userMsg)) {
+          MAER.chat._addMsg('maer', l.response);
+          MAER._saveToHistory(userMsg, l.response);
+          return;
+        }
+      }
+
+      // Try backend
+      if (MAER.config.backendOK) {
+        MAER.chat._addMsg('sys', '<span class="loader"></span> MAER pensando...', false);
+        const sysPrompt = MAER.chat._getSystemPrompt(mode);
+        const ctxPath = MAER.chat.ctx;
+        const payload = { prompt: userMsg };
+        if (ctxPath) payload.path = ctxPath;
+        const res = await MAER._call('/api/llm-chat', payload);
+        // Remove thinking indicator
+        const msgs = document.getElementById('chat-msgs');
+        const last = msgs.querySelector('.msg.sys:last-child');
+        if (last && last.innerHTML.includes('pensando')) last.remove();
+        if (res.ok && res.data?.response) {
+          const reply = res.data.response;
+          MAER.chat._addMsg('maer', reply);
+          MAER._saveToHistory(userMsg, reply);
+        } else {
+          // Fallback to patterns
+          const reply = MAER.chat._pattern(userMsg, mode);
+          MAER.chat._addMsg('maer', reply);
+          MAER._saveToHistory(userMsg, reply);
+        }
+      } else {
+        // Pure pattern matching
+        const reply = MAER.chat._pattern(userMsg, mode);
+        MAER.chat._addMsg('maer', reply);
+        MAER._saveToHistory(userMsg, reply);
+      }
+      MAER._updateStats();
+    },
+
+    _getSystemPrompt(mode) {
+      const prompts = {
+        general: 'Eres MAER, asistente personal leal de Leonel Houssen Mojica en Ecatepec MX. Eres analítico, directo y protector. Responde siempre en español de México.',
+        pension: 'Eres MAER, experto en pensiones IMSS mexicanas. Conoces Ley 73, Ley 97, semanas cotizadas, AFORE, y todos los trámites del IMSS. Ayuda a Leonel con su caso de pensión.',
+        doc: 'Eres MAER, analizas documentos con precisión. Extrae información clave, detecta fechas, nombres, montos y datos relevantes.',
+        legal: 'Eres MAER, con conocimiento de derecho mexicano. Orienta a Leonel sobre sus derechos y procesos legales, siempre aclarando que recomiende un abogado para casos formales.'
+      };
+      return prompts[mode] || prompts.general;
+    },
+
+    _pattern(msg, mode) {
+      const m = msg.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      const P = [
+        [/hola|buenas|hey|que tal|buenos/, '👋 Hola Leonel. MAER activo y listo para lo que necesites. ¿En qué te apoyo hoy?'],
+        [/quien eres|que eres|presentate/, '🦁 Soy <strong>MAER</strong> — tu asistente personal de análisis e inteligencia. Memoria activa, evolución real. Solo trabajo para ti, Leonel. Leal sin condiciones.'],
+        [/como estas|como te encuentras|como vas/, '⚙️ Funcionando al 100%. Todos los sistemas operativos. ¿Y tú cómo estás, Leonel?'],
+        [/gracias|muy bien|excelente/, '🙏 Para eso estoy. Dime en qué más puedo ayudarte.'],
+        [/pension|jubilacion|retiro|imss/, MAER.chat._respPension()],
+        [/semanas|cotizacion|cotice|cuantas semanas/, '📋 Para consultar tus semanas cotizadas: <br>1. Entra a <strong>serviciosdigitales.imss.gob.mx</strong><br>2. O llama al <strong>800 623 23 23</strong><br>3. O acude a tu subdelegación IMSS con tu NSS e INE.<br><br>¿Quieres que te genere una carta de solicitud?'],
+        [/ley 73|ley73/, '⚖️ <strong>Ley 73</strong> aplica si empezaste a cotizar <strong>antes del 1 de julio de 1997</strong>. Es la más favorable porque el IMSS calcula tu pensión con el promedio de tu salario de los últimos 5 años. Si tienes semanas en ambas épocas, puedes elegir acogerte a la Ley 73.'],
+        [/ley 97|ley97|afore/, '⚖️ <strong>Ley 97</strong> aplica si cotizaste principalmente <strong>después del 1 de julio de 1997</strong>. Tu pensión sale de tu AFORE (cuenta individual). Si el saldo no alcanza la pensión mínima, el IMSS completa. Consulta tu AFORE en <strong>e-sar.com.mx</strong>.'],
+        [/documentos|papeles|requisitos|que necesito/, MAER.chat._respDocumentos()],
+        [/curp|rfc|ine|nss/, '🪪 Puedo detectar CURP, RFC e INE en documentos. Sube el archivo en la pestaña <strong>Archivos</strong> o <strong>Imágenes</strong> y lo analizo al instante.'],
+        [/analizar|analiza|revisa|analisis/, '📂 Ve a la pestaña <strong>Archivos</strong> y sube tu documento. Puedo extraer texto, detectar IDs, hacer OCR, analizar tablas y más.'],
+        [/imagen|foto|fotografia/, '🖼️ Ve a la pestaña <strong>Imágenes</strong> para analizar fotos: OCR, detección de rostros, extracción de texto, identificación de CURP/RFC/INE.'],
+        [/carta|oficio|escrito/, '✉️ Puedo generar cartas para el IMSS en la pestaña <strong>Pensión → Cartas</strong>. Tengo plantillas de: solicitud de pensión, solicitud de semanas, queja e inconformidad.'],
+        [/ayuda|help|que puedes/, MAER.chat._respCapacidades()],
+        [/calcula|cuanto|estimacion|monto/, '🔢 Ve a la pestaña <strong>Pensión → Calculadora</strong> para estimar tu monto de pensión con tu salario y semanas cotizadas.'],
+        [/no funciona|error|fallo|problema/, '🔧 Entendido. Dime exactamente qué no funciona y lo revisamos juntos. También puedes ir a la pestaña <strong>Sistema</strong> para ver el estado de todos los módulos.'],
+        [/aprende|recuerda que|guarda esto/, MAER.chat._respAprender(msg)],
+        [/.+/, `Entendido. "${msg.substring(0,50)}" — ${MAER.config.backendOK ? 'El servidor LLM está offline en este momento.' : 'El servidor backend no está conectado.'} Puedo responderte con mis patrones base. Para respuestas más profundas, asegúrate de que el servidor MAER esté corriendo con <code>python -m maer_backend.web_ui.server</code>.`]
+      ];
+      for (const [re, resp] of P) {
+        if (typeof re === 'object' && re.test(m)) return typeof resp === 'function' ? resp() : resp;
+      }
+      return '🦁 Dime más y te ayudo.';
+    },
+
+    _respPension() {
+      return `⚖️ <strong>Pensión IMSS — Lo que debes saber:</strong><br><br>
+• <strong>Edad mínima:</strong> 60 años (cesantía) o 65 años (vejez)<br>
+• <strong>Semanas mínimas:</strong> 500 semanas cotizadas<br>
+• <strong>Ley 73 vs Ley 97:</strong> Si cotizaste antes de julio 1997, probablemente te conviene la Ley 73<br>
+• <strong>Trámite:</strong> Acude a tu Subdelegación IMSS o llama al <strong>800 623 23 23</strong><br><br>
+Ve a la pestaña <strong>Pensión</strong> para la guía completa, documentos y cartas.`;
+    },
+
+    _respDocumentos() {
+      return `📋 <strong>Documentos para pensión IMSS:</strong><br><br>
+1. Identificación oficial vigente (INE/pasaporte)<br>
+2. CURP vigente<br>
+3. Número de Seguridad Social (NSS)<br>
+4. Acta de Nacimiento original<br>
+5. Carta de Vigencia de Derechos IMSS<br>
+6. Estado de cuenta AFORE reciente<br>
+7. Comprobante de domicilio (máx. 3 meses)<br>
+8. CLABE interbancaria<br><br>
+Ve a <strong>Pensión → Documentos</strong> para el checklist interactivo.`;
+    },
+
+    _respCapacidades() {
+      return `🦁 <strong>Capacidades de MAER:</strong><br><br>
+📂 <strong>Archivos:</strong> Analiza TXT, PDF, JS, JSON, ZIP y más<br>
+🖼️ <strong>Imágenes:</strong> OCR, rostros, CURP/RFC/INE, colores<br>
+⚖️ <strong>Pensión:</strong> Guía IMSS completa, cartas, calculadora<br>
+🧠 <strong>IA Chat:</strong> Respondo en texto y voz<br>
+🔍 <strong>Búsqueda:</strong> Indexo y busco en tus archivos<br>
+📡 <strong>Sistema:</strong> Monitoreo de módulos y rendimiento<br><br>
+<em>Dime qué necesitas y lo hacemos.</em>`;
+    },
+
+    _respAprender(msg) {
+      MAER.chat._addMsg('sys', '💡 Para enseñarme algo concreto, ve a <strong>Memoria → Enseñar a MAER</strong>.', false);
+      return null;
+    },
+  },
+
+  // helper guardar historial
+  _saveToHistory(q, a) {
+    if (!this.config.aprendizaje) return;
+    const hist = JSON.parse(localStorage.getItem('maer_history') || '[]');
+    hist.push({ q, a, ts: Date.now() });
+    if (hist.length > 500) hist.shift();
+    localStorage.setItem('maer_history', JSON.stringify(hist));
+  },
+
+  // ══ VOZ ══
+  voz: {
+    recognition: null,
+    listening: false,
+
+    toggle() {
+      if (this.listening) this.stop();
+      else this.start();
+    },
+
+    start() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) { alert('Tu navegador no soporta reconocimiento de voz. Usa Chrome.'); return; }
+      this.recognition = new SR();
+      this.recognition.lang = 'es-MX';
+      this.recognition.continuous = false;
+      this.recognition.interimResults = false;
+      this.recognition.onresult = e => {
+        const text = e.results[0][0].transcript;
+        document.getElementById('chat-input').value = text;
+        MAER.chat.send();
+      };
+      this.recognition.onerror = () => this.stop();
+      this.recognition.onend = () => this.stop();
+      this.recognition.start();
+      this.listening = true;
+      document.getElementById('voice-btn').classList.add('listening');
+      document.getElementById('voice-btn').textContent = '🔴';
+    },
+
+    stop() {
+      this.recognition?.stop();
+      this.listening = false;
+      document.getElementById('voice-btn').classList.remove('listening');
+      document.getElementById('voice-btn').textContent = '🎤';
+    },
+
+    hablar(text) {
+      if (!MAER.config.vozActiva) return;
+      window.speechSynthesis?.cancel();
+      const utt = new SpeechSynthesisUtterance(text);
+      utt.lang = 'es-MX';
+      utt.rate = parseFloat(MAER.config.vozVel);
+      utt.volume = parseFloat(MAER.config.vozVol);
+      // prefer Spanish voice
+      const voices = window.speechSynthesis?.getVoices() || [];
+      const esVoice = voices.find(v => v.lang.startsWith('es'));
+      if (esVoice) utt.voice = esVoice;
+      window.speechSynthesis?.speak(utt);
+    },
+
+    probar() {
+      MAER.voz.hablar('Hola Leonel, soy MAER, tu asistente personal. Todo funcionando perfectamente.');
+    },
+  },
+
+  // ══ ARCHIVOS ══
+  archivos: {
+    loaded: [], // { name, path, size, type }
+
+    async selectFile(target) {
+      const res = await MAER._call('/api/select-file', null);
+      if (res.ok && res.data) {
+        const path = typeof res.data === 'string' ? res.data : JSON.stringify(res.data);
+        const name = path.split('/').pop();
+        MAER.archivos._addFile({ name, path: path.trim(), size: '?', type: 'remote' });
+        if (target === 'chat') {
+          MAER.chat.ctx = path.trim();
+          document.getElementById('chat-ctx-file').textContent = '📄 ' + name;
+        }
+      } else if (!res.ok && res.msg?.includes('Sin conexión')) {
+        document.getElementById('file-input').click();
+      }
+    },
+
+    async selectDir() {
+      const res = await MAER._call('/api/select-dir', null);
+      if (res.ok && res.data) {
+        const dir = typeof res.data === 'string' ? res.data.trim() : '';
+        if (dir) {
+          document.getElementById('file-results').textContent = `📁 Carpeta seleccionada: ${dir}\n\nIndexando...`;
+          const r2 = await MAER._call('/api/index', { base_dir: dir, max_files: 500 });
+          document.getElementById('file-results').textContent = JSON.stringify(r2.data || r2, null, 2);
+        }
+      }
+    },
+
+    fromInput() {
+      document.getElementById('file-input').click();
+    },
+
+    handleInputFiles(files) {
+      Array.from(files).forEach(f => {
+        MAER.archivos._addFile({ name: f.name, file: f, size: f.size, type: f.type || 'unknown' });
+      });
+    },
+
+    _addFile(info) {
+      this.loaded.push(info);
+      this._renderList();
+      document.getElementById('btn-analyze').disabled = false;
+    },
+
+    _renderList() {
+      const el = document.getElementById('file-list');
+      if (!this.loaded.length) { el.innerHTML = '<span style="color:var(--muted)">Sin archivos.</span>'; return; }
+      el.innerHTML = this.loaded.map((f,i) => `
+        <div class="file-item">
+          <div class="file-icon">${MAER.archivos._icon(f.name)}</div>
+          <div class="file-info">
+            <div class="file-name">${f.name}</div>
+            <div class="file-meta">${typeof f.size === 'number' ? (f.size/1024).toFixed(1)+'KB' : f.size} · ${f.type}</div>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.archivos.loaded.splice(${i},1);MAER.archivos._renderList()">✕</button>
+        </div>`).join('');
+    },
+
+    _icon(name) {
+      const ext = name.split('.').pop().toLowerCase();
+      const icons = { pdf:'📄', jpg:'🖼️', jpeg:'🖼️', png:'🖼️', gif:'🖼️', js:'📜', json:'📋', txt:'📝', zip:'🗜️', csv:'📊', html:'🌐', py:'🐍', docx:'📄', xlsx:'📊' };
+      return icons[ext] || '📁';
+    },
+
+    async analyze() {
+      const out = document.getElementById('file-results');
+      if (!this.loaded.length) { out.textContent = 'No hay archivos cargados.'; return; }
+      out.textContent = 'Analizando...';
+      const results = [];
+      for (const f of this.loaded) {
+        if (f.file) {
+          // Browser-side analysis
+          const r = await MAER.archivos._analyzeLocal(f.file);
+          results.push(r);
+        } else if (f.path) {
+          // Server-side
+          const tasks = [];
+          if (document.getElementById('an-texto').checked) tasks.push(MAER._call('/api/extract-text', { path: f.path }));
+          if (document.getElementById('an-ids').checked) tasks.push(MAER._call('/api/detect-ids', { mode: 'file', path: f.path }));
+          const rs = await Promise.all(tasks);
+          results.push({ file: f.name, results: rs });
+        }
+      }
+      out.textContent = JSON.stringify(results, null, 2);
+      const cnt = parseInt(localStorage.getItem('maer_files_count') || '0') + this.loaded.length;
+      localStorage.setItem('maer_files_count', cnt);
+      MAER._updateStats();
+    },
+
+    async _analyzeLocal(file) {
+      return new Promise(resolve => {
+        const result = { name: file.name, size: file.size, type: file.type, content: null, ids: [], zipContents: null };
+        const ext = file.name.split('.').pop().toLowerCase();
+        if (ext === 'zip' && document.getElementById('an-zip').checked) {
+          JSZip.loadAsync(file).then(zip => {
+            result.zipContents = Object.keys(zip.files);
+            resolve(result);
+          }).catch(e => { result.error = e.message; resolve(result); });
+        } else if (['txt','js','json','html','py','css','csv','md'].includes(ext) || file.type.startsWith('text/')) {
+          const reader = new FileReader();
+          reader.onload = e => {
+            const content = e.target.result;
+            result.content = content.substring(0, 2000) + (content.length > 2000 ? '\n...[truncado]' : '');
+            result.wordCount = content.split(/\s+/).length;
+            result.charCount = content.length;
+            result.lineCount = content.split('\n').length;
+            // Detect IDs
+            const curpRE = /[A-Z]{4}\d{6}[HM][A-Z]{5}[A-Z0-9]\d/g;
+            const rfcRE = /[A-Z&Ñ]{3,4}\d{6}[A-Z0-9]{3}/g;
+            result.ids = { curp: content.match(curpRE) || [], rfc: content.match(rfcRE) || [] };
+            resolve(result);
+          };
+          reader.readAsText(file);
+        } else if (file.type.startsWith('image/')) {
+          result.content = `[Imagen ${file.type}] — Usa la pestaña Imágenes para análisis visual completo.`;
+          resolve(result);
+        } else {
+          result.content = `[Tipo ${file.type}] — Sube al servidor para análisis profundo.`;
+          resolve(result);
+        }
+      });
+    },
+
+    async search() {
+      const q = document.getElementById('search-query').value.trim();
+      if (!q) return;
+      const res = await MAER._call('/api/search-index', { query: q });
+      const el = document.getElementById('search-results');
+      el.style.display = 'block';
+      el.textContent = res.ok ? JSON.stringify(res.data, null, 2) : ('Error: ' + res.msg);
+    },
+  },
+
+  // ══ IMÁGENES ══
+  imagenes: {
+    currentFile: null,
+    currentPath: null,
+
+    selectImage() {
+      document.getElementById('img-input').click();
+    },
+
+    handleImage(file) {
+      if (!file) return;
+      this.currentFile = file;
+      const url = URL.createObjectURL(file);
+      document.getElementById('img-preview-wrap').innerHTML = `<img src="${url}" class="img-preview" id="img-el">`;
+      document.getElementById('img-meta').innerHTML =
+        `📄 <strong>${file.name}</strong> · ${file.type} · ${(file.size/1024).toFixed(1)}KB`;
+    },
+
+    async selectImage2() {
+      const res = await MAER._call('/api/select-file', null);
+      if (res.ok && res.data) {
+        this.currentPath = typeof res.data === 'string' ? res.data.trim() : '';
+        document.getElementById('img-meta').textContent = '📍 ' + this.currentPath;
+      }
+    },
+
+    async runOCR() {
+      const out = document.getElementById('img-results');
+      if (!this.currentFile && !this.currentPath) { out.textContent = 'Carga una imagen primero.'; return; }
+      out.textContent = 'Ejecutando OCR...';
+      if (this.currentPath) {
+        const res = await MAER._call('/api/ocr', { path: this.currentPath, engine: 'auto' });
+        out.textContent = res.ok ? (res.data?.text || JSON.stringify(res.data,null,2)) : res.msg;
+      } else {
+        out.textContent = 'Para OCR avanzado, sube el archivo al servidor. Con archivo local, solo puedo leer metadatos.\nSube el archivo primero usando el selector del servidor.';
+      }
+    },
+
+    async detectIDs() {
+      const out = document.getElementById('img-results');
+      if (!this.currentPath) { out.textContent = 'Usa el selector de servidor para detectar IDs en imágenes.'; return; }
+      out.textContent = 'Detectando IDs...';
+      const res = await MAER._call('/api/detect-ids', { mode: 'file', path: this.currentPath });
+      out.textContent = res.ok ? JSON.stringify(res.data, null, 2) : res.msg;
+    },
+
+    async detectFaces() {
+      const out = document.getElementById('img-results');
+      if (!this.currentPath) { out.textContent = 'Usa el selector de servidor para detección facial.'; return; }
+      out.textContent = 'Detectando rostros...';
+      const res = await MAER._call('/api/faces', { base_dir: this.currentPath.split('/').slice(0,-1).join('/'), max_files: 1 });
+      out.textContent = res.ok ? JSON.stringify(res.data, null, 2) : res.msg;
+    },
+
+    analyzeColors() {
+      const out = document.getElementById('img-results');
+      const img = document.getElementById('img-el');
+      if (!img) { out.textContent = 'Carga una imagen primero.'; return; }
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        const data = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+        let r=0,g=0,b=0,n=data.length/4;
+        for(let i=0;i<data.length;i+=4){r+=data[i];g+=data[i+1];b+=data[i+2];}
+        r=Math.round(r/n); g=Math.round(g/n); b=Math.round(b/n);
+        const brightness = (0.299*r+0.587*g+0.114*b).toFixed(0);
+        out.innerHTML = `🎨 Análisis de colores\n\nColor promedio: rgb(${r},${g},${b})\nHex: #${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}\nBrillo: ${brightness}/255\nDimensiones: ${canvas.width}×${canvas.height}px\nTotal píxeles: ${n.toLocaleString()}`;
+      } catch(e) {
+        out.textContent = 'Error analizando colores (posible restricción CORS). ' + e.message;
+      }
+    },
+
+    sendToChat() {
+      if (!this.currentFile) { MAER.chat._addMsg('maer', '⚠️ No hay imagen cargada para enviar al chat.'); return; }
+      MAER.tabs.show('chat');
+      MAER.chat._addMsg('sys', `🖼️ Imagen adjuntada: <strong>${this.currentFile.name}</strong>`);
+      MAER.chat._addMsg('maer', `📸 Imagen recibida: <strong>${this.currentFile.name}</strong> (${(this.currentFile.size/1024).toFixed(1)}KB, ${this.currentFile.type}). Para análisis completo usa las herramientas de la pestaña Imágenes.`);
+    },
+
+    async selectDupesDir() {
+      const res = await MAER._call('/api/select-dir', null);
+      if (res.ok && res.data) document.getElementById('dupes-dir').value = typeof res.data==='string'?res.data.trim():'';
+    },
+
+    async findDuplicates() {
+      const dir = document.getElementById('dupes-dir').value.trim();
+      if (!dir) return;
+      const out = document.getElementById('dupes-results');
+      out.style.display='block'; out.textContent='Buscando duplicados...';
+      const res = await MAER._call('/api/duplicates', { base_dir: dir, threshold: 10, max_files: 1000 });
+      out.textContent = res.ok ? JSON.stringify(res.data, null, 2) : res.msg;
+    },
+  },
+
+  // ══ SISTEMA ══
+  sistema: {
+    async refresh() {
+      document.getElementById('hdr-status').textContent = 'Verificando...';
+      const serverUrl = document.getElementById('cfg-server').value || MAER.API;
+      MAER.API = serverUrl;
+      const res = await MAER._call('/api/status', null);
+      const ok = res.ok === true;
+      MAER.config.backendOK = ok;
+      document.getElementById('hdr-status').textContent = ok ? 'Sistema Activo' : 'Backend Offline';
+      document.getElementById('hdr-status').style.color = ok ? 'var(--green)' : 'var(--gold)';
+      document.getElementById('hdr-backend').textContent = ok ? '⚡ Backend OK' : '⚡ Backend Offline';
+      document.getElementById('hdr-backend').style.color = ok ? 'var(--green)' : 'var(--muted)';
+      document.getElementById('sb-server').textContent = ok ? '⚡ Servidor: OK' : '⚡ Servidor: Offline';
+
+      if (ok && res.data?.modules) {
+        MAER.sistema._renderModules(res.data.modules);
+      } else {
+        MAER.sistema._renderModulesOffline();
+      }
+      document.getElementById('cfg-conn-status').innerHTML = ok
+        ? '<span style="color:var(--green)">✅ Conectado a ' + MAER.API + '</span>'
+        : '<span style="color:var(--red)">❌ Sin conexión. ¿Está corriendo el servidor?</span>';
+
+      // Update inicio terminal
+      const ic = document.getElementById('inicio-modules');
+      if (ic) ic.innerHTML = (ok
+        ? '✅ Servidor MAER activo en ' + MAER.API + '<br>'
+        : '⚠️ Servidor offline. Inicia con:<br>python -m maer_backend.web_ui.server<br>')
+        + (res.data?.modules ? Object.entries(res.data.modules).map(([k,v])=>`${v?'✅':'❌'} ${k}`).join('<br>') : '');
+    },
+
+    _renderModules(mods) {
+      const names = { tesseract:'Tesseract OCR', easyocr:'EasyOCR', paddleocr:'PaddleOCR', spacy:'spaCy NLP', deepface:'DeepFace', imagehash:'ImageHash', opencv:'OpenCV', pdfplumber:'PDF Plumber' };
+      document.getElementById('sys-modules').innerHTML = Object.entries(mods).map(([k,v])=>`
+        <div class="mod-item">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="mod-dot ${v?'on':'off'}"></div>
+            <span style="font-size:13px">${names[k]||k}</span>
+          </div>
+          <span class="badge ${v?'badge-green':'badge-red'}">${v?'Activo':'Inactivo'}</span>
+        </div>`).join('');
+    },
+
+    _renderModulesOffline() {
+      document.getElementById('sys-modules').innerHTML = '<div style="color:var(--muted);font-size:13px">⚠️ Servidor no disponible. Inicia con:<br><code style="color:var(--accent)">python -m maer_backend.web_ui.server</code></div>';
+    },
+
+    _renderBrowser() {
+      const ua = navigator.userAgent;
+      const platform = navigator.platform;
+      const cores = navigator.hardwareConcurrency || '?';
+      const ram = navigator.deviceMemory ? navigator.deviceMemory + ' GB' : 'No disponible';
+      const lang = navigator.language;
+      document.getElementById('sys-browser').innerHTML = `
+        <div>🖥️ Plataforma: <strong>${platform}</strong></div>
+        <div>🌐 Idioma: <strong>${lang}</strong></div>
+        <div>💻 Núcleos CPU: <strong>${cores}</strong></div>
+        <div>🧠 RAM aprox.: <strong>${ram}</strong></div>
+        <div>📐 Pantalla: <strong>${screen.width}×${screen.height}</strong></div>
+        <div>🎨 Profundidad color: <strong>${screen.colorDepth} bits</strong></div>
+        <div>🌐 Online: <strong>${navigator.onLine ? 'Sí' : 'No'}</strong></div>`;
+    },
+
+    _renderPerf() {
+      const perf = window.performance;
+      const el = document.getElementById('sys-perf');
+      if (!perf) { el.textContent = 'No disponible'; return; }
+      const nav = perf.getEntriesByType('navigation')[0];
+      const loadTime = nav ? (nav.loadEventEnd - nav.startTime).toFixed(0) + ' ms' : '?';
+      el.innerHTML = `
+        <div>⏱️ Carga de página: <strong>${loadTime}</strong></div>
+        <div>🕐 Tiempo en página: <strong>${Math.floor(perf.now()/1000)}s</strong></div>
+        ${performance.memory ? `<div>💾 Heap JS usado: <strong>${(performance.memory.usedJSHeapSize/1048576).toFixed(1)} MB</strong></div><div>💾 Heap límite: <strong>${(performance.memory.jsHeapSizeLimit/1048576).toFixed(0)} MB</strong></div>` : ''}`;
+    },
+
+    _renderNet() {
+      const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+      const el = document.getElementById('sys-net');
+      if (!conn) { el.innerHTML = '<div>📡 Info de red no disponible en este navegador.</div>'; return; }
+      el.innerHTML = `
+        <div>📶 Tipo: <strong>${conn.effectiveType || '?'}</strong></div>
+        <div>⬇️ Bajada: <strong>${conn.downlink || '?'} Mbps</strong></div>
+        <div>⏱️ Latencia: <strong>${conn.rtt || '?'} ms</strong></div>
+        <div>💾 Ahorro datos: <strong>${conn.saveData ? 'Sí' : 'No'}</strong></div>`;
+    },
+  },
+
+  // ══ PENSION ══
+  pension: {
+    showSub(name) {
+      document.querySelectorAll('.subpanel').forEach(p=>p.classList.remove('active'));
+      document.querySelectorAll('.subtab-btn').forEach(b=>b.classList.remove('active'));
+      document.getElementById(`subpanel-${name}`)?.classList.add('active');
+      event?.target?.classList.add('active');
+    },
+
+    updateDocs() {
+      let total = 8, done = 0;
+      for(let i=1;i<=total;i++){
+        const el=document.getElementById(`doc${i}`);
+        if(el){ if(el.checked)done++; localStorage.setItem(`maer_doc${i}`,el.checked?'1':'0'); }
+      }
+      const pct = Math.round(done/total*100);
+      document.getElementById('docs-pct').textContent = pct+'%';
+      document.getElementById('docs-progress').style.width = pct+'%';
+      document.getElementById('docs-count').textContent = `${done} de ${total} documentos obligatorios`;
+      document.getElementById('stat-docs').textContent = done;
+    },
+
+    generarCarta(tipo) {
+      const nombre = document.getElementById('carta-nombre').value || 'NOMBRE COMPLETO';
+      const nss = document.getElementById('carta-nss').value || 'NSS';
+      const curp = document.getElementById('carta-curp').value || 'CURP';
+      const domicilio = document.getElementById('carta-domicilio').value || 'DOMICILIO COMPLETO';
+      const fecha = document.getElementById('carta-fecha').value || new Date().toLocaleDateString('es-MX');
+      const ciudad = 'Ecatepec de Morelos, Estado de México';
+      const cartas = {
+        solicitud: `${ciudad}, a ${fecha}
+
+INSTITUTO MEXICANO DEL SEGURO SOCIAL
+Subdelegación IMSS
+PRESENTE
+
+Asunto: Solicitud de Pensión por Vejez / Cesantía en Edad Avanzada
+
+Estimados Señores:
+
+Yo, ${nombre}, con Número de Seguridad Social ${nss}, CURP ${curp}, con domicilio en ${domicilio}, de conformidad con lo establecido en la Ley del Seguro Social, me permito solicitar se inicie el trámite correspondiente para el otorgamiento de mi pensión.
+
+Adjunto a la presente los documentos requeridos conforme a lo establecido en la Ley del Seguro Social vigente.
+
+Manifiesto que cuento con las semanas de cotización requeridas y que me encuentro dentro de los supuestos establecidos en la Ley para el otorgamiento de este beneficio.
+
+Por lo anterior, respetuosamente solicito se me otorgue el beneficio de la pensión que por derecho me corresponde y se me notifique el resultado del presente trámite en el domicilio señalado.
+
+Sin otro particular, quedo a sus órdenes.
+
+Atentamente,
+
+________________________
+${nombre}
+NSS: ${nss}
+CURP: ${curp}
+Tel: _________________
+Correo: ______________`,
+
+        semanas: `${ciudad}, a ${fecha}
+
+INSTITUTO MEXICANO DEL SEGURO SOCIAL
+PRESENTE
+
+Asunto: Solicitud de Constancia de Semanas Cotizadas
+
+Por medio de la presente, yo ${nombre}, con NSS ${nss} y CURP ${curp}, domiciliado en ${domicilio}, solicito atentamente se me expida constancia del número total de semanas cotizadas ante ese Instituto, así como el historial de mis aportaciones, a efecto de conocer mis derechos respecto al otorgamiento de pensión.
+
+Agradezco de antemano la atención a la presente.
+
+Atentamente,
+
+________________________
+${nombre}`,
+
+        queja: `${ciudad}, a ${fecha}
+
+COMISIÓN NACIONAL DE LOS DERECHOS HUMANOS / IMSS
+PRESENTE
+
+Asunto: Queja por Deficiencia en el Servicio / Negativa Injustificada de Pensión
+
+Yo, ${nombre}, con NSS ${nss}, CURP ${curp}, domiciliado en ${domicilio}, interpongo queja formal en virtud de que el IMSS ha incumplido con otorgarme los beneficios que legalmente me corresponden, toda vez que cuento con los requisitos establecidos en la Ley del Seguro Social para el otorgamiento de pensión.
+
+Los hechos son los siguientes: [DESCRIBE LOS HECHOS AQUÍ]
+
+Por lo anterior, solicito se intervenga a efecto de que el IMSS dé cumplimiento a la ley y se me otorgue la pensión que me corresponde.
+
+Atentamente,
+
+________________________
+${nombre}
+NSS: ${nss}`,
+
+        inconformidad: `${ciudad}, a ${fecha}
+
+CONSEJO CONSULTIVO DELEGACIONAL DEL IMSS
+PRESENTE
+
+Asunto: Inconformidad con Resolución de Pensión
+
+Yo, ${nombre}, NSS ${nss}, CURP ${curp}, con domicilio en ${domicilio}, con fundamento en el artículo 294 de la Ley del Seguro Social, interpongo recurso de inconformidad en contra de la resolución emitida por ese Instituto, por las siguientes consideraciones:
+
+1. La resolución es contraria a los hechos y al derecho aplicable.
+2. Cuento con los requisitos de ley para el otorgamiento de mi pensión.
+3. [AGREGA MÁS ARGUMENTOS AQUÍ]
+
+Por lo expuesto, solicito se revoque la resolución impugnada y se me otorgue la pensión que legalmente me corresponde.
+
+Atentamente,
+
+________________________
+${nombre}`
+      };
+      document.getElementById('carta-preview').value = cartas[tipo] || '';
+    },
+
+    copiarCarta() {
+      const t = document.getElementById('carta-preview');
+      t.select();
+      document.execCommand('copy');
+      alert('✅ Carta copiada al portapapeles.');
+    },
+
+    imprimirCarta() {
+      const content = document.getElementById('carta-preview').value;
+      const w = window.open('','_blank');
+      w.document.write(`<html><head><title>Carta MAER</title><style>body{font-family:Arial;font-size:14px;line-height:1.8;padding:40px;white-space:pre-wrap;max-width:700px;margin:0 auto}</style></head><body>${content}</body></html>`);
+      w.document.close();
+      w.print();
+    },
+
+    calcular() {
+      const ley = document.getElementById('calc-ley').value;
+      const semanas = parseInt(document.getElementById('calc-semanas').value)||0;
+      const salario = parseFloat(document.getElementById('calc-salario').value)||0;
+      const edad = parseInt(document.getElementById('calc-edad').value)||65;
+      const el = document.getElementById('calc-resultado');
+      if(semanas < 500){ el.innerHTML='<div class="alert alert-danger">❌ No alcanzas las 500 semanas mínimas. Te faltan '+( 500-semanas)+' semanas.</div>'; return; }
+      if(edad < 60){ el.innerHTML='<div class="alert alert-danger">❌ Mínimo 60 años para cesantía, 65 para vejez.</div>'; return; }
+      let factor = 0.70;
+      if(semanas>=550)factor=0.725;
+      if(semanas>=600)factor=0.75;
+      if(semanas>=650)factor=0.775;
+      if(semanas>=700)factor=0.80;
+      if(semanas>=750)factor=0.825;
+      if(semanas>=800)factor=0.85;
+      if(semanas>=850)factor=0.875;
+      if(semanas>=900)factor=0.90;
+      if(semanas>=950)factor=0.925;
+      if(semanas>=1000)factor=0.95;
+      const pensionMin = 4345;
+      let monto = ley==='73' ? salario*factor : Math.max(pensionMin, salario*factor*0.6);
+      monto = Math.max(monto, pensionMin);
+      el.innerHTML=`<div class="alert alert-success">
+        ✅ <strong>Estimación de Pensión:</strong><br>
+        • Ley aplicable: <strong>Ley ${ley}</strong><br>
+        • Semanas cotizadas: <strong>${semanas}</strong><br>
+        • Factor aplicado: <strong>${(factor*100).toFixed(1)}%</strong><br>
+        • Salario base: <strong>$${salario.toLocaleString()} MXN/mes</strong><br>
+        • <strong style="font-size:16px">Pensión estimada: ~$${monto.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',')} MXN/mes</strong><br>
+        <small>⚠️ Esta es una estimación orientativa. El monto real lo determina el IMSS.</small>
+      </div>`;
+    },
+
+    _loadNotas() {
+      const n = localStorage.getItem('maer_pension_notas');
+      if(n) document.getElementById('pension-notas').value = n;
+    },
+
+    guardarNotas() {
+      localStorage.setItem('maer_pension_notas', document.getElementById('pension-notas').value);
+      document.getElementById('notas-guardado').textContent = 'Guardado: '+new Date().toLocaleTimeString('es-MX');
+    },
+
+    copiarNotas() {
+      const t = document.getElementById('pension-notas');
+      t.select(); document.execCommand('copy'); alert('📋 Notas copiadas.');
+    },
+
+    limpiarNotas() {
+      if(confirm('¿Limpiar notas?')){ document.getElementById('pension-notas').value=''; localStorage.removeItem('maer_pension_notas'); }
+    },
+
+    _loadEventos() {
+      const ev = JSON.parse(localStorage.getItem('maer_eventos')||'[]');
+      this._renderEventos(ev);
+    },
+
+    agregarEvento() {
+      const fecha = document.getElementById('evento-fecha').value;
+      const texto = document.getElementById('evento-texto').value.trim();
+      if(!fecha||!texto) return;
+      const ev = JSON.parse(localStorage.getItem('maer_eventos')||'[]');
+      ev.unshift({ fecha, texto, ts: Date.now() });
+      localStorage.setItem('maer_eventos', JSON.stringify(ev));
+      document.getElementById('evento-texto').value = '';
+      this._renderEventos(ev);
+    },
+
+    _renderEventos(ev) {
+      const el = document.getElementById('eventos-lista');
+      if(!ev.length){ el.textContent='Sin eventos.'; return; }
+      el.innerHTML = ev.map((e,i)=>`<div class="hist-item" style="margin-bottom:8px">
+        <div class="hist-q">📅 ${e.fecha}</div>
+        <div class="hist-a">${e.texto}</div>
+        <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="MAER.pension._deleteEvento(${i})">✕</button>
+      </div>`).join('');
+    },
+
+    _deleteEvento(i) {
+      const ev = JSON.parse(localStorage.getItem('maer_eventos')||'[]');
+      ev.splice(i,1);
+      localStorage.setItem('maer_eventos', JSON.stringify(ev));
+      this._renderEventos(ev);
+    },
+  },
+
+  // ══ MEMORIA ══
+  memoria: {
+    _render() {
+      const hist = JSON.parse(localStorage.getItem('maer_history')||'[]');
+      const el = document.getElementById('mem-history');
+      if(!hist.length){ el.innerHTML='<div style="color:var(--muted);font-size:13px">Sin historial.</div>'; return; }
+      el.innerHTML = [...hist].reverse().slice(0,50).map(h=>`
+        <div class="hist-item">
+          <div class="hist-q">👤 ${h.q?.substring(0,80)||''}</div>
+          ${h.a?`<div class="hist-a">🦁 ${h.a.replace(/<[^>]+>/g,'').substring(0,120)}...</div>`:''}
+          <div class="hist-time">${h.ts?new Date(h.ts).toLocaleString('es-MX'):''}</div>
+        </div>`).join('');
+      // Learned
+      const learned = JSON.parse(localStorage.getItem('maer_learned')||'[]');
+      const lel = document.getElementById('mem-learned');
+      if(!learned.length){ lel.innerHTML='<div style="color:var(--muted)">Sin aprendizajes.</div>'; return; }
+      lel.innerHTML = learned.map((l,i)=>`
+        <div class="hist-item" style="border-left-color:var(--gold)">
+          <div class="hist-q">Trigger: "${l.trigger}"</div>
+          <div class="hist-a">${l.response?.substring(0,100)}</div>
+          <button class="btn btn-danger btn-sm" style="margin-top:6px" onclick="MAER.memoria._deleteLearned(${i})">✕ Eliminar</button>
+        </div>`).join('');
+    },
+
+    aprender() {
+      const trigger = document.getElementById('learn-trigger').value.trim();
+      const response = document.getElementById('learn-response').value.trim();
+      if(!trigger||!response){ alert('Completa ambos campos.'); return; }
+      const learned = JSON.parse(localStorage.getItem('maer_learned')||'[]');
+      learned.push({ trigger, response, ts: Date.now() });
+      localStorage.setItem('maer_learned', JSON.stringify(learned));
+      document.getElementById('learn-trigger').value='';
+      document.getElementById('learn-response').value='';
+      alert('✅ MAER aprendió: "'+trigger+'"');
+      this._render();
+    },
+
+    _deleteLearned(i) {
+      const l = JSON.parse(localStorage.getItem('maer_learned')||'[]');
+      l.splice(i,1);
+      localStorage.setItem('maer_learned',JSON.stringify(l));
+      this._render();
+    },
+
+    exportar() {
+      const data = {
+        history: JSON.parse(localStorage.getItem('maer_history')||'[]'),
+        learned: JSON.parse(localStorage.getItem('maer_learned')||'[]'),
+        eventos: JSON.parse(localStorage.getItem('maer_eventos')||'[]'),
+        notas: localStorage.getItem('maer_pension_notas'),
+        fecha: new Date().toISOString()
+      };
+      const blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'maer_memoria_'+Date.now()+'.json';
+      a.click();
+    },
+
+    limpiar() {
+      if(!confirm('¿Limpiar historial de chat? (no borra notas ni aprendizajes)')) return;
+      localStorage.removeItem('maer_history');
+      this._render();
+      MAER._updateStats();
+      alert('✅ Historial limpiado.');
+    },
+  },
+};
+
+// ══ ARRANCAR ══
+window.addEventListener('load', () => MAER.init());
+</script>
+</body>
+</html>

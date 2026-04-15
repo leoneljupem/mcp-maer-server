@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="es-MX">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAER 3.1 — Memoria Activa, Evolución Real</title>
+  <link rel="stylesheet" href="/static/css/maer.css">
+</head>
+<body>
+
+<!-- ══════════════════ HEADER ══════════════════ -->
+<header class="header">
+  <div class="header-left">
+    <span class="logo">🦁 MAER</span>
+    <span class="version-tag">v3.1</span>
+    <span id="hdr-status" class="status-tag">⏳ Iniciando...</span>
+  </div>
+  <div class="header-center">
+    <span id="hdr-time" style="font-size:13px;color:var(--muted)"></span>
+  </div>
+  <div class="header-right">
+    <span id="sb-mem" style="font-size:12px;color:var(--muted)">🧠 —</span>
+    <button class="btn btn-secondary btn-sm" onclick="MAER.notificaciones.probar()" title="Notificaciones" id="btn-notif-hdr" style="position:relative">
+      🔔<span id="tasker-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:var(--red);color:#fff;border-radius:50%;font-size:9px;width:14px;height:14px;line-height:14px;text-align:center"></span>
+    </button>
+    <button class="btn btn-secondary btn-sm" onclick="MAER.voz.leerSeleccion()" title="Leer texto seleccionado">📢</button>
+    <button class="btn btn-secondary btn-sm" onclick="MAER.config.vozActiva=!MAER.config.vozActiva;MAER.saveConfig()" title="Toggle voz">🔊</button>
+    <div id="voice-indicator" title="MAER hablando..."></div>
+  </div>
+</header>
+
+<!-- ══════════════════ TABS ══════════════════ -->
+<nav class="tabs-nav">
+  <button class="tab-btn active" data-tab="chat"        onclick="MAER.tabs.show('chat')">💬 Chat</button>
+  <button class="tab-btn"        data-tab="archivos"    onclick="MAER.tabs.show('archivos')">📂 Archivos</button>
+  <button class="tab-btn"        data-tab="imagenes"    onclick="MAER.tabs.show('imagenes')">🖼️ Imágenes</button>
+  <button class="tab-btn"        data-tab="busqueda"    onclick="MAER.tabs.show('busqueda')">🔍 Búsqueda</button>
+  <button class="tab-btn"        data-tab="organizar"   onclick="MAER.tabs.show('organizar')">🗂️ Organizar</button>
+  <button class="tab-btn"        data-tab="aprendizaje" onclick="MAER.tabs.show('aprendizaje')">📚 Aprendizaje</button>
+  <button class="tab-btn"        data-tab="pension"     onclick="MAER.tabs.show('pension')">🏛️ Pensión</button>
+  <button class="tab-btn"        data-tab="tareas"      onclick="MAER.tabs.show('tareas')">🤖 Tareas IA</button>
+  <button class="tab-btn"        data-tab="memoria"     onclick="MAER.tabs.show('memoria')">🧠 Memoria</button>
+  <button class="tab-btn"        data-tab="sistema"     onclick="MAER.tabs.show('sistema')">⚙️ Sistema</button>
+  <button class="tab-btn"        data-tab="whatsapp"    onclick="MAER.tabs.show('whatsapp')">📱 WhatsApp</button>
+  <button class="tab-btn"        data-tab="ajustes"     onclick="MAER.tabs.show('ajustes')">🎨 Ajustes</button>
+</nav>
+
+<!-- ══════════════════ PANELES ══════════════════ -->
+<main class="main-content">
+
+  <!-- ── CHAT ── -->
+  <section id="panel-chat" class="panel active">
+    <div class="panel-header">
+      <h2>💬 Chat con MAER
+        <button class="help-btn" onclick="MAER.tooltip.show('chat-principal', event)">?</button>
+      </h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select id="chat-mode" class="input-field" style="width:auto;font-size:12px">
+          <option value="general">🤖 General</option>
+          <option value="pension">🏛️ Pensión IMSS</option>
+          <option value="legal">⚖️ Legal</option>
+          <option value="doc">📄 Documentos</option>
+        </select>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.chat.adjuntarArchivo()">📎 Adjuntar</button>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.exportar?.chatTXT()"   title="Exportar historial como TXT">⬇️ TXT</button>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.exportar?.chatJSON()"  title="Backup completo JSON">💾 JSON</button>
+        <button class="btn btn-danger btn-sm"    onclick="MAER.chat.clear()">🗑️ Limpiar</button>
+      </div>
+    </div>
+
+    <div id="chat-ctx-file" style="font-size:12px;color:var(--muted);padding:4px 0 8px 0">
+      <span style="color:var(--muted);font-size:11px">Sin archivo adjunto</span>
+    </div>
+
+    <div class="chat-wrap">
+      <div id="chat-msgs" class="chat-msgs">
+        <div class="msg sys">🦁 MAER 3.1 activo · Listo, Leonel.</div>
+      </div>
+    </div>
+
+    <div class="chat-input-wrap">
+      <button id="voice-btn" class="btn btn-secondary" onclick="MAER.voz.toggle()" title="Hablar">🎤</button>
+      <input id="chat-input" name="chat-input" type="text" class="input-field" placeholder="Escribe o habla con MAER..."
+        aria-label="Mensaje para MAER" onkeydown="if(event.key==='Enter')MAER.chat.send()">
+      <button class="btn btn-primary" onclick="MAER.chat.send()">Enviar ↵</button>
+    </div>
+  </section>
+
+  <!-- ── ARCHIVOS ── -->
+  <section id="panel-archivos" class="panel">
+    <div class="panel-header">
+      <h2>📂 Análisis de Archivos
+        <button class="help-btn" onclick="MAER.tooltip.show('archivos-principal', event)">?</button>
+      </h2>
+    </div>
+
+    <div id="drop-zone" class="drop-zone"
+      onclick="document.getElementById('file-input').click()"
+      ondragover="event.preventDefault();this.classList.add('drag-over')"
+      ondragleave="this.classList.remove('drag-over')"
+      ondrop="event.preventDefault();this.classList.remove('drag-over');MAER.archivos.handleInputFiles(event.dataTransfer.files)">
+      <div style="font-size:32px;margin-bottom:8px">📁</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:4px">Arrastra archivos aquí o haz clic para seleccionar</div>
+      <div style="font-size:12px;color:var(--muted)">PDF, TXT, Word, Excel, JSON, imágenes y más</div>
+      <input type="file" id="file-input" multiple style="display:none"
+        onchange="MAER.archivos.handleInputFiles(this.files)">
+    </div>
+
+    <div class="two-col" style="margin-top:16px">
+      <div>
+        <div class="card-title">Archivos cargados</div>
+        <div id="archivos-lista"></div>
+      </div>
+      <div>
+        <div class="card-title">Vista previa</div>
+        <div id="archivo-preview" style="min-height:80px"></div>
+        <div class="card-title" style="margin-top:16px">Resultado del análisis</div>
+        <div id="archivo-resultado" style="min-height:60px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── IMÁGENES ── -->
+  <section id="panel-imagenes" class="panel">
+    <div class="panel-header">
+      <h2>🖼️ Análisis de Imágenes</h2>
+    </div>
+    <div class="two-col">
+      <div>
+        <label class="btn btn-secondary" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+          📷 Seleccionar imagen
+          <input type="file" accept="image/*" style="display:none"
+            onchange="MAER.imagenes.handleImagen(this.files[0])">
+        </label>
+        <div id="img-preview" style="margin-top:14px"></div>
+        <div id="img-info"></div>
+      </div>
+      <div>
+        <div id="img-resultado" style="margin-bottom:14px"></div>
+        <button id="btn-ocr" class="btn btn-primary" onclick="MAER.imagenes.extraerTexto()">🔤 Extraer Texto (OCR)</button>
+        <div id="img-ocr" style="margin-top:14px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── BÚSQUEDA MASIVA ── -->
+  <section id="panel-busqueda" class="panel">
+    <div class="panel-header">
+      <h2>🔍 Búsqueda Masiva
+        <button class="help-btn" onclick="MAER.tooltip.show('busqueda-principal', event)">?</button>
+      </h2>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="busq-termino" name="busq-termino" type="text" class="input-field" aria-label="Término de búsqueda" placeholder="Buscar en archivos... (ej: CURP, NSS, fecha)"
+          style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')MAER.busqueda.ejecutar()">
+        <input id="busq-carpeta" name="busq-carpeta" type="text" class="input-field" aria-label="Carpeta de búsqueda" placeholder="Carpeta (ej: /Users/leonel/Documentos)"
+          style="flex:1;min-width:200px">
+        <button id="btn-buscar" class="btn btn-primary" onclick="MAER.busqueda.ejecutar()">🔍 Buscar</button>
+      </div>
+
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px">
+        <span style="font-size:12px;color:var(--muted);align-self:center">Tipos:</span>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="pdf"  checked> PDF</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="docx" checked> Word</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="txt"  checked> TXT</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="xlsx" checked> Excel</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="csv"  checked> CSV</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="json" checked> JSON</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="png"  checked> Imágenes</label>
+        <label class="check-label"><input type="checkbox" class="busq-tipo" value="md"   checked> Markdown</label>
+      </div>
+
+      <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <label class="check-label"><input type="checkbox" id="busq-modo-nombre" checked> En nombre del archivo</label>
+        <label class="check-label"><input type="checkbox" id="busq-modo-contenido"> En contenido del archivo</label>
+      </div>
+    </div>
+
+    <div id="busq-resultados"></div>
+  </section>
+
+  <!-- ── ORGANIZAR ── -->
+  <section id="panel-organizar" class="panel">
+    <div class="panel-header">
+      <h2>🗂️ Organizador de Documentos
+        <button class="help-btn" onclick="MAER.tooltip.show('organizar-principal', event)">?</button>
+      </h2>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="org-carpeta" name="org-carpeta" type="text" class="input-field" aria-label="Carpeta a organizar" placeholder="Ruta de carpeta a organizar..."
+          style="flex:1;min-width:200px">
+        <button class="btn btn-secondary" onclick="MAER.organizar.seleccionarCarpeta()">📁 Explorar</button>
+        <button id="btn-org-analizar" class="btn btn-primary" onclick="MAER.organizar.analizar()">🔍 Analizar Carpeta</button>
+      </div>
+      <div style="font-size:12px;color:var(--muted)">
+        🛡️ MAER siempre <strong>copia</strong> los archivos. Tu carpeta original queda intacta.
+      </div>
+    </div>
+
+    <div id="org-propuesta">
+      <div style="color:var(--muted);font-size:13px;padding:12px">Ingresa una carpeta y presiona Analizar para ver la propuesta de organización.</div>
+    </div>
+  </section>
+
+  <!-- ── APRENDIZAJE ── -->
+  <section id="panel-aprendizaje" class="panel">
+    <div class="panel-header">
+      <h2>📚 Aprendizaje Permanente
+        <button class="help-btn" onclick="MAER.tooltip.show('aprendizaje-principal', event)">?</button>
+      </h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+        <span id="learn-count" style="font-size:12px;color:var(--accent)">0</span>
+        <span style="font-size:12px;color:var(--muted)">documentos</span>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.aprendizaje.exportar()">📥 Exportar</button>
+        <button class="btn btn-danger btn-sm"    onclick="MAER.aprendizaje.limpiarTodo()">🗑️ Limpiar todo</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <label class="btn btn-primary" id="btn-learn" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px">
+        📚 Enseñar a MAER
+        <input type="file" style="display:none" accept=".pdf,.txt,.md,.docx,.doc,.json,.csv,.js,.py,.html,.xml"
+          onchange="MAER.aprendizaje.subirArchivo(this.files[0])">
+      </label>
+      <span style="font-size:12px;color:var(--muted);margin-left:12px">PDF, Word, TXT, JSON, CSV, código...</span>
+    </div>
+
+    <div id="aprendizaje-lista"></div>
+
+    <!-- ── Búsqueda en documentos aprendidos ── -->
+    <div class="card" style="margin-top:20px">
+      <div class="card-title" style="margin-bottom:12px">🔍 Buscar en documentos aprendidos</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <input id="idb-busq" name="idb-busq" type="text" class="input-field" aria-label="Buscar en documentos aprendidos" style="flex:1;min-width:200px"
+          placeholder="Ej: CURP, semanas cotizadas, resolución..."
+          onkeydown="if(event.key==='Enter')MAER.exportar?.mostrarBusquedaIDB()">
+        <button class="btn btn-primary btn-sm" onclick="MAER.exportar?.mostrarBusquedaIDB()">Buscar</button>
+      </div>
+      <div id="idb-resultados" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- ── PENSIÓN IMSS ── -->
+  <section id="panel-pension" class="panel">
+    <div class="panel-header">
+      <h2>🏛️ Asistente Pensión IMSS</h2>
+      <button class="btn btn-secondary btn-sm" onclick="MAER.pension.plazosInfo()">⏱️ Plazos legales</button>
+    </div>
+
+    <div class="sub-tabs">
+      <button class="sub-tab-btn active" onclick="showSubTab('pension-docs', this)">📋 Documentos</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('pension-eventos', this)">📅 Eventos</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('pension-cartas', this)">✉️ Cartas</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('pension-notas-tab', this)">📝 Notas</button>
+    </div>
+
+    <!-- Documentos checklist -->
+    <div id="pension-docs" class="sub-panel active">
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+          <div class="card-title">Documentos requeridos</div>
+          <span id="docs-progress-label" style="font-size:12px;color:var(--muted)">0 / 11 (0%)</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div id="docs-progress-bar" class="progress-bar" style="width:0%"></div>
+        </div>
+      </div>
+      <div id="docs-checklist" class="card">
+        <label class="check-label doc-check"><input type="checkbox" id="doc1"  onchange="MAER.pension.updateDocs()"> Acta de nacimiento (original + copia)</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc2"  onchange="MAER.pension.updateDocs()"> CURP (impresión oficial)</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc3"  onchange="MAER.pension.updateDocs()"> INE / IFE vigente (ambas caras)</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc4"  onchange="MAER.pension.updateDocs()"> Número de Seguro Social (NSS) oficial</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc5"  onchange="MAER.pension.updateDocs()"> Semanas cotizadas certificadas (IMSS)</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc6"  onchange="MAER.pension.updateDocs()"> Historial laboral completo (IMSS Digital)</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc7"  onchange="MAER.pension.updateDocs()"> Últimas 5 nóminas o recibos de salario</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc8"  onchange="MAER.pension.updateDocs()"> Estado de cuenta AFORE (si aplica Ley 97)</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc9"  onchange="MAER.pension.updateDocs()"> Comprobante de domicilio reciente</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc10" onchange="MAER.pension.updateDocs()"> CLABE interbancaria para depósito</label>
+        <label class="check-label doc-check"><input type="checkbox" id="doc11" onchange="MAER.pension.updateDocs()"> Formato RMA-07 o PM-07 firmado</label>
+      </div>
+    </div>
+
+    <!-- Eventos -->
+    <div id="pension-eventos" class="sub-panel">
+      <div class="card" style="margin-bottom:12px">
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <input id="evento-fecha" type="date" class="input-field" style="width:auto">
+          <input id="evento-desc"  type="text" class="input-field" placeholder="Descripción del evento..." style="flex:1;min-width:180px">
+          <button class="btn btn-primary" onclick="MAER.pension.agregarEvento()">+ Agregar</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.exportar?.eventosTXT()" title="Exportar eventos como TXT">⬇️ Exportar</button>
+        </div>
+      </div>
+      <div id="eventos-lista"></div>
+    </div>
+
+    <!-- Cartas -->
+    <div id="pension-cartas" class="sub-panel">
+      <div class="card" style="margin-bottom:14px">
+        <div class="card-title">
+          Generador de cartas oficiales
+          <button class="help-btn" onclick="MAER.tooltip.show('pension-cartas', event)">?</button>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px">
+          <div>
+            <label class="input-label">Tipo de carta</label>
+            <select id="carta-tipo" class="input-field">
+              <option value="semanas">Solicitud de semanas cotizadas</option>
+              <option value="inconformidad">Recurso de Inconformidad</option>
+              <option value="beneficiarios">Designación de beneficiarios</option>
+              <option value="derecho_peticion">Derecho de petición (Art. 8 CPEUM)</option>
+            </select>
+          </div>
+          <div>
+            <label class="input-label">Nombre completo *</label>
+            <input id="carta-nombre" type="text" class="input-field" placeholder="Tu nombre completo">
+          </div>
+          <div>
+            <label class="input-label">NSS (11 dígitos) *</label>
+            <input id="carta-nss" type="text" class="input-field" placeholder="Número de Seguro Social" maxlength="11">
+          </div>
+          <div>
+            <label class="input-label">CURP (opcional)</label>
+            <input id="carta-curp" type="text" class="input-field" placeholder="CURP 18 caracteres" maxlength="18">
+          </div>
+          <div>
+            <label class="input-label">Fecha</label>
+            <input id="carta-fecha" type="text" class="input-field" placeholder="dd de mes de aaaa">
+          </div>
+        </div>
+        <button class="btn btn-primary" onclick="MAER.pension.generarCarta()">✉️ Generar Carta</button>
+      </div>
+
+      <div id="carta-resultado" style="display:none">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+            <div class="card-title">Carta generada</div>
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-secondary btn-sm" onclick="MAER.pension.copiarCarta()">📋 Copiar</button>
+              <button class="btn btn-secondary btn-sm" onclick="MAER.exportar?.cartaPDF()" title="Abrir vista de impresión / Guardar PDF">🖨️ PDF</button>
+            </div>
+          </div>
+          <pre id="carta-texto" style="white-space:pre-wrap;font-size:12px;line-height:1.8;color:var(--text);font-family:'Courier New',monospace;background:var(--bg);padding:14px;border-radius:8px;border:1px solid var(--border);max-height:500px;overflow-y:auto"></pre>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notas -->
+    <div id="pension-notas-tab" class="sub-panel">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+          <div class="card-title">Notas de seguimiento</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm"    onclick="MAER.pension.guardarNotas()">💾 Guardar</button>
+            <button class="btn btn-secondary btn-sm"  onclick="MAER.exportar?.notasTXT()" title="Descargar notas como TXT">⬇️ Exportar</button>
+          </div>
+        </div>
+        <textarea id="pension-notas" class="input-field" rows="14"
+          placeholder="Anota fechas, conversaciones, acuerdos, números de folio, nombre de funcionarios..."></textarea>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── TAREAS IA ── -->
+  <section id="panel-tareas" class="panel">
+    <div class="panel-header">
+      <h2>🤖 Tareas IA
+        <button class="help-btn" onclick="MAER.tooltip.show('tareas-principal', event)">?</button>
+      </h2>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div style="display:grid;grid-template-columns:auto 1fr;gap:12px;margin-bottom:12px;align-items:start">
+        <div>
+          <label class="input-label">Tipo de tarea</label>
+          <select id="tarea-tipo" class="input-field" style="width:auto">
+            <option value="investigacion_legal">⚖️ Investigación Legal</option>
+            <option value="redactar_carta">✉️ Redactar Documento</option>
+            <option value="analisis_proceso">🗺️ Análisis de Proceso</option>
+            <option value="orientacion_imss">🏛️ Orientación IMSS</option>
+            <option value="resumen_documento">📋 Resumir Documento</option>
+            <option value="estrategia_legal">🎯 Estrategia Legal</option>
+          </select>
+        </div>
+        <div>
+          <label class="input-label">Descripción de la tarea *</label>
+          <textarea id="tarea-desc" class="input-field" rows="3"
+            placeholder="Describe qué necesitas. Ej: Investiga el artículo 149 de la Ley del Seguro Social..."></textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button id="btn-tarea" class="btn btn-primary" onclick="MAER.tareas.ejecutar()">⚡ Ejecutar Tarea</button>
+        <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+          📎 Adjuntar documento
+          <input type="file" style="display:none" onchange="MAER.tareas.adjuntarArchivo(this.files[0])">
+        </label>
+        <span id="tarea-archivo-nombre" style="font-size:12px;color:var(--muted)">Sin archivo adjunto</span>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.tareas.quitarAdjunto()">✕</button>
+      </div>
+    </div>
+
+    <div id="tarea-resultado" class="card" style="display:none"></div>
+
+  </section>
+
+  <!-- ── MEMORIA ── -->
+  <section id="panel-memoria" class="panel">
+    <div class="panel-header">
+      <h2>🧠 Memoria</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="MAER.memoria.exportar()">📥 Exportar</button>
+        <button class="btn btn-danger btn-sm"    onclick="MAER.memoria.limpiarHistorial()">🗑️ Limpiar historial</button>
+      </div>
+    </div>
+
+    <div id="mem-stats" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px"></div>
+
+    <div class="sub-tabs">
+      <button class="sub-tab-btn active" onclick="showSubTab('mem-historial', this)">💬 Historial</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('mem-aprendidos', this);MAER.memoria._renderAprendizajes()">🧠 Aprendizajes</button>
+    </div>
+
+    <div id="mem-historial" class="sub-panel active">
+      <div style="margin-bottom:12px">
+        <input id="mem-filtro" name="mem-filtro" type="text" class="input-field" placeholder="Filtrar historial..."
+          aria-label="Filtrar historial" oninput="MAER.memoria.buscar(this.value)">
+      </div>
+      <div id="memoria-lista"></div>
+      <div id="mem-paginacion" style="display:flex;justify-content:center;gap:8px;margin-top:12px"></div>
+    </div>
+
+    <div id="mem-aprendidos" class="sub-panel">
+      <div class="card" style="margin-bottom:12px">
+        <div class="card-title" style="margin-bottom:10px">Agregar respuesta personalizada</div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <input id="learn-trigger"  type="text" class="input-field" placeholder="Trigger (ej: quien eres, buenos días)">
+          <textarea id="learn-response" class="input-field" rows="3" placeholder="Respuesta de MAER..."></textarea>
+          <button class="btn btn-primary btn-sm" onclick="MAER.memoria.agregarAprendizaje()">+ Guardar aprendizaje</button>
+        </div>
+      </div>
+      <div id="learned-lista"></div>
+    </div>
+  </section>
+
+  <!-- ── SISTEMA ── -->
+  <section id="panel-sistema" class="panel">
+    <div class="panel-header">
+      <h2>⚙️ Sistema</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="MAER.sistema.refresh()">🔄 Actualizar</button>
+        <button class="btn btn-primary btn-sm"   onclick="MAER.sistema.crearRespaldo()">💾 Crear Respaldo</button>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <div id="server-status" class="status-dot offline"></div>
+        <div>
+          <div id="server-label" style="font-size:13px;font-weight:600;color:var(--text)">Verificando...</div>
+          <div id="server-model" style="font-size:11px;color:var(--muted)">—</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" style="margin-left:auto" onclick="MAER.sistema._checkServer()">🔌 Reconectar</button>
+      </div>
+    </div>
+
+    <div class="sub-tabs">
+      <button class="sub-tab-btn active" onclick="showSubTab('sys-panel-browser', this)">🌐 Navegador</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-perf', this)">📊 Rendimiento</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-net', this)">🔌 Red</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-log', this)">📋 Log</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-guardian', this)">🛡️ Guardián</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-tasker', this);MAER.sistema._checkTasker()">📱 Tasker</button>
+    </div>
+
+    <div id="sys-panel-browser" class="sub-panel active">
+      <div id="sys-browser" class="card"></div>
+    </div>
+    <div id="sys-panel-perf" class="sub-panel">
+      <div id="sys-perf" class="card"></div>
+    </div>
+    <div id="sys-panel-net" class="sub-panel">
+      <div id="sys-net" class="card"></div>
+    </div>
+    <div id="sys-panel-log" class="sub-panel">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button class="btn btn-secondary btn-sm" onclick="MAER.sistema.limpiarConsola()">🗑️ Limpiar</button>
+      </div>
+      <div id="sys-console" class="sys-console">Consola MAER iniciada...<br></div>
+    </div>
+    <div id="sys-panel-tasker" class="sub-panel">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="btn btn-primary btn-sm" onclick="MAER.sistema._checkTasker()">🔄 Actualizar</button>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.sistema._enviarPruebaTasker()">📤 Prueba</button>
+      </div>
+      <div id="sys-tasker-msgs" class="card">
+        <div style="color:var(--muted);font-size:13px">Sin mensajes Tasker todavía.</div>
+      </div>
+    </div>
+
+    <div id="sys-panel-guardian" class="sub-panel">
+      <div style="margin-bottom:12px">
+        <button class="btn btn-primary" onclick="MAER.guardian.verificar()">🛡️ Verificar Integridad</button>
+      </div>
+      <div id="guardian-reporte">
+        <div style="color:var(--muted);font-size:13px;padding:10px">Presiona "Verificar Integridad" para comprobar el estado de todos los módulos.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── WHATSAPP ── -->
+  <section id="panel-whatsapp" class="panel">
+    <div class="panel-header">
+      <h2>📱 WhatsApp</h2>
+      <div style="font-size:12px;color:var(--muted)">Importa tus chats y búscalos desde aquí</div>
+    </div>
+
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:10px">Importar exportación de chat</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">
+        En WhatsApp: Abre el chat → ··· → Más → Exportar chat → <strong>Sin archivos multimedia</strong>
+      </div>
+      <label class="btn btn-primary" style="cursor:pointer;display:inline-flex;align-items:center;gap:8px">
+        📲 Seleccionar archivo .txt
+        <input type="file" accept=".txt" style="display:none"
+          onchange="MAER.whatsapp.importar(this.files[0])">
+      </label>
+    </div>
+
+    <div id="wa-resultado"></div>
+
+    <!-- Lista de conversaciones importadas -->
+    <div id="wa-lista" style="margin-bottom:16px">
+      <div style="color:var(--muted);font-size:13px;padding:10px">Sin conversaciones importadas.</div>
+    </div>
+
+    <!-- Búsqueda en mensajes -->
+    <div class="card">
+      <div class="card-title" style="margin-bottom:10px">🔍 Buscar en conversaciones</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <input id="wa-busq" type="text" class="input-field" placeholder="Buscar mensaje o nombre..."
+          style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')MAER.whatsapp.buscar()">
+        <button class="btn btn-primary" onclick="MAER.whatsapp.buscar()">🔍 Buscar</button>
+      </div>
+      <div id="wa-busq-resultado" style="margin-top:12px"></div>
+    </div>
+  </section>
+
+  <!-- ── AJUSTES ── -->
+  <section id="panel-ajustes" class="panel">
+    <div class="panel-header">
+      <h2>🎨 Ajustes</h2>
+      <button class="btn btn-secondary btn-sm" onclick="MAER.ajustes.mostrarInfo()">ℹ️ Info</button>
+    </div>
+
+    <div class="two-col">
+      <!-- Voz -->
+      <div class="card">
+        <div class="card-title">🔊 Configuración de Voz</div>
+        <div style="display:flex;flex-direction:column;gap:12px;margin-top:10px">
+          <label class="check-label" style="font-size:13px">
+            <input type="checkbox" id="cfg-voz" checked onchange="MAER.config.vozActiva=this.checked;MAER.saveConfig()">
+            Voz activada
+          </label>
+          <div>
+            <label class="input-label">Gravedad (Pitch): <span id="pitch-val">0.62</span></label>
+            <input id="voz-pitch" type="range" min="0.1" max="2.0" step="0.05" value="0.62"
+              style="width:100%;accent-color:var(--accent)"
+              oninput="MAER.config.vozPitch=parseFloat(this.value);document.getElementById('pitch-val').textContent=parseFloat(this.value).toFixed(2)">
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">0.1 = Más grave · 2.0 = Más agudo</div>
+          </div>
+          <div>
+            <label class="input-label">Velocidad: <span id="voz-speed-val">0.9</span></label>
+            <input id="voz-speed" type="range" min="0.5" max="2.0" step="0.05" value="0.93"
+              style="width:100%;accent-color:var(--accent)">
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm"   onclick="MAER.ajustes.guardarVoz()">💾 Guardar</button>
+            <button class="btn btn-secondary btn-sm" onclick="MAER.voz.probar()">▶ Probar voz</button>
+          </div>
+          <div>
+            <div class="card-title" style="margin-bottom:8px">Voces disponibles en español:</div>
+            <div id="voces-lista" style="max-height:160px;overflow-y:auto"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Temas -->
+      <div class="card">
+        <div class="card-title">🎨 Tema de Color</div>
+        <div id="temas-lista" style="display:flex;flex-direction:column;gap:6px;margin:10px 0"></div>
+        <div class="card-title" style="margin-top:14px">Colores personalizados:</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center">
+          <div>
+            <label class="input-label">Acento</label>
+            <input id="cfg-accent" type="color" value="#38bdf8"
+              style="width:48px;height:36px;border:none;background:none;cursor:pointer;padding:2px">
+          </div>
+          <div>
+            <label class="input-label">Fondo</label>
+            <input id="cfg-bg" type="color" value="#07101c"
+              style="width:48px;height:36px;border:none;background:none;cursor:pointer;padding:2px">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="MAER.ajustes.aplicarColorPersonalizado()">Aplicar</button>
+        </div>
+      </div>
+
+      <!-- Servidor -->
+      <div class="card">
+        <div class="card-title">🔌 Servidor LLM</div>
+        <div style="margin-top:10px;display:flex;flex-direction:column;gap:10px">
+          <div>
+            <label class="input-label">URL del servidor</label>
+            <input id="cfg-server" type="text" class="input-field" value="http://localhost:8765"
+              placeholder="http://localhost:8765">
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="MAER.ajustes.guardarServidor()">💾 Guardar y reconectar</button>
+        </div>
+      </div>
+
+      <!-- Notificaciones -->
+      <div class="card">
+        <div class="card-title">🔔 Notificaciones</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:var(--text)">Estado:</span>
+            <span id="notif-estado" style="font-size:12px;color:var(--muted)">⚠️ Sin configurar</span>
+          </div>
+          <button id="btn-notif-permiso" class="btn btn-primary btn-sm"
+            onclick="MAER.notificaciones.solicitarPermiso()">🔔 Activar notificaciones</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.notificaciones.probar()">🔔 Enviar prueba</button>
+          <div style="font-size:11px;color:var(--muted)">
+            Alertas para eventos de pensión, recordatorios y mensajes de Tasker.
+          </div>
+        </div>
+      </div>
+
+      <!-- Datos -->
+      <div class="card">
+        <div class="card-title">💾 Datos y Respaldo</div>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
+          <label class="btn btn-secondary btn-sm" style="cursor:pointer;display:inline-flex;align-items:center;gap:6px">
+            📂 Importar backup
+            <input type="file" accept=".json" style="display:none"
+              onchange="MAER.ajustes.importarBackup(this.files[0])">
+          </label>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.memoria.exportar()">📥 Exportar memoria</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.aprendizaje.exportar()">📥 Exportar conocimiento</button>
+          <button class="btn btn-danger btn-sm"    onclick="MAER.ajustes.resetFactory()">⚠️ Restablecer valores</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════ SCRIPTS ══════════════════ -->
+<script src="/static/js/maer.diccionario.js"></script>
+<script src="/static/js/maer.core.js"></script>
+<script src="/static/js/maer.voz.js"></script>
+<script src="/static/js/maer.chat.js"></script>
+<script src="/static/js/maer.aprendizaje.js"></script>
+<script src="/static/js/maer.archivos.js"></script>
+<script src="/static/js/maer.busqueda.js"></script>
+<script src="/static/js/maer.organizar.js"></script>
+<script src="/static/js/maer.imagenes.js"></script>
+<script src="/static/js/maer.pension.js"></script>
+<script src="/static/js/maer.tareas.js"></script>
+<script src="/static/js/maer.memoria.js"></script>
+<script src="/static/js/maer.sistema.js"></script>
+<script src="/static/js/maer.guardian.js"></script>
+<script src="/static/js/maer.whatsapp.js"></script>
+<script src="/static/js/maer.notificaciones.js"></script>
+<script src="/static/js/maer.exportar.js"></script>
+<script src="/static/js/maer.ajustes.js"></script>
+
+<script>
+/* ── Sub-tabs helper ── */
+function showSubTab(id, btn) {
+  // Buscar el panel activo más cercano
+  const panel = btn.closest('.panel') || document.querySelector('.panel.active');
+  if (panel) {
+    panel.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
+    panel.querySelectorAll('.sub-tab-btn').forEach(b => b.classList.remove('active'));
+  }
+  const target = document.getElementById(id);
+  if (target) target.classList.add('active');
+  btn.classList.add('active');
+}
+</script>
+
+</body>
+</html>

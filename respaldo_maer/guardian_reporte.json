@@ -1,0 +1,55 @@
+{
+  "ts": "2026-04-01 22:26:26",
+  "version": "3.1",
+  "criticos_ok": true,
+  "faltantes_criticos": [],
+  "carpetas": [
+    {
+      "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend/web_ui/static",
+      "estado": "ok",
+      "faltantes": [],
+      "modificados": [],
+      "nuevos": [],
+      "errores": []
+    },
+    {
+      "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend/web_ui/static/js",
+      "estado": "ok",
+      "faltantes": [],
+      "modificados": [],
+      "nuevos": [],
+      "errores": []
+    },
+    {
+      "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend/web_ui/static/css",
+      "estado": "ok",
+      "faltantes": [],
+      "modificados": [],
+      "nuevos": [],
+      "errores": []
+    },
+    {
+      "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend",
+      "estado": "ok",
+      "faltantes": [],
+      "modificados": [],
+      "nuevos": [],
+      "errores": []
+    },
+    {
+      "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server",
+      "estado": "ok",
+      "faltantes": [],
+      "modificados": [],
+      "nuevos": [],
+      "errores": []
+    }
+  ],
+  "resumen": {
+    "ok": 5,
+    "cambios": 0,
+    "nuevos": 0,
+    "errores": 0,
+    "sin_manifiesto": 0
+  }
+}

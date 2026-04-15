@@ -1,0 +1,6 @@
+# Documento Analizado: RFC y CURP Test
+El ciudadano Juan Miguel Pérez de la Rosa asistió a la oficina el 15 de marzo de 2026.
+Su clave única de registro poblacional (CURP) es PERJ900315HDFRRN01 y su registro federal de causantes es PERJ900315XX1.
+El cliente dejó como contacto su teléfono 55-1234-5678 y su correo jperez.13@empresa.com.
+También se identificó a María López en compañía (esposa).
+La cantidad solicitada de crédito fue de $150,000 MXN para Inmobiliaria MAER S.A.

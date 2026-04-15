@@ -1,0 +1,22 @@
+{
+  "carpeta": "/sessions/modest-upbeat-thompson/mnt/mcp-maer-server/maer_backend/web_ui/static",
+  "creado": "2026-04-02 03:39:30",
+  "maer_ver": "3.1",
+  "archivos": {
+    "app.js": {
+      "sha256": "ffff82d2702574cb0ad55011ed66ac7c18edd876d8a4b814cb2c182e026d3fa5",
+      "bytes": 40106,
+      "modificado": "2026-03-31 15:22:44"
+    },
+    "index.html": {
+      "sha256": "11bb3ce5f59b72ed7cb75410619c08177c2495436abdfd6dedd8d878ae6a68fe",
+      "bytes": 37267,
+      "modificado": "2026-04-01 22:37:27"
+    },
+    "styles.css": {
+      "sha256": "3184663b1d70174ab75ccc9fa8dc416e502b2c682f7abd8ab330a3216e832d0c",
+      "bytes": 20039,
+      "modificado": "2026-03-31 10:35:21"
+    }
+  }
+}
