@@ -1,17 +1,26 @@
 {
   "name": "mcp-maer-server",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "🦁 MAER MCP Server — Motor multimodal de análisis documental, OCR, validación de IDs mexicanos y reconocimiento facial",
   "main": "index.mjs",
   "type": "module",
   "scripts": {
     "start": "node index.mjs",
-    "dashboard": "python3 -m maer_backend.web_ui.server",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dashboard": "$HOME/miniforge3_x86/envs/maer_env/bin/python -m maer_backend.web_ui.server",
+    "test": "$HOME/miniforge3_x86/envs/maer_env/bin/python -m pytest tests/ -v --tb=short",
+    "test:ocr": "$HOME/miniforge3_x86/envs/maer_env/bin/python -m pytest tests/test_ocr_engine.py -v",
+    "test:api": "$HOME/miniforge3_x86/envs/maer_env/bin/python -m pytest tests/test_maer_api.py -v",
+    "test:rapido": "$HOME/miniforge3_x86/envs/maer_env/bin/python -m pytest tests/ -q",
+    "lint": "$HOME/miniforge3_x86/envs/maer_env/bin/python -m py_compile maer_backend/maer_files.py maer_backend/ocr_engine.py maer_backend/maer.py && echo '✓ Sin errores de sintaxis'",
+    "env:check": "$HOME/miniforge3_x86/envs/maer_env/bin/python -c \"import torch, easyocr, paddleocr, deepface, fastapi, anthropic, langchain; print('✓ Entorno maer_env OK')\"",
+    "dev": "node --watch index.mjs"
   },
-  "keywords": ["mcp", "ocr", "curp", "rfc", "maer", "document-analysis"],
-  "author": "Leonel Mojica <Ecatepec MX>",
+  "keywords": ["mcp", "ocr", "curp", "rfc", "maer", "document-analysis", "imss", "mexico"],
+  "author": "Leonel Houssen Mojica <Leonelhoussen1@hotmail.com>",
   "license": "ISC",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0"
   }
