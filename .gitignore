@@ -46,3 +46,9 @@ data/reports/
 *.sh
 reporte_sistema*.json
 Miniforge3*.sh
+
+# Datos sensibles - expedientes
+data/expedientes/
+data/inputs/
+data/reports/
+*.pdf
