@@ -4,7 +4,8 @@
    o abre http://localhost:8765/static/js/maer.test.js
 ══════════════════════════════════════════════════════════ */
 
-(async function MAER_TEST_SUITE() {
+/* Expuesta como función — llamar desde botón o consola: MAER_runTests() */
+window.MAER_runTests = async function MAER_TEST_SUITE() {
   const resultados = [];
   let pass = 0, fail = 0;
 
@@ -617,4 +618,4 @@
   MAER.chat._addMsg('maer', resumenChat);
 
   return { pass, fail, total, score: pct, resultados };
-})();
+};

@@ -754,6 +754,30 @@
 
   <!-- ══ DIAGNÓSTICO DEL SISTEMA ══ -->
   <section id="panel-diagnostico" class="panel">
+    <div class="panel-header">
+      <h2>🩺 Diagnóstico del Sistema</h2>
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title" style="margin-bottom:10px">🧪 Suite de Pruebas Automáticas MAER</div>
+      <p style="color:var(--text-secondary);font-size:0.85em;margin-bottom:12px">
+        Ejecuta todas las pruebas de módulos JS, HTML, diccionario, chat, pensión, timeline, recordatorios, cartas, sugerencias, atajos y estadísticas.
+        Los resultados aparecen en el Chat y en la consola del navegador (F12 → Console).
+      </p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="MAER_runTests && MAER_runTests().then(r => console.log('Score:', r.score + '%'))">
+          🧪 Ejecutar suite completa
+        </button>
+        <button class="btn btn-secondary" onclick="MAER.tabs.show('chat')">💬 Ver resultados en chat</button>
+      </div>
+      <p style="color:var(--muted);font-size:0.75em;margin-top:10px">
+        ℹ️ También puedes ejecutar desde la consola: <code>MAER_runTests()</code>
+      </p>
+    </div>
+    <div id="diagnostico-panel">
+      <div style="color:var(--muted);font-size:13px;padding:10px">
+        Presiona "Ejecutar suite completa" para ver el diagnóstico detallado.
+      </div>
+    </div>
   </section>
 
   <!-- ══ PODER REAL — ANÁLISIS, CURP, DUPLICADOS ══ -->
@@ -799,6 +823,7 @@
 <script src="/static/js/maer.notificaciones.js"></script>
 <script src="/static/js/maer.exportar.js"></script>
 <script src="/static/js/maer.ajustes.js"></script>
+<script src="/static/js/maer.test.js"></script>
 
 <script>
 /* ── Sub-tabs helper ── */
