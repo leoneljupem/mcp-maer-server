@@ -43,3 +43,6 @@ data/reports/
 # Models cache
 ~/.EasyOCR/
 ~/.paddleocr/
+*.sh
+reporte_sistema*.json
+Miniforge3*.sh
