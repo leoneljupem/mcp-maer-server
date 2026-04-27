@@ -17,6 +17,7 @@ import tempfile
 import threading
 from datetime import datetime, timezone
 from pathlib import Path
+from PIL import Image
 
 logger = logging.getLogger("maer.server")
 
@@ -79,7 +80,7 @@ def _startup_watcher():
     try:
         from maer_backend.maer_watcher import restore_from_config
         restore_from_config()
-    except Exception as e:
+    except Exception:
         pass
 
 threading.Thread(target=_startup_watcher, daemon=True).start()
@@ -633,8 +634,10 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
     except Exception as e:
         text = f"Error al procesar: {e}"
     finally:
-        try: os.unlink(tmp_path)
-        except Exception as e: pass
+        try:
+            os.unlink(tmp_path)
+        except Exception:
+            pass
     summary = text[:8000]  # max chars to store
     return make_response(True, "LEARN_OK", f"Texto extraído: {len(text)} caracteres", {
         "filename": file.filename, "label": label or file.filename,
@@ -1178,8 +1181,10 @@ async def api_busqueda_masiva(payload: dict):
                             doc = _docx.Document(str(f))
                             text_doc = " ".join(p.text for p in doc.paragraphs)
                             match_content = query in _normalizar(text_doc)
-                        except Exception as e: pass
-                except Exception as e: pass
+                        except Exception:
+                            pass
+                except Exception:
+                    pass
             if match_name or match_content or not query:
                 stat = f.stat()
                 size_fmt = (f"{stat.st_size//1024} KB" if stat.st_size >= 1024 else f"{stat.st_size} B")
@@ -1191,7 +1196,8 @@ async def api_busqueda_masiva(payload: dict):
                         idx = txt_norm.find(query)
                         if idx >= 0:
                             fragmento = txt[max(0,idx-40):idx+80].replace('\n',' ')
-                    except Exception as e: pass
+                    except Exception:
+                        pass
                 results.append({
                     "ruta":      str(f),
                     "nombre":    f.name,
@@ -1332,7 +1338,8 @@ async def api_tasker_receive(payload: dict):
         from maer_backend.maer_files import action_llm_chat
         r = action_llm_chat({"prompt": mensaje})
         if r.get("ok"): reply = r["data"]["response"][:500]
-    except Exception as e: pass
+    except Exception:
+        pass
     return make_response(True, "TASKER_OK", "Mensaje recibido.", {"reply": reply})
 
 
@@ -1589,8 +1596,10 @@ async def api_analizar_documento(file: UploadFile = File(...)):
     except Exception as e:
         return make_response(False, "ANALISIS_ERROR", str(e))
     finally:
-        try: os.unlink(str(tmp_path))
-        except Exception as e: pass
+        try:
+            os.unlink(str(tmp_path))
+        except Exception:
+            pass
 
 
 @app.post("/api/curp-decodificar")
@@ -1804,8 +1813,10 @@ async def api_ocr_imagen(file: UploadFile = File(...)):
     except Exception as e:
         return make_response(False, "OCR_ERR", str(e))
     finally:
-        try: os.unlink(str(tmp_path))
-        except Exception as e: pass
+        try:
+            os.unlink(str(tmp_path))
+        except Exception:
+            pass
 
 
 @app.post("/api/expediente-imss")
@@ -2846,8 +2857,10 @@ async def api_ocr_pro(file: UploadFile = File(...),
     except Exception as e:
         return make_response(False, "OCR_PRO_EXC", str(e))
     finally:
-        try: os.unlink(str(tmp_path))
-        except Exception as e: pass
+        try:
+            os.unlink(str(tmp_path))
+        except Exception:
+            pass
 
 
 @app.post("/api/ocr-compare")
@@ -2875,8 +2888,10 @@ async def api_ocr_compare(file: UploadFile = File(...),
     except Exception as e:
         return make_response(False, "OCR_COMPARE_EXC", str(e))
     finally:
-        try: os.unlink(str(tmp_path))
-        except Exception as e: pass
+        try:
+            os.unlink(str(tmp_path))
+        except Exception:
+            pass
 
 
 @app.post("/api/ocr-preprocess")
@@ -2915,8 +2930,10 @@ async def api_ocr_preprocess(file: UploadFile = File(...),
     except Exception as e:
         return make_response(False, "PREPROCESS_ERR", str(e))
     finally:
-        try: os.unlink(str(tmp_path))
-        except Exception as e: pass
+        try:
+            os.unlink(str(tmp_path))
+        except Exception:
+            pass
 
 
 @app.get("/api/ocr-pro-status")
