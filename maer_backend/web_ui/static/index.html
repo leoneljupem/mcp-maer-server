@@ -158,8 +158,28 @@
       </div>
       <div>
         <div id="img-resultado" style="margin-bottom:14px"></div>
-        <button id="btn-ocr" class="btn btn-primary" onclick="MAER.imagenes.extraerTexto()">🔤 Extraer Texto (OCR)</button>
-        <div id="img-ocr" style="margin-top:14px"></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px">
+          <button id="btn-ocr" class="btn btn-secondary" onclick="MAER.imagenes.extraerTexto()">🔤 OCR clásico</button>
+          <button id="btn-vision-ocr" class="btn btn-primary" onclick="MAER.imagenes.extraerTextoIA()">🧠 OCR con IA</button>
+          <button id="btn-vision-ia" class="btn btn-primary" onclick="MAER.imagenes.analizarConIA()">🔍 Analizar con IA</button>
+          <button class="btn btn-secondary" onclick="MAER.imagenes.clasificarDocumento()">📋 Clasificar doc.</button>
+          <button class="btn btn-secondary" onclick="MAER.imagenes.escanearCodigos()">🔲 QR / Barras</button>
+          <button class="btn btn-primary" onclick="MAER.imagenes.analizarCompleto()">🔬 Análisis exhaustivo</button>
+          <button class="btn btn-secondary" onclick="MAER.imagenes.ocrTurbo()">⚡ OCR Turbo</button>
+        </div>
+        <!-- ── OCR PRO (fila adicional) ── -->
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:4px;padding:8px;background:var(--surface);border-radius:8px;border:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:600;color:var(--accent);align-self:center;margin-right:4px">🔬 OCR Pro:</span>
+          <button class="btn btn-primary btn-sm" onclick="MAER.imagenes.ocrPro('auto')" title="Ensemble automático: elige el mejor motor según la imagen">🤖 Auto-ensemble</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.imagenes.ocrPro('scan')" title="Optimizado para documentos escaneados">📄 Scan</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.imagenes.ocrPro('photo')" title="Optimizado para fotos (elimina sombras, corrige perspectiva)">📷 Foto</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.imagenes.ocrPro('handwrite')" title="Optimizado para texto manuscrito">✍️ Manuscrito</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.imagenes.ocrPro('fast')" title="Modo rápido: solo escala de grises + Otsu">⚡ Rápido</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.imagenes.ocrComparar()" title="Compara TODOS los motores en la misma imagen">🆚 Comparar</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.imagenes.mostrarEstadoOCR()" title="Ver qué motores OCR están disponibles e instalar faltantes">⚙️ Motores</button>
+        </div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:10px">Los botones con IA usan Claude Vision · OCR Pro usa ensemble de múltiples motores con preprocesado adaptativo (CLAHE, Otsu, deskew, sombras)</div>
+        <div id="img-ocr" style="margin-top:4px"></div>
       </div>
     </div>
   </section>
@@ -193,9 +213,31 @@
         <label class="check-label"><input type="checkbox" class="busq-tipo" value="md"   checked> Markdown</label>
       </div>
 
-      <div style="display:flex;gap:12px;flex-wrap:wrap">
+      <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-start">
         <label class="check-label"><input type="checkbox" id="busq-modo-nombre" checked> En nombre del archivo</label>
-        <label class="check-label"><input type="checkbox" id="busq-modo-contenido"> En contenido del archivo</label>
+        <label class="check-label"><input type="checkbox" id="busq-modo-contenido" onchange="MAER.busqueda._onContenidoToggle(this.checked)"> En contenido del archivo</label>
+        <label class="check-label" style="margin-left:auto;background:rgba(99,102,241,0.08);padding:5px 12px;border-radius:8px;border:1px solid var(--accent)">
+          <input type="checkbox" id="busq-semantico">
+          🧠 <strong>Búsqueda inteligente</strong>
+          <span style="font-size:10px;color:var(--muted);display:block;margin-left:20px">encuentra por significado, no solo palabras exactas</span>
+        </label>
+      </div>
+    </div>
+
+    <!-- ── Panel estadísticas FTS ── -->
+    <div id="fts-stats-panel" style="display:none;margin-bottom:14px">
+      <div class="card" style="padding:14px 16px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <span style="font-size:13px;color:var(--accent);font-weight:600">📚 Índice de contenido (FTS)</span>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="MAER.busqueda._indexarDirectorio()">⚡ Indexar carpeta</button>
+            <button id="btn-watcher" class="btn btn-secondary btn-sm" onclick="MAER.busqueda._toggleWatcher()">👁 Vigilar carpeta</button>
+            <button class="btn btn-secondary btn-sm" onclick="MAER.busqueda._refrescarStats()">↺ Refrescar</button>
+          </div>
+        </div>
+        <div id="fts-stats-body" style="font-size:12px;color:var(--muted)">
+          Cargando estadísticas…
+        </div>
       </div>
     </div>
 
@@ -540,7 +582,8 @@
       <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-net', this)">🔌 Red</button>
       <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-log', this)">📋 Log</button>
       <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-guardian', this)">🛡️ Guardián</button>
-      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-tasker', this);MAER.sistema._checkTasker()">📱 Tasker</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-llm', this);MAER.sistema._renderLLM()">🤖 LLM</button>
+      <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-tasker', this);MAER.sistema._cargarUrlTasker();MAER.sistema._checkTasker()">📱 Tasker</button>
       <button class="sub-tab-btn"        onclick="showSubTab('sys-panel-stats', this);MAER.stats.render()">📊 Stats</button>
     </div>
 
@@ -553,6 +596,17 @@
     <div id="sys-panel-net" class="sub-panel">
       <div id="sys-net" class="card"></div>
     </div>
+    <div id="sys-panel-llm" class="sub-panel">
+      <div id="sys-llm" class="card">
+        <div style="color:var(--muted);font-size:13px;padding:10px">Cargando estado de motores LLM…</div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" onclick="MAER.sistema._renderLLM()">🔄 Actualizar estado LLM</button>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.sistema._probarOllama()">🧪 Probar Ollama</button>
+        <button class="btn btn-secondary btn-sm" onclick="MAER.sistema._probarGroq()">🧪 Probar Groq</button>
+      </div>
+      <div id="sys-llm-test" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+    </div>
     <div id="sys-panel-log" class="sub-panel">
       <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
         <button class="btn btn-secondary btn-sm" onclick="MAER.sistema.limpiarConsola()">🗑️ Limpiar</button>
@@ -560,12 +614,99 @@
       <div id="sys-console" class="sys-console">Consola MAER iniciada...<br></div>
     </div>
     <div id="sys-panel-tasker" class="sub-panel">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <button class="btn btn-primary btn-sm" onclick="MAER.sistema._checkTasker()">🔄 Actualizar</button>
-        <button class="btn btn-secondary btn-sm" onclick="MAER.sistema._enviarPruebaTasker()">📤 Prueba</button>
+      <div class="sub-tabs" id="tasker-subtabs">
+        <button class="sub-tab-btn active" onclick="showSubTab('tasker-sub-guia', this)">📖 Guía</button>
+        <button class="sub-tab-btn" onclick="showSubTab('tasker-sub-msgs', this);MAER.sistema._checkTasker()">📱 Mensajes</button>
       </div>
-      <div id="sys-tasker-msgs" class="card">
-        <div style="color:var(--muted);font-size:13px">Sin mensajes Tasker todavía.</div>
+
+      <!-- GUÍA DE CONFIGURACIÓN -->
+      <div id="tasker-sub-guia" class="sub-panel active">
+        <div class="card" style="margin-bottom:10px">
+          <div class="card-title" style="margin-bottom:8px">📱 Conectar Tasker (Android) con MAER</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+            Tasker puede enviar datos (SMS, ubicación, eventos) al servidor MAER desde tu Android.
+            Sigue estos pasos con la app <strong>Tasker</strong> instalada.
+          </div>
+          <!-- Paso 1: URL del servidor -->
+          <div style="margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">1️⃣ URL del servidor MAER</div>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input id="tasker-url-display" type="text" class="input-field" readonly
+                style="font-family:monospace;font-size:11px;flex:1;background:var(--bg3)"
+                value="http://localhost:8765/api/tasker-receive">
+              <button class="btn btn-secondary btn-sm" onclick="
+                const u=document.getElementById('tasker-url-display');
+                navigator.clipboard.writeText(u.value).then(()=>MAER.chat._addMsg('sys','✅ URL copiada al portapapeles.'));
+              ">📋 Copiar</button>
+            </div>
+            <div id="tasker-ngrok-badge" style="display:none;font-size:11px;color:#34d399;background:rgba(52,211,153,0.1);border:1px solid rgba(52,211,153,0.3);border-radius:4px;padding:3px 8px;margin-top:4px"></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:4px">
+              ⚠️ Para acceso desde Android en la misma red: la URL se detecta automáticamente con la IP de esta computadora.
+              Para acceso remoto usa ngrok (<code>npm run ngrok</code>) — la URL pública se mostrará aquí.
+            </div>
+          </div>
+          <!-- Paso 2: Acción HTTP en Tasker -->
+          <div style="margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">2️⃣ Crear tarea en Tasker → Acción HTTP POST</div>
+            <div style="background:var(--bg3);border:1px solid var(--border);border-radius:6px;padding:10px;font-family:monospace;font-size:11px;color:var(--text);position:relative">
+              <div><strong style="color:#38bdf8">Acción:</strong> HTTP Request (Plugin → HTTP Request)</div>
+              <div><strong style="color:#38bdf8">Método:</strong> POST</div>
+              <div><strong style="color:#38bdf8">URL:</strong> http://&lt;IP_SERVIDOR&gt;:8765/api/tasker-receive</div>
+              <div><strong style="color:#38bdf8">Content-Type:</strong> application/json</div>
+              <div><strong style="color:#38bdf8">Body:</strong></div>
+              <div style="margin-left:12px;color:#fbbf24">{<br>
+                &nbsp;&nbsp;"mensaje": "%SMSRB",<br>
+                &nbsp;&nbsp;"fuente": "sms_entrante",<br>
+                &nbsp;&nbsp;"dispositivo": "%DEVID",<br>
+                &nbsp;&nbsp;"numero": "%SMSRF"<br>
+              }</div>
+              <button class="btn btn-secondary btn-sm" style="position:absolute;top:8px;right:8px" onclick="
+                const template = JSON.stringify({mensaje:'%SMSRB',fuente:'sms_entrante',dispositivo:'%DEVID',numero:'%SMSRF'},null,2);
+                navigator.clipboard.writeText(template).then(()=>MAER.chat._addMsg('sys','✅ Plantilla JSON copiada.'));
+              ">📋</button>
+            </div>
+          </div>
+          <!-- Paso 3: Variables Tasker -->
+          <div style="margin-bottom:14px">
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">3️⃣ Variables de Tasker más útiles</div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:6px">
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%SMSRB</code><span style="color:var(--muted);display:block;margin-top:1px">Cuerpo del SMS recibido</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%SMSRF</code><span style="color:var(--muted);display:block;margin-top:1px">Número del remitente</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%DEVID</code><span style="color:var(--muted);display:block;margin-top:1px">ID del dispositivo</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%LOC</code><span style="color:var(--muted);display:block;margin-top:1px">Latitud,Longitud GPS</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%BATT</code><span style="color:var(--muted);display:block;margin-top:1px">Nivel de batería (%)</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%TIME</code><span style="color:var(--muted);display:block;margin-top:1px">Hora actual HH:MM</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%DATE</code><span style="color:var(--muted);display:block;margin-top:1px">Fecha actual</span></div>
+              <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:5px 8px;font-size:11px"><code style="color:var(--accent)">%WIFI</code><span style="color:var(--muted);display:block;margin-top:1px">Nombre de red Wi-Fi</span></div>
+            </div>
+          </div>
+          <!-- Paso 4: Casos de uso -->
+          <div>
+            <div style="font-size:12px;font-weight:700;color:var(--accent);margin-bottom:6px">4️⃣ Casos de uso sugeridos</div>
+            <div style="font-size:12px;color:var(--text);display:flex;flex-direction:column;gap:4px">
+              <div>📲 <strong>SMS de IMSS:</strong> perfil Tasker "SMS recibido" de número IMSS → envía a MAER</div>
+              <div>📍 <strong>Llegada IMSS:</strong> perfil Geofence en clínica → avisa a MAER para registrar visita</div>
+              <div>📅 <strong>Recordatorio:</strong> alarma diaria → consultar estado del expediente via chat MAER</div>
+              <div>🔔 <strong>Notificación:</strong> interceptar notif de app IMSS Digital → reenviar texto a MAER</div>
+            </div>
+          </div>
+        </div>
+        <!-- Botón de prueba -->
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" onclick="MAER.sistema._enviarPruebaTasker()">📤 Enviar mensaje de prueba al servidor</button>
+          <button class="btn btn-secondary" onclick="showSubTab('tasker-sub-msgs',document.querySelector('#tasker-subtabs .sub-tab-btn:nth-child(2)'));MAER.sistema._checkTasker()">📱 Ver mensajes recibidos</button>
+        </div>
+      </div>
+
+      <!-- MENSAJES RECIBIDOS -->
+      <div id="tasker-sub-msgs" class="sub-panel">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+          <button class="btn btn-primary btn-sm" onclick="MAER.sistema._checkTasker()">🔄 Actualizar</button>
+          <button class="btn btn-secondary btn-sm" onclick="MAER.sistema._enviarPruebaTasker()">📤 Prueba</button>
+        </div>
+        <div id="sys-tasker-msgs" class="card">
+          <div style="color:var(--muted);font-size:13px">Sin mensajes Tasker todavía. Configura Tasker con la URL del servidor.</div>
+        </div>
       </div>
     </div>
 
@@ -614,10 +755,11 @@
     <!-- Búsqueda en mensajes -->
     <div class="card">
       <div class="card-title" style="margin-bottom:10px">🔍 Buscar en conversaciones</div>
-      <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
         <input id="wa-busq" aria-label="Buscar en WhatsApp" type="text" class="input-field" placeholder="Buscar mensaje o nombre..."
           style="flex:1;min-width:180px" onkeydown="if(event.key==='Enter')MAER.whatsapp.buscar()">
         <button class="btn btn-primary" onclick="MAER.whatsapp.buscar()">🔍 Buscar</button>
+        <button class="btn btn-secondary" onclick="MAER.whatsapp.filtrarIMSS()" title="Mostrar solo mensajes con temas IMSS/pensión">🏛️ Filtrar IMSS</button>
       </div>
       <div id="wa-busq-resultado" style="margin-top:12px"></div>
     </div>
@@ -823,6 +965,7 @@
 <script src="/static/js/maer.notificaciones.js"></script>
 <script src="/static/js/maer.exportar.js"></script>
 <script src="/static/js/maer.ajustes.js"></script>
+<script src="/static/js/maer.progreso.js"></script>
 <script src="/static/js/maer.test.js"></script>
 
 <script>

@@ -783,6 +783,7 @@ MAER.poder = {
       <button class="sub-tab-btn" onclick="showSubTab('poder-sub-duplicados', this)">🗂️ Duplicados</button>
       <button class="sub-tab-btn" onclick="showSubTab('poder-sub-similares', this)">🖼️ Similares</button>
       <button class="sub-tab-btn" onclick="showSubTab('poder-sub-expediente', this)">📋 Expediente</button>
+      <button class="sub-tab-btn" onclick="showSubTab('poder-sub-ia', this)">💬 Análisis IA</button>
     </div>
 
     <!-- ANALIZAR DOCUMENTO -->
@@ -921,7 +922,127 @@ MAER.poder = {
         </div>
       </div>
       <div id="exp-resultado" style="margin-top:12px"></div>
+    </div>
+
+    <!-- ANÁLISIS IA -->
+    <div id="poder-sub-ia" class="sub-panel">
+      <div class="card" style="margin-bottom:10px">
+        <div class="card-title" style="margin-bottom:8px">💬 Análisis IA — Consulta IMSS Inteligente</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:12px">
+          Envía cualquier dato de tu expediente al motor de IA (Ollama/Groq) para obtener interpretación experta en trámites IMSS.
+        </div>
+        <!-- Plantillas rápidas -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:6px">Plantillas rápidas</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px">
+            <button class="btn btn-secondary btn-sm" onclick="MAER.poder._plantillaIA('semanas')">📅 Semanas cotizadas</button>
+            <button class="btn btn-secondary btn-sm" onclick="MAER.poder._plantillaIA('pension')">💰 Cálculo pensión</button>
+            <button class="btn btn-secondary btn-sm" onclick="MAER.poder._plantillaIA('documentos')">📋 Documentos faltantes</button>
+            <button class="btn btn-secondary btn-sm" onclick="MAER.poder._plantillaIA('curp')">🆔 Interpretar CURP</button>
+            <button class="btn btn-secondary btn-sm" onclick="MAER.poder._plantillaIA('expediente')">🗂️ Estado expediente</button>
+          </div>
+        </div>
+        <!-- Motor de IA -->
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px">
+          <div style="font-size:11px;color:var(--muted);white-space:nowrap">Motor IA:</div>
+          <select id="ia-motor" class="input-field" style="width:auto;padding:4px 8px;font-size:12px">
+            <option value="">⚡ Automático (cascada)</option>
+            <option value="ollama">🦙 Ollama (local)</option>
+            <option value="groq">☁️ Groq (nube gratuita)</option>
+            <option value="diccionario">📖 Diccionario local</option>
+          </select>
+        </div>
+        <!-- Textarea de consulta -->
+        <div style="margin-bottom:10px">
+          <div style="font-size:11px;color:var(--accent);font-weight:600;margin-bottom:4px">Consulta o datos a analizar</div>
+          <textarea id="ia-consulta" class="input-field" rows="5" style="width:100%;resize:vertical;font-size:13px"
+            placeholder="Pega aquí los datos de tu expediente, CURP, NSS, semanas cotizadas... o escribe tu pregunta sobre el proceso de pensión IMSS."></textarea>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-primary" style="flex:1" onclick="MAER.poder.analizarConIA()">🤖 Analizar con IA</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ia-consulta').value='';document.getElementById('ia-resultado').innerHTML=''">🗑️ Limpiar</button>
+        </div>
+      </div>
+      <div id="ia-resultado" style="margin-top:4px"></div>
     </div>`;
+  },
+
+  /* ══════════════════════════════════════════════
+     6. ANÁLISIS IA — LLM IMSS
+  ══════════════════════════════════════════════ */
+
+  _plantillaIA(tipo) {
+    const plantillas = {
+      semanas: 'Tengo las siguientes semanas cotizadas en el IMSS. ¿Cuántas necesito para pensionarme por Ley 73 o Ley 97? ¿Cómo calculo mi pensión estimada?\n\nSemanas cotizadas: ',
+      pension: 'Quiero calcular mi pensión IMSS. Tengo:\n- Semanas cotizadas: \n- Salario promedio de los últimos 5 años: $\n- Edad: \n- Ley bajo la que cotizo (73 o 97): \n\n¿Cuánto recibiré mensualmente?',
+      documentos: 'Necesito saber qué documentos debo presentar para tramitar mi pensión en el IMSS. Mi situación:\n- Tipo de pensión: (cesantía/vejez/invalidez)\n- Tengo CURP: Sí/No\n- Tengo Afore: Sí/No\n- Resolución de pensión: Sí/No',
+      curp: 'Tengo la siguiente CURP y necesito que me expliques qué información contiene (estado de nacimiento, fecha de nacimiento, sexo, orden alfabético):\n\nCURP: ',
+      expediente: 'Este es el estado actual de mi expediente IMSS. ¿Qué me falta? ¿Cuáles son los próximos pasos?\n\n',
+    };
+    const ta = document.getElementById('ia-consulta');
+    if (ta) {
+      ta.value = plantillas[tipo] || '';
+      ta.focus();
+      ta.setSelectionRange(ta.value.length, ta.value.length);
+    }
+  },
+
+  async analizarConIA() {
+    const consulta = document.getElementById('ia-consulta')?.value?.trim();
+    const motor    = document.getElementById('ia-motor')?.value || '';
+    const panel    = document.getElementById('ia-resultado');
+    if (!panel) return;
+
+    if (!consulta) {
+      panel.innerHTML = `<div class="alert alert-warning">Escribe una consulta o selecciona una plantilla.</div>`;
+      return;
+    }
+
+    panel.innerHTML = `<div class="poder-loading">🤖 Consultando IA${motor ? ' — ' + motor : ''}…<br><small>Puede tardar hasta 60 segundos con Ollama local</small></div>`;
+
+    try {
+      const body = { prompt: consulta };
+      if (motor) body.motor = motor;
+
+      const res = await MAER._call('/api/llm-chat', body, { timeout: 90000 });
+      const texto = res?.data?.respuesta || res?.data?.response || res?.respuesta || res?.response || '';
+      const engine = res?.data?.engine || res?.engine || motor || 'desconocido';
+
+      if (!texto) {
+        panel.innerHTML = `<div class="alert alert-warning">⚠️ Sin respuesta del motor IA. ${res?.message || ''}</div>`;
+        return;
+      }
+
+      // Convertir saltos de línea en párrafos
+      const htmlTexto = texto
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+        .replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g,'<em>$1</em>')
+        .replace(/\n{2,}/g,'</p><p style="margin:8px 0">')
+        .replace(/\n/g,'<br>');
+
+      panel.innerHTML = `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:6px">
+            <span style="font-size:12px;font-weight:600;color:var(--accent)">🤖 Respuesta IA</span>
+            <span style="font-size:10px;color:var(--muted);background:var(--bg3);padding:2px 8px;border-radius:20px">Motor: ${engine}</span>
+          </div>
+          <div style="font-size:13px;color:var(--text);line-height:1.6"><p style="margin:0">${htmlTexto}</p></div>
+          <div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" onclick="
+              const t=this.closest('.card').querySelector('div[style*=line-height]').innerText;
+              navigator.clipboard.writeText(t).then(()=>MAER.chat._addMsg('sys','✅ Respuesta IA copiada.'));
+            ">📋 Copiar respuesta</button>
+            <button class="btn btn-secondary btn-sm" onclick="
+              const t=this.closest('.card').querySelector('div[style*=line-height]').innerText;
+              MAER.chat._addMsg('maer', t);
+              MAER.voz?.hablar('Respuesta de inteligencia artificial enviada al chat.');
+            ">💬 Enviar al chat</button>
+          </div>
+        </div>`;
+    } catch(e) {
+      panel.innerHTML = `<div style="color:var(--red);padding:12px">❌ ${e.message}<br><small>¿El servidor MAER está corriendo? (localhost:8765)</small></div>`;
+    }
   },
 
   /* ── RFC VALIDAR ── */

@@ -23,6 +23,23 @@ easyocr>=1.7.0
 paddlepaddle>=2.6.0
 paddleocr>=2.7.0
 
+# ── OCR Estado del Arte (instalados 2026-04-22) ─────────
+pymupdf>=1.23.0              # PDF engine superior a pypdf
+python-doctr>=0.8.0          # OCR industrial con layout detection (Mindee)
+surya-ocr                    # Estado del arte, 97 idiomas
+deskew                       # Corrección inclinación precisa (Radon)
+# TrOCR: incluido en transformers (microsoft/trocr-base-*)
+
+# ── OCR adicional para imágenes (instalados 2026-04-22) ────────────────────
+kraken>=5.2.0                # CLSTM — documentos históricos y manuscritos
+ocrmypdf>=16.0.0             # Pipeline Tesseract mejorado, deskew automático
+rapidocr-onnxruntime>=1.4.0  # Motor ONNX ultra-rápido, sin GPU, texto impreso
+manga-ocr>=0.1.10            # Transformer para texto denso, fuentes inusuales
+# paddlepaddle==2.6.2        # Motor PaddleOCR (instalar antes de paddleocr)
+# paddleocr ya listado en sección OCR Avanzado
+# calamari-ocr: conflictos con tensorflow — NO instalar
+# ml-dtypes==0.5.1           # Requerido para compatibilidad torch+onnxruntime
+
 # ── Preprocesamiento de imagen ─────────────────────────
 opencv-python-headless>=4.8.0    # 4.10.0 instalado
 numpy==1.26.4                    # Fijado — requerido por PyTorch 2.2.2
@@ -59,10 +76,16 @@ imagehash>=4.3.0             # 4.3.2 instalado
 
 # ── IA / LLM ───────────────────────────────────────────
 anthropic>=0.25.0            # 0.95.0 instalado
+groq>=1.1.0                  # 1.1.2 instalado — SDK oficial Groq
 openai>=1.0.0                # 2.32.0 instalado
 langchain>=0.2.0             # 1.2.15 instalado
 langchain-anthropic>=0.1.0
 langchain-community>=0.2.0
+
+# ── Búsqueda semántica ─────────────────────────────────────
+# paraphrase-multilingual-MiniLM-L12-v2: ~120 MB, 50+ idiomas incluyendo español
+# Compatible con PyTorch 2.2.2 y transformers 4.44.x
+sentence-transformers>=2.7.0,<3.0.0
 
 # ── Web UI ─────────────────────────────────────────────
 fastapi>=0.110.0             # 0.135.2 instalado

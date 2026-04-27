@@ -104,7 +104,7 @@ MAER.resumen = {
       </div>
       <div style="font-size:12px;color:var(--text);line-height:1.8">
         🏛️ <strong>Etapa pensión:</strong> ${d.etapaActual} · 📝 Cartas totales: ${d.cartasTotal} · 🏷️ Etiquetados: ${d.docsEtiquetados}<br>
-        📖 Diccionario: ${d.patronesDiccionario} patrones · 🛡️ ${d.modulosActivos} módulos · 🔌 ${d.servidorOnline ? '🟢 Online' : '🔴 Offline'}
+        📖 Diccionario: ${d.patronesDiccionario} patrones · 🛡️ ${d.modulosActivos} módulos · 🔌 ${d.servidorOnline ? '🟢 En línea' : '🔴 Sin conexión'}
       </div>
       ${d.recVencidos > 0 ? `<div style="margin-top:10px;padding:8px;background:rgba(248,113,113,0.1);border:1px solid rgba(248,113,113,0.3);border-radius:8px;font-size:12px;color:#f87171">⚠️ <strong>${d.recVencidos}</strong> recordatorio(s) vencido(s)</div>` : ''}
     </div>`;

@@ -6,5 +6,29 @@
     "device": "auditoria",
     "ts": "2026-04-02 03:34:42",
     "leido": true
+  },
+  {
+    "id": 2,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-04-25 18:45:46",
+    "leido": true
+  },
+  {
+    "id": 3,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-04-25 18:46:11",
+    "leido": true
+  },
+  {
+    "id": 4,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-04-25 18:47:02",
+    "leido": true
   }
 ]

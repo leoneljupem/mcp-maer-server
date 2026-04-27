@@ -28,10 +28,18 @@ ATAJOS: escribe cualquier pregunta directamente y MAER responde.
   Tab = autocompletar comando/ruta   ↑↓ = historial de comandos
 """
 
-import os, sys, re, json, time, threading, subprocess, hashlib, shutil
-from pathlib import Path
+import hashlib
+import json
+import os
+import re
+import shutil
+import subprocess
+import sys
+import threading
+import time
 from datetime import datetime
-from typing import Optional, List, Dict, Any
+from pathlib import Path
+from typing import Any, Dict, List, Optional
 
 # ── Autocompletado con readline ────────────────────────────────────────
 try:
@@ -86,7 +94,7 @@ def _setup_readline():
         import atexit
         atexit.register(readline.write_history_file, str(hist))
         readline.set_history_length(500)
-    except Exception:
+    except Exception as e:
         pass
 
 # ══════════════════════════════════════════════════════════════════════
@@ -130,7 +138,7 @@ class Conocimiento:
         if self.path.exists():
             try:
                 return json.loads(self.path.read_text(encoding="utf-8"))
-            except Exception:
+            except Exception as e:
                 pass
         return {
             "archivos":    {},   # hash → {ruta, texto, entidades, ts}
@@ -228,7 +236,7 @@ class MaerAPI:
             urllib.request.urlopen(f"{self.base}/", timeout=3)
             self._online = True
             return True
-        except Exception:
+        except Exception as e:
             self._online = False
             return False
 
@@ -254,7 +262,8 @@ class MaerAPI:
 
     def _post(self, ep: str, data: dict) -> Dict:
         try:
-            import urllib.request, urllib.error
+            import urllib.error
+            import urllib.request
             body = json.dumps(data).encode()
             req  = urllib.request.Request(
                 f"{self.base}{ep}", data=body,
@@ -291,12 +300,15 @@ def ocr_local(ruta: Path) -> str:
             texto = " ".join(p.extract_text() or "" for p in reader.pages[:40])
             if len(texto.strip()) > 100:
                 return texto
-        except Exception:
+        except Exception as e:
             pass
 
         # OCR con PyMuPDF + deskew
         try:
-            import fitz, pytesseract, numpy as np, cv2, io
+            import io
+
+            import fitz
+            import pytesseract
             from PIL import Image
             doc = fitz.open(str(ruta))
             paginas = []
@@ -315,8 +327,8 @@ def ocr_local(ruta: Path) -> str:
         except ImportError:
             pass
         try:
-            from pdf2image import convert_from_path
             import pytesseract
+            from pdf2image import convert_from_path
             imgs = convert_from_path(str(ruta), dpi=300, last_page=20)
             return "\n".join(pytesseract.image_to_string(_preprocesar(img),
                              config="--oem 3 --psm 6 -l spa+eng")
@@ -366,8 +378,8 @@ def ocr_local(ruta: Path) -> str:
 def _preprocesar(img):
     """Preprocesado avanzado: deskew + denoising + threshold adaptativo."""
     try:
-        import numpy as np, cv2
-        from PIL import Image
+        import cv2
+        import numpy as np
         img_np = np.array(img.convert("L"))
         try:
             from deskew import determine_skew
@@ -378,7 +390,7 @@ def _preprocesar(img):
                 img_np = cv2.warpAffine(img_np, M, (w, h),
                                         flags=cv2.INTER_CUBIC,
                                         borderMode=cv2.BORDER_REPLICATE)
-        except Exception:
+        except Exception as e:
             pass
         img_np = cv2.fastNlMeansDenoising(img_np, h=10)
         img_np = cv2.adaptiveThreshold(img_np, 255,
@@ -391,7 +403,7 @@ def _preprocesar(img):
                                 interpolation=cv2.INTER_LANCZOS4)
         from PIL import Image as PILImage
         return PILImage.fromarray(img_np)
-    except Exception:
+    except Exception as e:
         return img
 
 
@@ -461,7 +473,7 @@ def extraer_tablas(ruta: Path) -> List[Dict]:
                             })
         except ImportError:
             pass
-        except Exception:
+        except Exception as e:
             pass
 
     # ── PyMuPDF como fallback para PDFs ──
@@ -489,7 +501,7 @@ def extraer_tablas(ruta: Path) -> List[Dict]:
                                 "texto":  "\n".join(" | ".join(f) for f in filas),
                             })
             doc.close()
-        except Exception:
+        except Exception as e:
             pass
 
     # ── Excel (nativo) ──
@@ -510,7 +522,7 @@ def extraer_tablas(ruta: Path) -> List[Dict]:
                         "pagina": 0,
                         "texto":  "\n".join(" | ".join(f) for f in filas),
                     })
-        except Exception:
+        except Exception as e:
             pass
 
     # ── CSV ──
@@ -527,7 +539,7 @@ def extraer_tablas(ruta: Path) -> List[Dict]:
                     "pagina": 0,
                     "texto":  "\n".join(" | ".join(f) for f in filas),
                 })
-        except Exception:
+        except Exception as e:
             pass
 
     return tablas
@@ -753,7 +765,7 @@ class Voz:
             elif hasattr(self, "_tts_engine"):
                 self._tts_engine.say(texto_limpio)
                 self._tts_engine.runAndWait()
-        except Exception:
+        except Exception as e:
             pass
 
     def escuchar_una_vez(self, timeout: int = 8) -> Optional[str]:
@@ -806,7 +818,7 @@ class MAERConsola:
         if HISTORIAL_FILE.exists():
             try:
                 return json.loads(HISTORIAL_FILE.read_text(encoding="utf-8"))[-200:]
-            except Exception:
+            except Exception as e:
                 pass
         return []
 
@@ -817,7 +829,7 @@ class MAERConsola:
                 json.dumps(self._historial[-500:], ensure_ascii=False),
                 encoding="utf-8"
             )
-        except Exception:
+        except Exception as e:
             pass
 
     # ── BANNER ───────────────────────────────────────────────────────
@@ -990,7 +1002,7 @@ class MAERConsola:
         errores     = []
 
         for i, archivo in enumerate(archivos, 1):
-            pct = int(i / total * 100)
+            int(i / total * 100)
             # Progress bar en la misma línea
             bar = barra(i, total, ancho=25)
             print(f"\r  {bar} {C.GRIS}{archivo.name[:35]:<35}{C.RESET}", end="", flush=True)
@@ -1108,7 +1120,7 @@ class MAERConsola:
                     ents = extraer_entidades(texto)
                     self.db.registrar_archivo(str(f), texto, ents)
                     proc += 1
-            except Exception:
+            except Exception as e:
                 errores += 1
 
         elapsed = time.time() - inicio
@@ -1170,7 +1182,7 @@ class MAERConsola:
                 import webbrowser
                 webbrowser.open(f"file://{html_out}")
                 p("   Abierto en tu navegador.", C.GRIS)
-            except Exception:
+            except Exception as e:
                 p(f"   Abre manualmente: {html_out}", C.GRIS)
 
         # ── 2. También intentar PDF via servidor ──
@@ -1190,7 +1202,7 @@ class MAERConsola:
                 try:
                     abrir = "open" if sys.platform == "darwin" else "xdg-open"
                     subprocess.Popen([abrir, pdf_path])
-                except Exception:
+                except Exception as e:
                     pass
             else:
                 if modo == "pdf":
@@ -1229,7 +1241,7 @@ class MAERConsola:
             if f.is_file() and f.suffix.lower() in EXTS:
                 try:
                     estado_inicial[str(f)] = f.stat().st_mtime
-                except Exception:
+                except Exception as e:
                     pass
 
         p(f"  Estado base: {len(estado_inicial)} archivos en la carpeta.", C.GRIS)
@@ -1243,7 +1255,7 @@ class MAERConsola:
                     if f.is_file() and f.suffix.lower() in EXTS:
                         try:
                             estado_actual[str(f)] = f.stat().st_mtime
-                        except Exception:
+                        except Exception as e:
                             pass
 
                 # Detectar archivos nuevos o modificados
@@ -1343,7 +1355,7 @@ class MAERConsola:
                         wr.writerow(fila)
                     wr.writerow([])
             p(f"📁 Tablas exportadas a CSV: {csv_out}", C.VERDE)
-        except Exception:
+        except Exception as e:
             pass
         print()
 
@@ -1430,9 +1442,31 @@ class MAERConsola:
         print()
 
     def cmd_estado(self, *_):
+        import json as _json
+        import urllib.request
         p("\n⚙️  Estado del sistema MAER", C.BOLD)
         ok = self.api.ping()
         p(f"  Servidor MAER:    {'✅ Activo en ' + API_BASE if ok else '❌ Offline'}", C.VERDE if ok else C.ROJO)
+        # Estado LLM
+        if ok:
+            try:
+                with urllib.request.urlopen(f"{API_BASE}/api/llm-status", timeout=4) as r:
+                    llm = _json.loads(r.read()).get("data", {})
+                oll = llm.get("ollama", {})
+                grq = llm.get("groq", {})
+                llm.get("openai", {})
+                motor = llm.get("motor_recomendado", "diccionario_local")
+                if oll.get("disponible"):
+                    p(f"  Ollama:           ✅ {oll.get('modelo_activo','')} "
+                      f"({oll.get('total_modelos',0)} modelos)", C.VERDE)
+                else:
+                    p(f"  Ollama:           ❌ No disponible (ejecuta: ollama serve)", C.ROJO)
+                grq_txt = "✅ Configurado" if grq.get("disponible") else \
+                          ("🔑 Sin clave — console.groq.com" if not grq.get("clave_configurada") else "⚠ SDK faltante")
+                p(f"  Groq:             {grq_txt} — modelo: {grq.get('modelo','')}", C.VERDE if grq.get("disponible") else C.DORADO)
+                p(f"  Motor activo:     {motor}", C.CYAN)
+            except Exception as e:
+                p("  LLM:              ⚠ No se pudo consultar estado", C.DORADO)
         p(f"  Voz (entrada):    {'✅ speech_recognition' if self.voz.sr_disponible else '❌ No disponible'}", C.GRIS)
         p(f"  Voz (salida TTS): {'✅ ' + str(getattr(self.voz,'_tts_cmd',['pyttsx3'])[0]) if self.voz.tts_disponible else '❌ No disponible'}", C.GRIS)
         p(f"  Conocimiento:     {self.db.resumen()}", C.CYAN)
@@ -1474,9 +1508,10 @@ class MAERConsola:
         resp_data = self.api.chat(msg, ctx)
 
         if resp_data.get("ok"):
-            resp    = resp_data.get("data", {}).get("response", "")
-            engine  = resp_data.get("data", {}).get("engine", "?")
-            nota    = resp_data.get("data", {}).get("nota", "")
+            _d      = resp_data.get("data", {})
+            resp    = _d.get("respuesta") or _d.get("response", "")
+            engine  = _d.get("engine", "?")
+            nota    = _d.get("nota", "")
 
             print(f"\r{' '*50}\r", end="")  # limpiar "pensando..."
             p(f"\n{C.VERDE}🦁 MAER {C.GRIS}[{engine}]{C.RESET}", C.BOLD)

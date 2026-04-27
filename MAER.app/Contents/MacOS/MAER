@@ -1,0 +1,47 @@
+#!/bin/bash
+# 🦁 MAER 4.0 — App Bundle macOS
+# Doble clic → arranca servidor → abre navegador
+PROJ="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../../.." && pwd )"
+cd "$PROJ"
+
+# Python del entorno maer_env
+PYTHON=""
+for p in \
+  "$HOME/miniforge3_x86/envs/maer_env/bin/python" \
+  "$HOME/miniforge3/envs/maer_env/bin/python" \
+  "$HOME/miniconda3/envs/maer_env/bin/python"; do
+  [ -f "$p" ] && PYTHON="$p" && break
+done
+[ -z "$PYTHON" ] && PYTHON="python3"
+
+PORT=8765
+URL="http://localhost:$PORT"
+
+# Si el servidor ya está activo, solo abrir navegador
+if curl -s "$URL/api/status" --max-time 2 >/dev/null 2>&1; then
+  open "$URL"
+  exit 0
+fi
+
+# Cargar .env
+[ -f ".env" ] && set -a && source ".env" 2>/dev/null && set +a
+
+# Abrir Terminal con el servidor corriendo
+osascript <<EOF
+tell application "Terminal"
+  activate
+  do script "cd '$PROJ' && '$PYTHON' -m maer_backend.web_ui.server"
+end tell
+EOF
+
+# Esperar a que el servidor arranque (máx 15s) y abrir navegador
+for i in $(seq 1 15); do
+  sleep 1
+  if curl -s "$URL/api/status" --max-time 1 >/dev/null 2>&1; then
+    open "$URL"
+    exit 0
+  fi
+done
+
+# Fallback: abrir de todos modos
+open "$URL"

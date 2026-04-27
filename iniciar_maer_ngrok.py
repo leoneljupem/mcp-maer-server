@@ -15,15 +15,16 @@ Sin authtoken funciona con sesión temporal (60 min).
 """
 
 import os
-import sys
-import time
-import threading
 import subprocess
+import sys
+import threading
+import time
 from pathlib import Path
 
 # ── Cargar .env ──
 try:
     from dotenv import load_dotenv
+
     env_path = Path(__file__).parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
@@ -32,20 +33,21 @@ except ImportError:
 
 PORT = int(os.environ.get("MAER_WEB_PORT", "8765"))
 
+
 def iniciar_servidor():
     """Inicia el servidor FastAPI en background."""
     server_script = Path(__file__).parent / "maer_backend" / "web_ui" / "server.py"
     subprocess.Popen(
-        [sys.executable, str(server_script)],
-        cwd=str(Path(__file__).parent)
+        [sys.executable, str(server_script)], cwd=str(Path(__file__).parent)
     )
     time.sleep(3)
     print(f"✅ Servidor MAER iniciado en http://localhost:{PORT}")
 
+
 def iniciar_ngrok():
     """Crea un túnel ngrok público hacia el servidor MAER."""
     try:
-        from pyngrok import ngrok, conf
+        from pyngrok import conf, ngrok
 
         # Configurar authtoken si existe
         authtoken = os.environ.get("NGROK_AUTHTOKEN", "")
@@ -61,11 +63,11 @@ def iniciar_ngrok():
         tunnel = ngrok.connect(PORT, "http")
         url_publica = tunnel.public_url
 
-        print("\n" + "═"*60)
+        print("\n" + "═" * 60)
         print(f"🦁 MAER accesible en:")
         print(f"\n   📱 URL pública (celular/Chrome): {url_publica}")
         print(f"   💻 Local (este equipo):          http://localhost:{PORT}")
-        print("\n" + "═"*60)
+        print("\n" + "═" * 60)
         print("\n💡 Para Chrome Extension:")
         print(f"   Usa esta URL en lugar de localhost: {url_publica}")
         print("\n💡 Para instalar en celular (PWA):")
@@ -88,6 +90,7 @@ def iniciar_ngrok():
         print(f"   MAER disponible solo en: http://localhost:{PORT}")
         return None
 
+
 def main():
     print("🦁 MAER 4.0 — Iniciando servidor + túnel ngrok...")
     print("─" * 60)
@@ -107,6 +110,7 @@ def main():
         except KeyboardInterrupt:
             print("\n👋 Deteniendo MAER y ngrok...")
             from pyngrok import ngrok
+
             ngrok.kill()
     else:
         print(f"\n✅ Servidor local activo en http://localhost:{PORT}")
@@ -116,6 +120,7 @@ def main():
                 time.sleep(1)
         except KeyboardInterrupt:
             print("\n👋 Deteniendo MAER...")
+
 
 if __name__ == "__main__":
     main()

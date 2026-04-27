@@ -7,8 +7,8 @@ Escanea archivos en una carpeta y genera un reporte de análisis.
 """
 
 import json
-from pathlib import Path
 from datetime import datetime, timezone
+from pathlib import Path
 
 
 def run_scan(input_dir: Path, report_dir: Path):
@@ -28,12 +28,14 @@ def run_scan(input_dir: Path, report_dir: Path):
             file_count += 1
             size = p.stat().st_size
             total_size += size
-            results.append({
-                "path": str(p),
-                "name": p.name,
-                "ext": p.suffix.lower(),
-                "size_bytes": size,
-            })
+            results.append(
+                {
+                    "path": str(p),
+                    "name": p.name,
+                    "ext": p.suffix.lower(),
+                    "size_bytes": size,
+                }
+            )
 
     report = {
         "timestamp": datetime.now(timezone.utc).isoformat(),

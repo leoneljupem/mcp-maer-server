@@ -14,12 +14,10 @@
 #  Leonel Houssen Mojica — Ecatepec MX — 2026
 # ══════════════════════════════════════════════════════════
 
-import os
-import sys
-import json
-import hashlib
-import datetime
 import argparse
+import datetime
+import hashlib
+import json
 import time
 from pathlib import Path
 
@@ -56,22 +54,23 @@ ARCHIVOS_CRITICOS = [
     BASE_DIR / "maer_backend" / "web_ui" / "server.py",
 ]
 
-LOG_FILE      = BASE_DIR / "respaldo_maer" / "guardian.log"
-REPORTE_FILE  = BASE_DIR / "respaldo_maer" / "guardian_reporte.json"
+LOG_FILE = BASE_DIR / "respaldo_maer" / "guardian.log"
+REPORTE_FILE = BASE_DIR / "respaldo_maer" / "guardian_reporte.json"
 MANIFEST_NAME = ".guardian.json"
 
 COLORES = {
-    "verde":    "\033[92m",
+    "verde": "\033[92m",
     "amarillo": "\033[93m",
-    "rojo":     "\033[91m",
-    "cyan":     "\033[96m",
-    "gris":     "\033[90m",
-    "reset":    "\033[0m",
-    "bold":     "\033[1m",
+    "rojo": "\033[91m",
+    "cyan": "\033[96m",
+    "gris": "\033[90m",
+    "reset": "\033[0m",
+    "bold": "\033[1m",
 }
 
 
 # ── UTILIDADES ─────────────────────────────────────────────
+
 
 def c(color: str, texto: str) -> str:
     """Texto con color ANSI."""
@@ -86,7 +85,7 @@ def sha256_file(path: Path) -> str:
             for bloque in iter(lambda: f.read(65536), b""):
                 h.update(bloque)
         return h.hexdigest()
-    except Exception:
+    except Exception as e:
         return ""
 
 
@@ -111,21 +110,24 @@ def listar_archivos_carpeta(carpeta: Path) -> list[Path]:
 
 # ── MANIFIESTOS ─────────────────────────────────────────────
 
+
 def crear_manifiesto(carpeta: Path) -> dict:
     """Crea o actualiza el .guardian.json de una carpeta."""
     archivos = listar_archivos_carpeta(carpeta)
     entradas = {}
     for f in sorted(archivos):
         entradas[f.name] = {
-            "sha256":   sha256_file(f),
-            "bytes":    f.stat().st_size,
-            "modificado": datetime.datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S"),
+            "sha256": sha256_file(f),
+            "bytes": f.stat().st_size,
+            "modificado": datetime.datetime.fromtimestamp(f.stat().st_mtime).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            ),
         }
     manifiesto = {
-        "carpeta":   str(carpeta),
-        "creado":    timestamp(),
-        "maer_ver":  "3.1",
-        "archivos":  entradas,
+        "carpeta": str(carpeta),
+        "creado": timestamp(),
+        "maer_ver": "3.1",
+        "archivos": entradas,
     }
     ruta_manifest = carpeta / MANIFEST_NAME
     with open(ruta_manifest, "w", encoding="utf-8") as f:
@@ -145,26 +147,31 @@ def init_manifiestos():
         n = len(m["archivos"])
         print(c("verde", f"  ✅  {carpeta.name}/  — {n} archivos registrados"))
         log(f"INIT manifiesto: {carpeta} ({n} archivos)")
-    print(c("verde", f"\n✅ Manifiestos creados. El guardián ya puede detectar cambios."))
+    print(
+        c("verde", f"\n✅ Manifiestos creados. El guardián ya puede detectar cambios.")
+    )
 
 
 # ── VERIFICACIÓN ─────────────────────────────────────────────
+
 
 def verificar_carpeta(carpeta: Path) -> dict:
     """Verifica una carpeta contra su manifiesto."""
     resultado = {
         "carpeta": str(carpeta),
-        "estado":  "ok",
-        "faltantes":  [],
+        "estado": "ok",
+        "faltantes": [],
         "modificados": [],
-        "nuevos":     [],
-        "errores":    [],
+        "nuevos": [],
+        "errores": [],
     }
 
     ruta_manifest = carpeta / MANIFEST_NAME
     if not ruta_manifest.exists():
         resultado["estado"] = "sin_manifiesto"
-        resultado["errores"].append("No hay manifiesto (.guardian.json). Ejecuta --init primero.")
+        resultado["errores"].append(
+            "No hay manifiesto (.guardian.json). Ejecuta --init primero."
+        )
         return resultado
 
     try:
@@ -176,7 +183,9 @@ def verificar_carpeta(carpeta: Path) -> dict:
         return resultado
 
     registrados = manifiesto.get("archivos", {})
-    actuales    = {p.name: p for p in listar_archivos_carpeta(carpeta) if p.name != MANIFEST_NAME}
+    actuales = {
+        p.name: p for p in listar_archivos_carpeta(carpeta) if p.name != MANIFEST_NAME
+    }
 
     # Archivos faltantes (estaban, ya no están)
     for nombre in registrados:
@@ -186,15 +195,17 @@ def verificar_carpeta(carpeta: Path) -> dict:
     # Modificados / nuevos
     for nombre, path in actuales.items():
         if nombre in registrados:
-            sha_actual     = sha256_file(path)
+            sha_actual = sha256_file(path)
             sha_registrado = registrados[nombre].get("sha256", "")
             if sha_actual != sha_registrado:
-                resultado["modificados"].append({
-                    "archivo":      nombre,
-                    "sha_anterior": sha_registrado[:12] + "...",
-                    "sha_actual":   sha_actual[:12] + "...",
-                    "bytes_actual": path.stat().st_size,
-                })
+                resultado["modificados"].append(
+                    {
+                        "archivo": nombre,
+                        "sha_anterior": sha_registrado[:12] + "...",
+                        "sha_actual": sha_actual[:12] + "...",
+                        "bytes_actual": path.stat().st_size,
+                    }
+                )
         else:
             resultado["nuevos"].append(nombre)
 
@@ -222,12 +233,18 @@ def verificar_todo(silencioso: bool = False) -> dict:
         print(c("gris", f"   {timestamp()}\n"))
 
     reporte = {
-        "ts":          timestamp(),
-        "version":     "3.1",
+        "ts": timestamp(),
+        "version": "3.1",
         "criticos_ok": True,
         "faltantes_criticos": [],
-        "carpetas":    [],
-        "resumen":     {"ok": 0, "cambios": 0, "nuevos": 0, "errores": 0, "sin_manifiesto": 0},
+        "carpetas": [],
+        "resumen": {
+            "ok": 0,
+            "cambios": 0,
+            "nuevos": 0,
+            "errores": 0,
+            "sin_manifiesto": 0,
+        },
     }
 
     # 1. Archivos críticos
@@ -242,7 +259,12 @@ def verificar_todo(silencioso: bool = False) -> dict:
             print()
     else:
         if not silencioso:
-            print(c("verde", f"  ✅  Archivos críticos: todos presentes ({len(ARCHIVOS_CRITICOS)})"))
+            print(
+                c(
+                    "verde",
+                    f"  ✅  Archivos críticos: todos presentes ({len(ARCHIVOS_CRITICOS)})",
+                )
+            )
 
     # 2. Verificar cada carpeta
     for carpeta in CARPETAS_VIGILADAS:
@@ -259,19 +281,39 @@ def verificar_todo(silencioso: bool = False) -> dict:
         if not silencioso:
             if estado == "ok":
                 archivos_n = len(listar_archivos_carpeta(carpeta))
-                print(c("verde", f"  ✅  {carpeta.name}/  — {archivos_n} archivos · sin cambios"))
+                print(
+                    c(
+                        "verde",
+                        f"  ✅  {carpeta.name}/  — {archivos_n} archivos · sin cambios",
+                    )
+                )
             elif estado == "cambios":
                 print(c("amarillo", f"  ⚠️   {carpeta.name}/  — CAMBIOS DETECTADOS"))
                 for f in res["faltantes"]:
-                    print(c("rojo",     f"     ❌ Faltante: {f}"))
+                    print(c("rojo", f"     ❌ Faltante: {f}"))
                 for m in res["modificados"]:
-                    print(c("amarillo", f"     🔄 Modificado: {m['archivo']}  [{m['sha_anterior']} → {m['sha_actual']}]"))
+                    print(
+                        c(
+                            "amarillo",
+                            f"     🔄 Modificado: {m['archivo']}  [{m['sha_anterior']} → {m['sha_actual']}]",
+                        )
+                    )
             elif estado == "nuevos":
-                print(c("cyan", f"  🆕  {carpeta.name}/  — {len(res['nuevos'])} archivos nuevos"))
+                print(
+                    c(
+                        "cyan",
+                        f"  🆕  {carpeta.name}/  — {len(res['nuevos'])} archivos nuevos",
+                    )
+                )
                 for n in res["nuevos"]:
                     print(c("cyan", f"     + {n}"))
             elif estado == "sin_manifiesto":
-                print(c("gris", f"  ⬜  {carpeta.name}/  — sin manifiesto (ejecuta --init)"))
+                print(
+                    c(
+                        "gris",
+                        f"  ⬜  {carpeta.name}/  — sin manifiesto (ejecuta --init)",
+                    )
+                )
             else:
                 print(c("rojo", f"  ❌  {carpeta.name}/  — {res['errores']}"))
 
@@ -282,22 +324,38 @@ def verificar_todo(silencioso: bool = False) -> dict:
 
     # 4. Log
     resumen = reporte["resumen"]
-    estado_gral = "OK" if resumen["cambios"] == 0 and resumen["errores"] == 0 and reporte["criticos_ok"] else "ALERTA"
-    log(f"VERIFICACIÓN {estado_gral}: ok={resumen['ok']} cambios={resumen['cambios']} nuevos={resumen['nuevos']} errores={resumen['errores']} criticos_ok={reporte['criticos_ok']}")
+    estado_gral = (
+        "OK"
+        if resumen["cambios"] == 0
+        and resumen["errores"] == 0
+        and reporte["criticos_ok"]
+        else "ALERTA"
+    )
+    log(
+        f"VERIFICACIÓN {estado_gral}: ok={resumen['ok']} cambios={resumen['cambios']} nuevos={resumen['nuevos']} errores={resumen['errores']} criticos_ok={reporte['criticos_ok']}"
+    )
 
     if not silencioso:
         print()
         if estado_gral == "OK":
             print(c("verde", "  🛡️  MAER en perfecto estado. Sin amenazas detectadas."))
         else:
-            print(c("amarillo", "  ⚠️   Se detectaron cambios o errores. Revisa el reporte."))
-        print(c("gris", f"\n  Reporte guardado en: {REPORTE_FILE.relative_to(BASE_DIR)}"))
+            print(
+                c(
+                    "amarillo",
+                    "  ⚠️   Se detectaron cambios o errores. Revisa el reporte.",
+                )
+            )
+        print(
+            c("gris", f"\n  Reporte guardado en: {REPORTE_FILE.relative_to(BASE_DIR)}")
+        )
         print()
 
     return reporte
 
 
 # ── MODO WATCH ─────────────────────────────────────────────
+
 
 def modo_watch(intervalo_min: int = 60):
     """Monitoreo continuo. Verifica cada N minutos."""
@@ -307,12 +365,30 @@ def modo_watch(intervalo_min: int = 60):
 
     while True:
         reporte = verificar_todo(silencioso=True)
-        resumen  = reporte["resumen"]
-        estado   = "🟢 OK" if resumen["cambios"] == 0 and resumen["errores"] == 0 else "🟡 CAMBIOS"
-        print(c("gris", f"  [{timestamp()}] {estado}  cambios={resumen['cambios']}  nuevos={resumen['nuevos']}  errores={resumen['errores']}"))
+        resumen = reporte["resumen"]
+        estado = (
+            "🟢 OK"
+            if resumen["cambios"] == 0 and resumen["errores"] == 0
+            else "🟡 CAMBIOS"
+        )
+        print(
+            c(
+                "gris",
+                f"  [{timestamp()}] {estado}  cambios={resumen['cambios']}  nuevos={resumen['nuevos']}  errores={resumen['errores']}",
+            )
+        )
 
-        if resumen["cambios"] > 0 or resumen["errores"] > 0 or not reporte["criticos_ok"]:
-            print(c("amarillo", "  ⚠️  Cambios detectados — ejecuta sin --watch para ver el detalle."))
+        if (
+            resumen["cambios"] > 0
+            or resumen["errores"] > 0
+            or not reporte["criticos_ok"]
+        ):
+            print(
+                c(
+                    "amarillo",
+                    "  ⚠️  Cambios detectados — ejecuta sin --watch para ver el detalle.",
+                )
+            )
 
         try:
             time.sleep(intervalo_min * 60)
@@ -324,20 +400,29 @@ def modo_watch(intervalo_min: int = 60):
 
 # ── REPORTE ─────────────────────────────────────────────────
 
+
 def mostrar_reporte():
     """Muestra el último reporte guardado."""
     if not REPORTE_FILE.exists():
-        print(c("amarillo", "\n  Sin reporte previo. Ejecuta: python maer_guardian.py\n"))
+        print(
+            c("amarillo", "\n  Sin reporte previo. Ejecuta: python maer_guardian.py\n")
+        )
         return
     with open(REPORTE_FILE, encoding="utf-8") as f:
         r = json.load(f)
 
     print(c("cyan", f"\n🛡️  Último reporte MAER Guardian"))
     print(c("gris", f"   Generado: {r.get('ts','?')}\n"))
-    print(f"  Críticos OK:    {c('verde','✅') if r.get('criticos_ok') else c('rojo','❌')}")
+    print(
+        f"  Críticos OK:    {c('verde','✅') if r.get('criticos_ok') else c('rojo','❌')}"
+    )
     print(f"  Carpetas OK:    {c('verde', str(r['resumen']['ok']))}")
-    print(f"  Con cambios:    {c('amarillo' if r['resumen']['cambios'] else 'verde', str(r['resumen']['cambios']))}")
-    print(f"  Con errores:    {c('rojo' if r['resumen']['errores'] else 'verde', str(r['resumen']['errores']))}")
+    print(
+        f"  Con cambios:    {c('amarillo' if r['resumen']['cambios'] else 'verde', str(r['resumen']['cambios']))}"
+    )
+    print(
+        f"  Con errores:    {c('rojo' if r['resumen']['errores'] else 'verde', str(r['resumen']['errores']))}"
+    )
     print()
 
     if r.get("faltantes_criticos"):
@@ -348,6 +433,7 @@ def mostrar_reporte():
 
 
 # ── MAIN ─────────────────────────────────────────────────────
+
 
 def main():
     parser = argparse.ArgumentParser(
@@ -361,21 +447,35 @@ Ejemplos:
   python maer_guardian.py --watch       # Modo vigilancia (cada 60 min)
   python maer_guardian.py --watch 30    # Modo vigilancia cada 30 min
   python maer_guardian.py --update      # Actualizar manifiestos tras cambios
-        """
+        """,
     )
-    parser.add_argument("--init",    action="store_true", help="Crear manifiestos iniciales")
-    parser.add_argument("--watch",   nargs="?", const=60, type=int, metavar="MINUTOS",
-                        help="Modo vigilancia continua (default: 60 min)")
-    parser.add_argument("--reporte", action="store_true", help="Mostrar último reporte guardado")
-    parser.add_argument("--update",  action="store_true", help="Actualizar manifiestos con estado actual")
-    parser.add_argument("--log",     action="store_true", help="Mostrar últimas entradas del log")
+    parser.add_argument(
+        "--init", action="store_true", help="Crear manifiestos iniciales"
+    )
+    parser.add_argument(
+        "--watch",
+        nargs="?",
+        const=60,
+        type=int,
+        metavar="MINUTOS",
+        help="Modo vigilancia continua (default: 60 min)",
+    )
+    parser.add_argument(
+        "--reporte", action="store_true", help="Mostrar último reporte guardado"
+    )
+    parser.add_argument(
+        "--update", action="store_true", help="Actualizar manifiestos con estado actual"
+    )
+    parser.add_argument(
+        "--log", action="store_true", help="Mostrar últimas entradas del log"
+    )
 
     args = parser.parse_args()
 
     print(c("bold", c("cyan", "\n  ╔══════════════════════════════════════╗")))
-    print(c("bold", c("cyan",   "  ║   🦁  MAER Guardian  v3.1             ║")))
-    print(c("bold", c("cyan",   "  ║   Leonel Houssen Mojica — MAER        ║")))
-    print(c("bold", c("cyan",   "  ╚══════════════════════════════════════╝")))
+    print(c("bold", c("cyan", "  ║   🦁  MAER Guardian  v3.1             ║")))
+    print(c("bold", c("cyan", "  ║   Leonel Houssen Mojica — MAER        ║")))
+    print(c("bold", c("cyan", "  ╚══════════════════════════════════════╝")))
 
     if args.init:
         init_manifiestos()
@@ -389,7 +489,9 @@ Ejemplos:
     elif args.log:
         if LOG_FILE.exists():
             lineas = LOG_FILE.read_text(encoding="utf-8").splitlines()
-            print(c("cyan", f"\n📋  Últimas {min(30, len(lineas))} entradas del log:\n"))
+            print(
+                c("cyan", f"\n📋  Últimas {min(30, len(lineas))} entradas del log:\n")
+            )
             for l in lineas[-30:]:
                 print(c("gris", f"  {l}"))
             print()

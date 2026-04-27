@@ -8,15 +8,58 @@
 
 MAER.archivos = {
 
-  archivosActuales: [],
-  previewActual:    null,
-  _ultimoAnalisis:  null,   // Guardamos el último resultado del backend
+  archivosActuales:  [],
+  previewActual:     null,
+  _ultimoAnalisis:   null,   // Último resultado del backend
+  _cacheClasi:       {},     // {nombreArchivo: resultado clasificación}
+
+  // Colores por carpeta/tipo de documento
+  _coloresTipo: {
+    'Identidad':      '#34d399',   // verde
+    'IMSS_Tramites':  '#38bdf8',   // azul IMSS
+    'Empleo':         '#fb923c',   // naranja
+    'AFORE':          '#a78bfa',   // violeta
+    'Banco':          '#facc15',   // amarillo
+    'Domicilio':      '#94a3b8',   // gris
+    'Legal':          '#f87171',   // rojo
+    'Documentos':     '#64748b',   // gris oscuro
+  },
 
   /* ── MANEJAR INPUT DE ARCHIVOS ── */
   handleInputFiles(files) {
     if (!files || !files.length) return;
     this.archivosActuales = Array.from(files);
+    this._cacheClasi = {};
     this._renderArchivos();
+    // Clasificación automática en background para archivos de texto
+    this.archivosActuales.forEach((f, i) => this._preclasificar(f, i));
+  },
+
+  /* ── PRE-CLASIFICAR (background, solo texto plano) ── */
+  async _preclasificar(file, idx) {
+    if (!MAER.config.backendOK) return;
+    const ext = file.name.split('.').pop().toLowerCase();
+    const textExts = ['txt','md','csv','json','js','py','html','xml','sql'];
+    if (!textExts.includes(ext)) return;
+    try {
+      const texto = await file.text();
+      const res   = await MAER._call('/api/clasificar', { texto: texto.slice(0, 30000) });
+      if (res.ok && res.data) {
+        this._cacheClasi[file.name] = res.data;
+        this._actualizarBadgeEnLista(idx, res.data);
+      }
+    } catch(e) { /* silencioso */ }
+  },
+
+  /* ── ACTUALIZAR BADGE EN LA LISTA (tras clasificación background) ── */
+  _actualizarBadgeEnLista(idx, clasi) {
+    const el = document.querySelector(`[data-maer-idx="${idx}"] .maer-clasi-badge`);
+    if (!el || !clasi) return;
+    const color = this._coloresTipo[clasi.carpeta] || '#64748b';
+    el.innerHTML = `${clasi.emoji} ${clasi.label}`;
+    el.style.color       = color;
+    el.style.borderColor = color;
+    el.style.opacity     = '1';
   },
 
   /* ── RENDERIZAR LISTA DE ARCHIVOS ── */
@@ -38,13 +81,25 @@ MAER.archivos = {
       const icon = icons[ext] || '📁';
       const size = this._fmtSize(file.size);
 
+      // Badge de clasificación (si ya está cacheada)
+      const clasi = this._cacheClasi[file.name];
+      const color = clasi ? (this._coloresTipo[clasi.carpeta] || '#64748b') : '#64748b';
+      const badgeText  = clasi ? `${clasi.emoji} ${clasi.label}` : '…';
+      const badgeOpacity = clasi ? '1' : '0.4';
+
       const item = document.createElement('div');
       item.className = 'archivo-item';
+      item.setAttribute('data-maer-idx', i);
       item.innerHTML = `
         <div class="archivo-icon">${icon}</div>
-        <div class="archivo-info">
-          <div class="archivo-nombre">${file.name}</div>
-          <div class="archivo-meta">${ext.toUpperCase()} · ${size}</div>
+        <div class="archivo-info" style="flex:1;min-width:0">
+          <div class="archivo-nombre">${this._escHTML(file.name)}</div>
+          <div class="archivo-meta" style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+            <span>${ext.toUpperCase()} · ${size}</span>
+            <span class="maer-clasi-badge" style="font-size:10px;border:1px solid ${color};
+                  border-radius:10px;padding:1px 7px;color:${color};opacity:${badgeOpacity};
+                  white-space:nowrap;transition:all .3s">${badgeText}</span>
+          </div>
         </div>
         <div style="display:flex;gap:6px;flex-shrink:0">
           <button class="btn btn-secondary btn-sm" onclick="MAER.archivos._previsualizar(${i})">👁️ Ver</button>
@@ -101,7 +156,7 @@ MAER.archivos = {
       &nbsp;Analizando <strong>${file.name}</strong>…
     </div>`;
 
-    // ── RUTA 1: Backend real (/api/analizar-documento) ──
+    // ── RUTA 1: Backend real (/api/analizar-documento + /api/clasificar) ──
     if (MAER.config.backendOK) {
       try {
         const fd = new FormData();
@@ -109,7 +164,20 @@ MAER.archivos = {
         const res = await MAER._upload('/api/analizar-documento', fd);
         if (res.ok && res.data) {
           this._ultimoAnalisis = res.data;
-          this._mostrarAnalisisRico(file.name, res.data, area);
+          // Clasificación paralela usando el texto extraído
+          let clasi = this._cacheClasi[file.name] || null;
+          if (!clasi && res.data.texto && res.data.texto.length > 30) {
+            try {
+              const rc = await MAER._call('/api/clasificar', { texto: res.data.texto });
+              if (rc.ok && rc.data) {
+                clasi = rc.data;
+                this._cacheClasi[file.name] = clasi;
+                this._actualizarBadgeEnLista(
+                  this.archivosActuales.findIndex(f => f.name === file.name), clasi);
+              }
+            } catch(e) { /* no bloquear si falla clasificación */ }
+          }
+          this._mostrarAnalisisRico(file.name, res.data, area, clasi);
           MAER.voz?.hablar(`Análisis de ${file.name} completado.`);
           return;
         }
@@ -140,8 +208,68 @@ MAER.archivos = {
     }
   },
 
+  /* ── PANEL DE CLASIFICACIÓN ── */
+  _panelClasificacion(clasi) {
+    const color  = this._coloresTipo[clasi.carpeta] || '#64748b';
+    const conf   = Math.round((clasi.confianza || 0) * 100);
+    const campos = clasi.campos || {};
+
+    // Campos estructurados relevantes (excluir los que ya se muestran abajo)
+    const camposExtras = Object.entries(campos).filter(([k]) =>
+      !['curp','nss','rfc'].includes(k)
+    );
+
+    let html = `<div style="background:rgba(${this._hexToRgb(color)},0.07);
+        border:1px solid ${color};border-radius:10px;padding:12px 14px;margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:6px;margin-bottom:8px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-size:22px">${clasi.emoji}</span>
+          <div>
+            <div style="font-size:14px;font-weight:700;color:${color}">${this._escHTML(clasi.label)}</div>
+            <div style="font-size:10px;color:var(--muted)">📁 Carpeta sugerida: <strong>${clasi.carpeta}</strong></div>
+          </div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:11px;color:var(--muted)">Confianza</div>
+          <div style="font-size:16px;font-weight:700;color:${color}">${conf}%</div>
+        </div>
+      </div>`;
+
+    if (camposExtras.length) {
+      html += `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">`;
+      camposExtras.forEach(([k, v]) => {
+        if (!v || (Array.isArray(v) && !v.length)) return;
+        const vals = Array.isArray(v) ? v.join(', ') : String(v);
+        const lbl  = k.replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
+        html += `<div style="background:rgba(255,255,255,0.05);border:1px solid var(--border);
+                   border-radius:6px;padding:3px 9px;font-size:11px">
+          <span style="color:var(--muted)">${lbl}:</span>
+          <span style="color:var(--text);font-weight:600;margin-left:4px">${this._escHTML(vals)}</span>
+        </div>`;
+      });
+      html += `</div>`;
+    }
+
+    if (clasi.resumen) {
+      html += `<div style="margin-top:8px;font-size:11px;color:var(--muted);font-style:italic">
+        ${this._escHTML(clasi.resumen)}</div>`;
+    }
+    html += `</div>`;
+    return html;
+  },
+
+  _hexToRgb(hex) {
+    // Convierte hex (#38bdf8) o CSS var a rgb string para rgba()
+    const map = {
+      '#34d399':'52,211,153', '#38bdf8':'56,189,248', '#fb923c':'251,146,60',
+      '#a78bfa':'167,139,250','#facc15':'250,204,21', '#94a3b8':'148,163,184',
+      '#f87171':'248,113,113','#64748b':'100,116,139',
+    };
+    return map[hex] || '100,116,139';
+  },
+
   /* ── MOSTRAR ANÁLISIS RICO (desde backend) ── */
-  _mostrarAnalisisRico(nombre, d, area) {
+  _mostrarAnalisisRico(nombre, d, area, clasi = null) {
     const tipo     = d.tipo_documento || 'Documento';
     const texto    = d.texto         || '';
     const curps    = d.curps         || [];
@@ -154,28 +282,34 @@ MAER.archivos = {
     const semanas  = d.semanas_cotizadas ? [String(d.semanas_cotizadas)] : [];
     const pension  = d.pension_info  || null;
 
-    const colorTipo = {
-      'Resolución IMSS':        'var(--accent)',
-      'Estado de Cuenta IMSS':  'var(--accent)',
-      'Carta de Derechos':      'var(--green)',
-      'Constancia de Semanas':  'var(--green)',
-      'Identificación Oficial': 'var(--yellow)',
-      'Acta de Nacimiento':     'var(--yellow)',
-    }[tipo] || 'var(--muted)';
+    const colorTipo = clasi
+      ? (this._coloresTipo[clasi.carpeta] || 'var(--muted)')
+      : ({
+          'Resolución IMSS':        'var(--accent)',
+          'Estado de Cuenta IMSS':  'var(--accent)',
+          'Carta de Derechos':      'var(--green)',
+          'Constancia de Semanas':  'var(--green)',
+          'Identificación Oficial': 'var(--yellow)',
+          'Acta de Nacimiento':     'var(--yellow)',
+        }[tipo] || 'var(--muted)');
 
     let html = `
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:14px">
-        <div>
-          <h4 style="color:var(--accent);margin:0 0 4px">🔬 ${this._escHTML(nombre)}</h4>
-          <span style="font-size:12px;color:${colorTipo};background:rgba(255,255,255,0.05);
-                       border:1px solid currentColor;border-radius:20px;padding:2px 10px">
-            ${tipo}
-          </span>
-        </div>
-        <div style="font-size:11px;color:var(--muted);text-align:right">
-          ${texto.length.toLocaleString()} caracteres extraídos
-        </div>
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;margin-bottom:10px">
+        <h4 style="color:var(--accent);margin:0">🔬 ${this._escHTML(nombre)}</h4>
+        <div style="font-size:11px;color:var(--muted)">${texto.length.toLocaleString()} caracteres</div>
       </div>`;
+
+    // ── Panel de clasificación automática ──
+    if (clasi) {
+      html += this._panelClasificacion(clasi);
+    } else {
+      html += `<div style="margin-bottom:10px">
+        <span style="font-size:12px;color:${colorTipo};background:rgba(255,255,255,0.05);
+                     border:1px solid currentColor;border-radius:20px;padding:2px 10px">
+          ${tipo}
+        </span>
+      </div>`;
+    }
 
     // ── CURP con tarjeta visual completa ──
     if (curps.length) {
@@ -300,12 +434,20 @@ MAER.archivos = {
     }
 
     // ── Botones de acción ──
+    const idx = this.archivosActuales.findIndex(f => f.name === nombre);
+    const clasiActual = this._cacheClasi[nombre];
     html += `<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
       <button class="btn btn-primary btn-sm" onclick="MAER.archivos._copiarAnalisisAlChat()">
-        💬 Enviar análisis al Chat
+        💬 Enviar al Chat
       </button>
-      <button class="btn btn-secondary btn-sm" onclick="MAER.archivos._aprenderArchivo_idx(${this.archivosActuales.indexOf(this.archivosActuales.find(f=>f.name===nombre))})">
-        📚 Memorizar documento
+      ${clasiActual ? `
+      <button class="btn btn-secondary btn-sm"
+        onclick="MAER.archivos._sugerirOrganizar('${this._escHTML(nombre)}','${clasiActual.carpeta}')"
+        title="Mover a carpeta: ${clasiActual.carpeta}">
+        📁 Organizar → ${clasiActual.carpeta}
+      </button>` : ''}
+      <button class="btn btn-secondary btn-sm" onclick="MAER.archivos._aprenderArchivo_idx(${idx})">
+        📚 Memorizar
       </button>
     </div>`;
 
@@ -399,6 +541,15 @@ MAER.archivos = {
       fechas: (texto.match(/\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}/g) || []).filter((v,i,a) => a.indexOf(v)===i),
       montos: (texto.match(/\$[\d,]+\.?\d{0,2}/g) || []).filter((v,i,a) => a.indexOf(v)===i),
     };
+  },
+
+  /* ── SUGERIR ORGANIZAR EN CARPETA ── */
+  _sugerirOrganizar(nombre, carpeta) {
+    const msg = `📁 El documento <strong>${this._escHTML(nombre)}</strong> fue clasificado como <strong>${this._escHTML(carpeta)}</strong>.<br><br>` +
+      `¿A qué carpeta deseas moverlo?<br>` +
+      `<em>Puedes usar el módulo de Organización (pestaña 📂) para mover en lote.</em>`;
+    MAER.chat?._addMsg('sys', msg);
+    MAER.tabs?.show('chat-principal');
   },
 
   _fmtSize(bytes) {

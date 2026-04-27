@@ -1,0 +1,473 @@
+═══════════════════════════════════════════════════════════════════════
+  🦁 MAER 4.0 — GUÍA DE USO COMPLETA
+  Motor de Asistencia IMSS — Pensiones y Expedientes
+  Leonel Houssen Mojica · Ecatepec, Estado de México · 2026
+═══════════════════════════════════════════════════════════════════════
+
+PARA INICIAR RÁPIDAMENTE:
+  bash maer_iniciar.sh          → Menú interactivo (modo recomendado)
+  python lanzador_maer.py       → Lanzador con interfaz gráfica
+  python maer_consola.py        → Consola IA en terminal
+
+
+───────────────────────────────────────────────────────────────────────
+  PROGRAMAS / SCRIPTS PRINCIPALES
+───────────────────────────────────────────────────────────────────────
+
+1. maer_iniciar.sh
+   ─────────────────
+   Script de inicio para macOS/Linux. Menú interactivo que permite
+   elegir entre lanzador gráfico, consola, servidor con ngrok o solo
+   el backend. Detecta automáticamente el entorno Python correcto
+   (prioriza maer_env con todas las dependencias ML instaladas).
+   Muestra el estado de Ollama y Groq al arrancar.
+
+   Uso:
+     bash maer_iniciar.sh           # Menú interactivo
+     bash maer_iniciar.sh gui       # Lanzador gráfico directo
+     bash maer_iniciar.sh consola   # Consola IA
+     bash maer_iniciar.sh ngrok     # Servidor + acceso desde celular
+     bash maer_iniciar.sh server    # Solo backend FastAPI
+     bash maer_iniciar.sh mcp       # Servidor MCP para Claude Desktop
+     bash maer_iniciar.sh test      # Ejecutar todos los tests
+
+
+2. lanzador_maer.py
+   ──────────────────
+   Interfaz gráfica (GUI) de control total de MAER. Permite iniciar el
+   servidor en modo LOCAL (solo tu computadora) o EN LÍNEA (con túnel
+   ngrok para acceso desde celular, tablet o extensión de Chrome).
+
+   Funciones principales:
+   • Botón "LOCALHOST"  → servidor privado en http://localhost:8765
+   • Botón "EN LÍNEA"   → genera URL pública tipo https://abc123.ngrok.io
+   • Log del sistema    → muestra mensajes del servidor en tiempo real
+   • Chat integrado     → conversa con MAER sin abrir el navegador
+   • Herramientas:
+     - Analizador HTML tipo F12 (inspeccionar el dashboard web)
+     - Exportar PDF del expediente
+     - Verificar dependencias del sistema
+     - Analizar carpeta de documentos
+     - Selector de modelo Ollama (elegir qwen3.5, deepseek-r1, etc.)
+     - Panel diagnóstico
+     - Código QR de la URL pública (para compartir con celular)
+   • Detecta Ollama y Groq automáticamente al iniciar
+   • Muestra todos los modelos Ollama instalados con tamaño y parámetros
+
+   Requisitos: pip install requests pyngrok (pillow para QR)
+
+
+3. maer_consola.py
+   ─────────────────
+   Consola IA avanzada en la terminal. Interfaz de línea de comandos
+   con colores, autocompletado (Tab) e historial (flechas ↑↓).
+
+   Comandos principales:
+     chat  <pregunta>   → Pregunta a MAER IA sobre IMSS/pensiones
+     analizar <archivo> → OCR + análisis de documentos (PDF, imagen, Word)
+     carpeta  <ruta>    → Analiza TODOS los archivos de una carpeta
+     aprender <ruta>    → Aprende e indexa todos los archivos permanentemente
+     vigilar  <ruta>    → Monitorea cambios en carpeta en tiempo real
+     buscar   <término> → Busca en todo el conocimiento aprendido
+     reporte  [html|pdf]→ Genera informe completo del expediente
+     tablas   <pdf>     → Extrae tablas de un PDF (estados de cuenta IMSS)
+     deps               → Verifica qué dependencias están instaladas
+     estado             → Estado del servidor y conocimiento indexado
+     historial          → Últimas 20 conversaciones
+     ayuda              → Mostrar todos los comandos disponibles
+
+   También puedes escribir cualquier pregunta directamente sin comandos.
+
+
+4. iniciar_maer_ngrok.py
+   ─────────────────────
+   Script para acceso remoto. Inicia el servidor backend y crea un
+   túnel ngrok que genera una URL pública accesible desde internet.
+   Útil para acceder desde el celular o compartir con familiares.
+
+   Configura en .env:
+     NGROK_AUTHTOKEN=tu_token   → sesión ilimitada (token gratis en ngrok.com)
+     (sin token: sesión de 2 horas)
+
+   Uso:
+     python iniciar_maer_ngrok.py
+     → imprime la URL pública (tipo https://abc123.ngrok.io)
+
+
+5. detectar_ollama.py
+   ────────────────────
+   Herramienta de diagnóstico para Ollama. Detecta si Ollama está
+   instalado, si el servidor está activo, lista todos los modelos
+   descargados con su tamaño y recomienda el mejor para MAER.
+
+   Uso:
+     python detectar_ollama.py          → información básica
+     python detectar_ollama.py --test   → prueba cada modelo con pregunta
+     python detectar_ollama.py --pull   → descargar modelo recomendado
+
+
+6. maer_guardian.py
+   ──────────────────
+   Verificador de integridad del sistema MAER. Compara checksums de
+   todos los archivos críticos (JS, CSS, Python, HTML) contra un
+   manifiesto guardado. Detecta archivos modificados, faltantes o
+   corrompidos. También se puede ejecutar en modo continuo para
+   monitoreo automático.
+
+   Uso:
+     python maer_guardian.py            → verificar integridad completa
+     python maer_guardian.py --init     → crear manifiestos (primera vez)
+     python maer_guardian.py --reporte  → ver último reporte guardado
+     python maer_guardian.py --watch    → modo continuo (cada hora)
+
+
+7. maer_tester.py
+   ─────────────────
+   Suite de pruebas del sistema completo. Verifica que todos los
+   módulos Python importan correctamente, que el servidor responde,
+   que OCR funciona, y que la cascada LLM está operativa.
+
+   Uso:
+     python maer_tester.py
+
+
+8. index.mjs (Servidor MCP)
+   ──────────────────────────
+   Servidor MCP (Model Context Protocol) que conecta MAER con
+   Claude Desktop. Expone todas las herramientas de MAER como
+   funciones que Claude puede llamar directamente en el chat.
+
+   Herramientas disponibles para Claude:
+   • analizar_archivo      → OCR + extracción de texto de cualquier archivo
+   • buscar_archivos       → buscar por nombre, contenido o tipo
+   • detectar_ids_mexicanos→ extraer CURP, NSS, RFC de documentos
+   • llm_chat              → chat con IA (Ollama/Groq/OpenAI)
+   • verificar_curp_renapo → validar CURP contra base RENAPO
+   • expediente_imss       → analizar carpeta con documentos IMSS
+   • generar_carta         → redactar carta formal para IMSS
+   • extraer_tablas        → tablas de PDFs (estados de cuenta IMSS)
+   • analizar_imagen       → OCR + reconocimiento facial (DeepFace)
+
+   Uso:
+     node index.mjs   → inicia servidor MCP
+     (Claude Desktop lo llama automáticamente según configuración)
+
+   Configuración en Claude Desktop:
+     ~/Library/Application Support/Claude/claude_desktop_config.json:
+     { "mcpServers": { "maer": {
+         "command": "node",
+         "args": ["/Users/houssenm/mcp-maer-server/index.mjs"]
+     }}}
+
+
+───────────────────────────────────────────────────────────────────────
+  SERVIDOR WEB — DASHBOARD EN NAVEGADOR
+───────────────────────────────────────────────────────────────────────
+
+maer_backend/web_ui/server.py
+   Backend FastAPI en http://localhost:8765
+   32 módulos JavaScript + SPA con 15 pestañas
+
+   PESTAÑAS DEL DASHBOARD:
+   ─────────────────────────
+   💬 Chat MAER      → Conversa con la IA sobre pensiones y trámites IMSS.
+                        Responde con Ollama (local), Groq (nube gratis) u
+                        OpenAI según lo que esté disponible.
+
+   📁 Archivos       → Subir y analizar documentos PDF, Word, Excel, imágenes.
+                        OCR automático con 3 motores (Tesseract/EasyOCR/PaddleOCR).
+
+   🔍 Búsqueda       → Buscar masivamente en archivos por nombre o contenido
+                        de texto. Indexación automática de la carpeta.
+
+   🗂️ Organizar      → Organiza documentos IMSS por tipo (estado de cuenta,
+                        resolución, notificación, etc.) en carpetas automáticas.
+
+   🖼️ Imágenes       → OCR de imágenes: fotografías de documentos, capturas
+                        de pantalla, escaneados de baja calidad.
+
+   📋 Pensión        → Checklist interactivo de documentos requeridos para
+                        tramitar pensión. Generador de cartas para IMSS.
+
+   📅 Timeline       → Línea de tiempo visual del proceso de pensión en 8 etapas:
+                        Solicitud → Valoración → Resolución → Cobro.
+
+   ⏰ Recordatorios  → Alertas con fecha límite y nivel de urgencia.
+                        Badge visual de recordatorios pendientes.
+
+   💡 Sugerencias    → Autocompletado en tiempo real en el chat.
+                        Catálogo de 20 frases frecuentes sobre IMSS.
+
+   📜 Cartas         → Historial de cartas generadas. Comparar versiones,
+                        reimprimir, exportar. Máximo 50 cartas guardadas.
+
+   🏷️ Etiquetas      → Clasifica documentos con etiquetas: IMSS, Urgente,
+                        Resolución, NSS, etc. Filtrado rápido.
+
+   📊 Estadísticas   → Métricas de uso: mensajes enviados, documentos
+                        analizados, etapas completadas, cartas generadas.
+
+   🩺 Diagnóstico    → Panel de diagnóstico del sistema. Suite de 80+ pruebas
+                        ejecutables en el navegador con MAER_runTests().
+                        Verificación de servidor, OCR, LLM, módulos JS.
+
+   ⚙️ Sistema        → Estado del servidor, rendimiento del navegador,
+                        información de red, log del sistema en tiempo real.
+                        SUBPESTAÑAS:
+                        🤖 LLM     → Estado de Ollama/Groq/OpenAI,
+                                     modelo activo, botones para probar cada motor.
+                        🛡️ Guardián → Integridad de los 32 módulos JS.
+                        📱 Tasker   → Guía paso a paso para conectar Tasker
+                                     (Android) con MAER. Incluye plantilla JSON
+                                     para enviar SMS/GPS al servidor, variables
+                                     de Tasker (%SMSRB, %LOC, etc.) y casos de
+                                     uso con IMSS. Segunda subpestaña muestra
+                                     los mensajes ya recibidos.
+                        📊 Stats    → Estadísticas del sistema.
+
+   🔧 Ajustes        → Configuración de voz, tema (oscuro/claro), URL del
+                        servidor, exportar/importar datos.
+
+
+───────────────────────────────────────────────────────────────────────
+  MOTORES DE IA (CASCADA LLM)
+───────────────────────────────────────────────────────────────────────
+
+MAER usa una cascada de motores en este orden de prioridad:
+
+  1. Ollama (local)    → IA privada, sin internet, sin costo.
+                         Modelos recomendados (instalados):
+                         • qwen3.5:latest   (6.6 GB) ⭐ preferido
+                         • deepseek-r1:8b   (5.2 GB)
+                         • gemma3:latest    (3.3 GB)
+                         • deepseek-ocr     (6.7 GB)
+                         Activar: ollama serve
+
+  2. Groq (nube)       → IA en la nube, GRATIS con registro.
+                         30 peticiones/minuto, sin límite diario.
+                         Modelo: llama-3.3-70b-versatile
+                         Activar: agrega GROQ_API_KEY=gsk_... en .env
+                         Registro: console.groq.com
+
+  3. OpenAI            → GPT-4o-mini u otros modelos de OpenAI.
+                         Activar: agrega OPENAI_API_KEY en .env
+
+  4. Diccionario local → Siempre disponible, sin internet.
+                         Base de conocimiento IMSS: Ley 73, Ley 97,
+                         semanas cotizadas, AFORE, CURP, NSS, recursos.
+
+TODOS los motores responden en español con identidad MAER.
+
+
+───────────────────────────────────────────────────────────────────────
+  MÓDULOS PYTHON BACKEND
+───────────────────────────────────────────────────────────────────────
+
+maer_backend/maer_files.py
+   Módulo principal con todas las acciones del servidor MCP:
+   • Validación CURP, NSS, RFC
+   • Análisis de expedientes IMSS
+   • Cascada LLM: Ollama → Groq → OpenAI → diccionario local
+   • Generación de cartas y reportes
+   • Búsqueda e indexación de archivos
+
+maer_backend/ocr_engine.py
+   Motor OCR multi-proveedor:
+   • Tesseract (rápido, texto impreso)
+   • EasyOCR   (documentos escaneados, mejor calidad)
+   • PaddleOCR (PDFs complejos, tablas)
+   Caché automático por hash del archivo para no re-procesar.
+
+maer_backend/maer_ollama.py
+   Gestión inteligente de Ollama:
+   • Detección automática del binario en múltiples rutas
+   • Lista y elige el mejor modelo según preferencia
+   • Arranque automático del servidor si está instalado
+   • Prompt de sistema en español (identidad MAER)
+
+maer_backend/llm_engine.py
+   Motor GGUF local con llama-cpp-python. Carga modelos .gguf
+   directamente sin necesidad de Ollama. Alternativa offline.
+
+maer_backend/nlp_engine.py
+   Procesamiento de texto con spaCy en español:
+   • Extracción de entidades (nombres, fechas, NSS)
+   • Segmentación de oraciones
+   • Limpieza de texto OCR
+
+maer_backend/table_extractor.py
+   Extracción de tablas de PDFs:
+   • pdfplumber para tablas simples
+   • camelot-py para tablas complejas
+   • tabula-py para estados de cuenta IMSS
+
+maer_backend/image_analyzer.py
+   Análisis de imágenes:
+   • OCR de fotografías
+   • Reconocimiento facial con DeepFace
+   • Hash perceptual para detectar duplicados (imagehash)
+
+maer_backend/maer_core/analyzer.py    → Análisis profundo de documentos
+maer_backend/maer_core/fixer.py       → Corrección automática de CURP/NSS
+maer_backend/maer_core/generator.py   → Generación de cartas para IMSS
+
+
+───────────────────────────────────────────────────────────────────────
+  MÓDULOS JAVASCRIPT FRONTEND (32 módulos)
+───────────────────────────────────────────────────────────────────────
+
+maer.diccionario.js  → Base de conocimiento: 200+ preguntas IMSS con
+                        respuestas precisas sobre Ley 73/97, trámites.
+maer.core.js         → Núcleo del sistema: tabs, API calls, reloj,
+                        tooltips, inicialización de todos los módulos.
+maer.voz.js          → Síntesis de voz con Web Speech API.
+                        Tono grave (pitch=0.62) para voz masculina MAER.
+maer.chat.js         → Chat principal: primero busca en diccionario,
+                        luego llama al backend LLM.
+maer.aprendizaje.js  → Memoria permanente con IndexedDB. Guarda y
+                        recupera documentos aprendidos entre sesiones.
+maer.archivos.js     → Subida y análisis de archivos. Soporta PDF,
+                        Word, Excel, imágenes, texto.
+maer.busqueda.js     → Búsqueda masiva en archivos por nombre o
+                        contenido con resultados resaltados.
+maer.organizar.js    → Organizador automático de carpetas por tipo
+                        de documento IMSS.
+maer.imagenes.js     → OCR de imágenes via backend. Muestra texto
+                        extraído y permite copiar/guardar.
+maer.pension.js      → Checklist de documentos requeridos para pensión.
+                        Eventos del proceso y generador de cartas IMSS.
+maer.timeline.js     → Timeline visual de 8 etapas del proceso de
+                        pensión. Estado guardado en localStorage.
+maer.recordatorios.js→ Sistema de alertas con fecha límite.
+                        Badge de urgencia y notificaciones del navegador.
+maer.cartas-historial→ Historial de cartas generadas (máx 50).
+                        Comparar versiones, reimprimir, exportar.
+maer.sugerencias.js  → Autocompletado en tiempo real en el chat.
+                        20 frases frecuentes sobre trámites IMSS.
+maer.atajos.js       → 19 atajos de teclado globales:
+                        Alt+1..9 = cambiar pestaña, Ctrl+K = buscar,
+                        Alt+M = silenciar voz. Ver todos: Shift+?
+maer.etiquetas.js    → Sistema de etiquetas por documento.
+                        Categorías: IMSS, Urgente, NSS, Resolución.
+maer.compacto.js     → Modo compacto para pantallas pequeñas o tablets.
+maer.resumen.js      → Resumen automático del estado del expediente.
+                        Muestra etapa, documentos, cartas y alertas.
+maer.qr.js           → Exportar e importar configuración vía código QR.
+maer.stats.js        → Estadísticas de uso: mensajes, docs analizados,
+                        etapas completadas, servidor activo/inactivo.
+maer.poder.js        → Análisis avanzado (6 subpestañas):
+                        🔬 Analizar Doc  → OCR + extracción CURP/NSS/RFC
+                        🆔 CURP/RFC      → Validación y decodificación completa
+                        🗂️ Duplicados    → Detección por hash SHA-256
+                        🖼️ Similares     → Imágenes similares (perceptual hash)
+                        📋 Expediente    → Completitud del expediente IMSS
+                        💬 Análisis IA   → Consulta LLM con 5 plantillas IMSS:
+                          semanas, pensión, documentos, CURP, expediente.
+                          Selección de motor (Ollama/Groq/diccionario).
+                          Botones para copiar o enviar respuesta al chat.
+maer.diagnostico.js  → Panel de diagnóstico del sistema. Verifica
+                        servidor, módulos, OCR y LLM. Suite 80+ tests.
+maer.sinavid.js      → Integración con portal SINAVID del IMSS para
+                        consultar estado de pensión en línea.
+maer.tareas.js       → Tareas automatizadas con IA: investigación legal,
+                        redactar documentos, analizar expedientes.
+maer.memoria.js      → Historial de conversaciones y aprendizajes
+                        anteriores. Búsqueda en historial.
+maer.sistema.js      → Estado del servidor, rendimiento, red, log
+                        y panel de estado LLM (Ollama/Groq/OpenAI).
+maer.guardian.js     → Verificación de integridad de los 32 módulos JS.
+                        Detecta módulos faltantes o con errores.
+maer.whatsapp.js     → Importar y buscar en chats exportados de WhatsApp.
+                        • Parsea formato TXT (DD/MM/AAAA, HH:MM - Autor: msg)
+                        • Botón "🏛️ Filtrar IMSS" detecta automáticamente
+                          mensajes con 30+ palabras clave: imss, nss, curp,
+                          semanas, cotizadas, pensión, afore, clínica, etc.
+                        • Resalta las palabras IMSS encontradas en cada msg.
+                        • Estadísticas por participante y palabras frecuentes.
+maer.notificaciones.js→ Notificaciones del navegador (Web Notifications API).
+                        Alertas de recordatorios que se cumplen.
+maer.exportar.js     → Exportar: chat en TXT/JSON, cartas en PDF,
+                        eventos y recordatorios en TXT.
+maer.ajustes.js      → Configuración: voz (idioma, velocidad, pitch),
+                        tema (oscuro/claro), URL servidor, exportar datos.
+maer.test.js         → Suite de 80+ pruebas del frontend. Ejecutar:
+                        MAER_runTests() en la consola del navegador (F12).
+
+
+───────────────────────────────────────────────────────────────────────
+  VARIABLES DE ENTORNO (.env)
+───────────────────────────────────────────────────────────────────────
+
+ANTHROPIC_API_KEY=sk-ant-...    → Para usar Claude vía API (opcional)
+GROQ_API_KEY=gsk_...            → Para Groq (gratis: console.groq.com)
+GROQ_MODEL=llama-3.3-70b-versatile → Modelo Groq a usar
+OPENAI_API_KEY=sk-...           → Para GPT-4o-mini (opcional)
+OLLAMA_MODEL=qwen3.5:latest     → Modelo Ollama a usar (auto-detectado)
+OLLAMA_HOST=http://localhost:11434 → URL del servidor Ollama
+MAER_WEB_PORT=8765              → Puerto del dashboard web
+MAER_OCR_ENGINE=auto            → Motor OCR: auto/tesseract/easyocr/paddleocr
+NGROK_AUTHTOKEN=...             → Token ngrok para sesión ilimitada (gratis)
+
+
+───────────────────────────────────────────────────────────────────────
+  COMANDOS RÁPIDOS (npm)
+───────────────────────────────────────────────────────────────────────
+
+npm run gui           → Lanzador gráfico
+npm run consola       → Consola IA en terminal
+npm run ngrok         → Servidor + ngrok (acceso celular)
+npm run dashboard     → Solo servidor backend
+npm run llm:status    → Ver estado de Ollama/Groq en consola
+npm run ollama:modelos→ Listar modelos Ollama instalados
+npm run guardian      → Verificar integridad del sistema
+npm test              → Todos los tests (170+)
+npm run test:llm      → Tests de cascada LLM (rápido)
+npm run test:rapido   → Tests rápidos sin verbosidad
+npm run env:check     → Verificar que todas las dependencias ML están OK
+npm run dev           → Servidor MCP en modo desarrollo (auto-reload)
+
+
+───────────────────────────────────────────────────────────────────────
+  TESTS
+───────────────────────────────────────────────────────────────────────
+
+tests/test_ocr_engine.py      → 19 tests de OCR, CURP, configuración
+tests/test_maer_api.py        →  9 tests del servidor FastAPI y endpoints
+tests/test_timeline.py        → 10 tests del timeline de 8 etapas
+tests/test_bloques_frontend.py→ 66 tests de bloques 8,9,10,12 + suite JS
+tests/test_modulos_python.py  → 70 tests de todos los módulos Python
+tests/test_llm_cascade.py     → 37 tests de la cascada LLM y motores IA
+
+Total: 211+ tests
+
+Tests del navegador:
+  Abre MAER → Diagnóstico → "Ejecutar suite completa"
+  O en consola F12: MAER_runTests()
+
+
+───────────────────────────────────────────────────────────────────────
+  ENTORNO PYTHON (macOS Intel x86_64)
+───────────────────────────────────────────────────────────────────────
+
+Python 3.10 en ~/miniforge3_x86/envs/maer_env
+Activar: maer-env (alias .zshrc) o source ~/miniforge3_x86/envs/maer_env/bin/activate
+
+RESTRICCIONES CRÍTICAS (NO actualizar):
+  PyTorch     MÁXIMO 2.2.2    → Apple eliminó soporte x86_64 en 2.4+
+  NumPy       FIJADO 1.26.4   → requerido por PyTorch 2.2.2
+  transformers MÁXIMO 4.44.x  → versiones ≥5.0 requieren PyTorch ≥2.4
+  TensorFlow  2.16.2          → última versión estable para Intel Mac
+
+
+───────────────────────────────────────────────────────────────────────
+  SOPORTE Y CONTACTO
+───────────────────────────────────────────────────────────────────────
+
+Autor:   Leonel Houssen Mojica
+Email:   Leonelhoussen1@hotmail.com
+Ciudad:  Ecatepec, Estado de México
+Año:     2026
+
+Sistema para uso personal — asistencia en trámites IMSS.
+No sustituye asesoría legal profesional.
+═══════════════════════════════════════════════════════════════════════

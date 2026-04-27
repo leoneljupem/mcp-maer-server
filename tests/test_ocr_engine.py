@@ -2,11 +2,12 @@
 Tests — MAER OCR Engine
 Leonel Houssen Mojica — Ecatepec MX — 2026
 """
-import sys
-import os
+
 import json
-import pytest
+import os
+import sys
 from pathlib import Path
+
 
 # Agregar raiz del proyecto al path
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -18,18 +19,22 @@ FIXTURES = Path(__file__).parent / "fixtures"
 class TestImportaciones:
     def test_ocr_engine_importa(self):
         from maer_backend import ocr_engine
+
         assert ocr_engine is not None
 
     def test_maer_files_importa(self):
         from maer_backend import maer_files
+
         assert maer_files is not None
 
     def test_nlp_engine_importa(self):
         from maer_backend import nlp_engine
+
         assert nlp_engine is not None
 
     def test_table_extractor_importa(self):
         from maer_backend import table_extractor
+
         assert table_extractor is not None
 
 
@@ -37,12 +42,14 @@ class TestImportaciones:
 class TestCacheOCR:
     def test_cache_carga_sin_error(self, tmp_path):
         from maer_backend.ocr_engine import _load_cache
+
         cache_path = str(tmp_path / "test_cache.json")
         # Cache inexistente no debe romper
         _load_cache(cache_path)
 
     def test_cache_guarda_y_carga(self, tmp_path):
         from maer_backend import ocr_engine
+
         cache_path = str(tmp_path / "test_cache.json")
         # Resetear estado global
         ocr_engine._ocr_cache = {"test_hash": "texto de prueba"}
@@ -56,6 +63,7 @@ class TestCacheOCR:
 
     def test_cache_json_invalido_no_rompe(self, tmp_path):
         from maer_backend.ocr_engine import _load_cache
+
         cache_path = tmp_path / "bad_cache.json"
         cache_path.write_text("{ json invalido :::}")
         # No debe lanzar excepcion
@@ -82,12 +90,14 @@ class TestValidacionMexicana:
 
     def test_curp_longitud_invalida(self):
         import re
+
         patron = r"^[A-Z]{4}\d{6}[HM][A-Z]{5}\d{2}$"
         for curp in self.CURPS_INVALIDOS:
             assert not re.match(patron, curp), f"CURP invalida no deberia pasar: {curp}"
 
     def test_curp_patron_basico(self):
         import re
+
         patron = r"^[A-Z]{4}\d{6}[HM][A-Z]{5}\d{2}$"
         for curp in self.CURPS_VALIDOS:
             assert re.match(patron, curp), f"CURP no coincide patron: {curp}"

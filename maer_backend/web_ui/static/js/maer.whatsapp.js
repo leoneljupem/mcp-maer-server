@@ -224,6 +224,66 @@ MAER.whatsapp = {
     document.body.appendChild(ol);
   },
 
+  /* ── PALABRAS CLAVE IMSS ── */
+  KEYWORDS_IMSS: [
+    'imss','nss','curp','rfc','semanas','cotizadas','pensión','pension','jubilación',
+    'jubilacion','afore','clinica','clínica','expediente','resolución','resolucion',
+    'prestación','prestacion','incapacidad','invalidez','cesantía','cesantia',
+    'ndss','modalidad','sdg','dictamen','umf','hgz','derechohabiente','beneficiario',
+    'aportaciones','subcuenta','retiro','viudez','orfandad','guarderías','guarderias',
+    'subsidio','licencia','maternidad','paternidad','guarderia','derechos','vigencia',
+    'número de seguridad','numero de seguridad','semanas de cotización',
+  ],
+
+  /* ── FILTRAR MENSAJES RELACIONADOS CON IMSS ── */
+  filtrarIMSS() {
+    const el = document.getElementById('wa-busq-resultado');
+    if (!el) return;
+
+    if (!this.conversaciones.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px">Importa una conversación primero.</div>`;
+      return;
+    }
+
+    const resultados = [];
+    const kws = this.KEYWORDS_IMSS;
+
+    this.conversaciones.forEach(c => {
+      c.mensajes.forEach(m => {
+        const txt = m.texto.toLowerCase();
+        const matches = kws.filter(k => txt.includes(k));
+        if (matches.length) resultados.push({ conv: c.nombre, palabras: matches, ...m });
+      });
+    });
+
+    if (!resultados.length) {
+      el.innerHTML = `<div style="color:var(--muted);font-size:13px;padding:8px">No se encontraron mensajes relacionados con IMSS/pensión en los chats importados.</div>`;
+      return;
+    }
+
+    // Resumen de keywords encontradas
+    const resumenKw = {};
+    resultados.forEach(r => r.palabras.forEach(k => { resumenKw[k] = (resumenKw[k]||0)+1; }));
+    const topKw = Object.entries(resumenKw).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+    el.innerHTML = `
+      <div style="background:rgba(52,211,153,0.08);border:1px solid rgba(52,211,153,0.25);border-radius:8px;padding:10px;margin-bottom:10px">
+        <div style="font-size:12px;font-weight:600;color:#34d399;margin-bottom:6px">🏛️ ${resultados.length} mensajes con palabras clave IMSS</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">
+          ${topKw.map(([k,n])=>`<span style="background:var(--bg3);border:1px solid var(--border);padding:2px 8px;border-radius:12px;font-size:11px"><strong style="color:var(--accent)">${k}</strong> <span style="color:var(--muted)">${n}×</span></span>`).join('')}
+        </div>
+      </div>
+      ${resultados.slice(0,40).map(r => {
+        const kwRegex = new RegExp('(' + r.palabras.map(k=>k.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')).join('|') + ')', 'gi');
+        const textoHtml = this._esc(r.texto).replace(kwRegex, '<mark style="background:rgba(52,211,153,0.3);color:var(--text);padding:0 2px;border-radius:2px">$1</mark>');
+        return `<div style="background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px 10px;margin-bottom:5px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:3px">📱 ${this._esc(r.conv)} · ${this._esc(r.autor)} · ${this._esc(r.fecha)}</div>
+          <div style="font-size:12px;color:var(--text)">${textoHtml}</div>
+        </div>`;
+      }).join('')}
+      ${resultados.length > 40 ? `<div style="font-size:11px;color:var(--muted);padding:6px">... y ${resultados.length-40} mensajes más</div>` : ''}`;
+  },
+
   /* ── BÚSQUEDA EN MENSAJES ── */
   buscar() {
     const q = document.getElementById('wa-busq')?.value?.trim();

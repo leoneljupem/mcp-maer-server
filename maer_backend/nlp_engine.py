@@ -14,7 +14,6 @@ Complementa las regex existentes de CURP/RFC/INE.
 """
 
 import logging
-from typing import Optional
 
 logger = logging.getLogger("maer.nlp")
 
@@ -30,16 +29,18 @@ def _load_nlp():
 
     try:
         import spacy
+
         _nlp = spacy.load("es_core_news_md")
         _nlp_loaded = True
         logger.info("Modelo spaCy es_core_news_md cargado")
     except OSError:
         try:
             import spacy
+
             _nlp = spacy.load("es_core_news_sm")
             _nlp_loaded = True
             logger.info("Modelo spaCy es_core_news_sm cargado (fallback)")
-        except Exception:
+        except Exception as e:
             logger.warning("No se pudo cargar modelo spaCy para español")
             _nlp_loaded = True  # Evitar reintentos
             _nlp = None
@@ -157,11 +158,13 @@ def extract_key_phrases(text: str, max_phrases: int = 20) -> dict:
             clean = chunk.text.strip().lower()
             if clean not in seen and len(clean) > 2:
                 seen.add(clean)
-                chunks.append({
-                    "text": chunk.text.strip(),
-                    "root": chunk.root.text,
-                    "root_pos": chunk.root.pos_,
-                })
+                chunks.append(
+                    {
+                        "text": chunk.text.strip(),
+                        "root": chunk.root.text,
+                        "root_pos": chunk.root.pos_,
+                    }
+                )
                 if len(chunks) >= max_phrases:
                     break
 
@@ -193,10 +196,14 @@ def classify_document(text: str) -> dict:
 
     text_lower = text.lower()
 
-    if any(kw in text_lower for kw in ["curp", "rfc", "ine", "credencial", "nacimiento"]):
+    if any(
+        kw in text_lower for kw in ["curp", "rfc", "ine", "credencial", "nacimiento"]
+    ):
         doc_type = "identificacion"
         confidence = 0.8
-    elif any(kw in text_lower for kw in ["factura", "cfdi", "iva", "subtotal", "total"]):
+    elif any(
+        kw in text_lower for kw in ["factura", "cfdi", "iva", "subtotal", "total"]
+    ):
         doc_type = "factura"
         confidence = 0.8
     elif any(kw in text_lower for kw in ["contrato", "cláusula", "partes", "vigencia"]):

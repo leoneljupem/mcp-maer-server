@@ -2,9 +2,10 @@
 Tests — MAER Backend Python: todos los módulos del servidor
 Leonel Houssen Mojica — Ecatepec MX — 2026
 """
-import sys
-import os
+
 import json
+import os
+import sys
 from pathlib import Path
 
 import pytest
@@ -15,6 +16,7 @@ sys.path.insert(0, str(RAIZ))
 # ════════════════════════════════════════════════
 # EXISTENCIA DE ARCHIVOS PYTHON
 # ════════════════════════════════════════════════
+
 
 class TestExistenciaModulos:
     """Verifica que todos los módulos Python del backend existen."""
@@ -43,7 +45,8 @@ class TestExistenciaModulos:
 
     def test_modulos_no_vacios(self):
         vacios = [
-            m for m in self.MODULOS
+            m
+            for m in self.MODULOS
             if (RAIZ / m).exists() and (RAIZ / m).stat().st_size == 0
         ]
         assert not vacios, f"Módulos Python vacíos: {vacios}"
@@ -53,58 +56,78 @@ class TestExistenciaModulos:
 
     def test_requirements_tiene_dependencias_clave(self):
         reqs = (RAIZ / "requirements.txt").read_text()
-        for dep in ["fastapi", "uvicorn", "anthropic", "pytesseract",
-                    "Pillow", "pypdf", "python-dotenv"]:
-            assert dep.lower() in reqs.lower(), f"Dependencia '{dep}' faltante en requirements.txt"
+        for dep in [
+            "fastapi",
+            "uvicorn",
+            "anthropic",
+            "pytesseract",
+            "Pillow",
+            "pypdf",
+            "python-dotenv",
+        ]:
+            assert (
+                dep.lower() in reqs.lower()
+            ), f"Dependencia '{dep}' faltante en requirements.txt"
 
 
 # ════════════════════════════════════════════════
 # IMPORTACIÓN DE MÓDULOS LIGEROS
 # ════════════════════════════════════════════════
 
+
 class TestImportacionesLigeras:
     """Importa módulos que no requieren GPU ni modelos pesados."""
 
     def test_maer_backend_init_importa(self):
         import maer_backend
+
         assert maer_backend is not None
 
     def test_maer_files_importa(self):
         from maer_backend import maer_files
+
         assert maer_files is not None
 
     def test_ocr_engine_importa(self):
         from maer_backend import ocr_engine
+
         assert ocr_engine is not None
 
     def test_nlp_engine_importa(self):
         from maer_backend import nlp_engine
+
         assert nlp_engine is not None
 
     def test_table_extractor_importa(self):
         from maer_backend import table_extractor
+
         assert table_extractor is not None
 
     def test_maer_core_init_importa(self):
         from maer_backend import maer_core
+
         assert maer_core is not None
 
     def test_maer_core_analyzer_importa(self):
         from maer_backend.maer_core import analyzer
+
         assert analyzer is not None
 
     def test_maer_core_fixer_importa(self):
         from maer_backend.maer_core import fixer
+
         assert fixer is not None
 
     def test_maer_core_generator_importa(self):
         from maer_backend.maer_core import generator
+
         assert generator is not None
 
 
 # ════════════════════════════════════════════════
 # SINTAXIS PYTHON (compilación sin errores)
 # ════════════════════════════════════════════════
+
 
 class TestSintaxisPython:
     """Verifica que todos los archivos Python compilan sin errores de sintaxis."""
@@ -129,6 +152,7 @@ class TestSintaxisPython:
     @pytest.mark.parametrize("archivo", ARCHIVOS_PY)
     def test_compila_sin_errores(self, archivo):
         import py_compile
+
         ruta = str(RAIZ / archivo)
         try:
             py_compile.compile(ruta, doraise=True)
@@ -140,24 +164,30 @@ class TestSintaxisPython:
 # MÓDULO: maer_files.py — Funciones clave
 # ════════════════════════════════════════════════
 
+
 class TestMaerFiles:
     """Tests para maer_backend/maer_files.py — validación documental mexicana."""
 
     def test_importa(self):
         from maer_backend import maer_files
+
         assert maer_files is not None
 
     def test_tiene_funciones_principales(self):
-        from maer_backend import maer_files
+        pass
+
         # Al menos debe tener funciones de validación IMSS
         modulo_texto = (RAIZ / "maer_backend" / "maer_files.py").read_text()
         for fn in ["curp", "nss", "rfc", "imss"]:
-            assert fn.lower() in modulo_texto.lower(), \
-                f"maer_files.py debería referenciar '{fn}'"
+            assert (
+                fn.lower() in modulo_texto.lower()
+            ), f"maer_files.py debería referenciar '{fn}'"
 
     def test_no_tiene_escape_invalido(self):
         """Verifica que el bug del backslash inválido esté corregido (línea 1342)."""
-        import py_compile, warnings
+        import py_compile
+        import warnings
+
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("always")
             ruta = str(RAIZ / "maer_backend" / "maer_files.py")
@@ -170,24 +200,29 @@ class TestMaerFiles:
 # MÓDULO: ocr_engine.py — Cache y funciones
 # ════════════════════════════════════════════════
 
+
 class TestOcrEngine:
     """Tests para maer_backend/ocr_engine.py."""
 
     def test_funciones_cache_existen(self):
         from maer_backend import ocr_engine
+
         assert hasattr(ocr_engine, "_load_cache"), "_load_cache debe existir"
         assert hasattr(ocr_engine, "_save_cache"), "_save_cache debe existir"
 
     def test_cache_variable_global(self):
         from maer_backend import ocr_engine
+
         assert hasattr(ocr_engine, "_ocr_cache")
 
     def test_load_cache_archivo_inexistente(self, tmp_path):
         from maer_backend.ocr_engine import _load_cache
+
         _load_cache(str(tmp_path / "no_existe.json"))  # No debe lanzar excepción
 
     def test_save_y_load_cache(self, tmp_path):
         from maer_backend import ocr_engine
+
         cache_path = str(tmp_path / "cache_test.json")
         ocr_engine._ocr_cache = {"hash_test": "texto_test"}
         ocr_engine._cache_loaded = True
@@ -199,6 +234,7 @@ class TestOcrEngine:
 
     def test_load_cache_json_invalido(self, tmp_path):
         from maer_backend.ocr_engine import _load_cache
+
         bad = tmp_path / "bad.json"
         bad.write_text("{malformed:::}")
         _load_cache(str(bad))  # No debe lanzar excepción
@@ -212,6 +248,7 @@ class TestOcrEngine:
 # MÓDULO: web_ui/server.py — Estructura FastAPI
 # ════════════════════════════════════════════════
 
+
 class TestWebUiServer:
     """Tests para maer_backend/web_ui/server.py."""
 
@@ -224,7 +261,11 @@ class TestWebUiServer:
 
     def test_server_py_tiene_endpoint_salud(self):
         contenido = (RAIZ / "maer_backend" / "web_ui" / "server.py").read_text()
-        assert "/health" in contenido or "/status" in contenido or "ping" in contenido.lower()
+        assert (
+            "/health" in contenido
+            or "/status" in contenido
+            or "ping" in contenido.lower()
+        )
 
     def test_server_py_monta_archivos_estaticos(self):
         contenido = (RAIZ / "maer_backend" / "web_ui" / "server.py").read_text()
@@ -241,11 +282,13 @@ class TestWebUiServer:
 # MÓDULO: nlp_engine.py
 # ════════════════════════════════════════════════
 
+
 class TestNlpEngine:
     """Tests para maer_backend/nlp_engine.py."""
 
     def test_importa(self):
         from maer_backend import nlp_engine
+
         assert nlp_engine is not None
 
     def test_tiene_funciones_nlp(self):
@@ -255,6 +298,7 @@ class TestNlpEngine:
 
     def test_no_errores_sintaxis(self):
         import py_compile
+
         py_compile.compile(str(RAIZ / "maer_backend" / "nlp_engine.py"), doraise=True)
 
 
@@ -262,11 +306,13 @@ class TestNlpEngine:
 # MÓDULO: table_extractor.py
 # ════════════════════════════════════════════════
 
+
 class TestTableExtractor:
     """Tests para maer_backend/table_extractor.py."""
 
     def test_importa(self):
         from maer_backend import table_extractor
+
         assert table_extractor is not None
 
     def test_tiene_funciones_extraccion(self):
@@ -274,12 +320,15 @@ class TestTableExtractor:
         for keyword in ["table", "extract", "pdf", "excel"]:
             if keyword.lower() in contenido.lower():
                 return  # Basta con que tenga al menos uno
-        pytest.fail("table_extractor.py debe referenciar tablas, extracción, PDF o Excel")
+        pytest.fail(
+            "table_extractor.py debe referenciar tablas, extracción, PDF o Excel"
+        )
 
 
 # ════════════════════════════════════════════════
 # MÓDULO: maer_core/ — Analyzer, Fixer, Generator
 # ════════════════════════════════════════════════
+
 
 class TestMaerCore:
     """Tests para el paquete maer_backend/maer_core."""
@@ -305,6 +354,7 @@ class TestMaerCore:
 # ════════════════════════════════════════════════
 # CONFIGURACIÓN: .env y variables de entorno
 # ════════════════════════════════════════════════
+
 
 class TestConfiguracion:
     """Tests de configuración del proyecto."""
@@ -333,6 +383,7 @@ class TestConfiguracion:
 # ════════════════════════════════════════════════
 # SERVIDOR MCP (Node.js)
 # ════════════════════════════════════════════════
+
 
 class TestServidorMCP:
     """Tests para el servidor MCP (Node.js)."""
@@ -363,44 +414,68 @@ class TestServidorMCP:
 
     def test_index_mjs_importa_mcp_sdk(self):
         contenido = (RAIZ / "index.mjs").read_text()
-        assert "@modelcontextprotocol" in contenido or "modelcontextprotocol" in contenido
+        assert (
+            "@modelcontextprotocol" in contenido or "modelcontextprotocol" in contenido
+        )
 
 
 # ════════════════════════════════════════════════
 # ASSETS FRONTEND
 # ════════════════════════════════════════════════
 
+
 class TestAssetsFrontend:
     """Tests para assets del frontend (JS, CSS, HTML)."""
 
-    JS_DIR  = RAIZ / "maer_backend" / "web_ui" / "static" / "js"
+    JS_DIR = RAIZ / "maer_backend" / "web_ui" / "static" / "js"
     CSS_DIR = RAIZ / "maer_backend" / "web_ui" / "static" / "css"
 
     MODULOS_JS_REQUERIDOS = [
-        "maer.core.js", "maer.diccionario.js", "maer.voz.js", "maer.chat.js",
-        "maer.aprendizaje.js", "maer.archivos.js", "maer.busqueda.js",
-        "maer.organizar.js", "maer.imagenes.js", "maer.pension.js",
-        "maer.timeline.js", "maer.recordatorios.js", "maer.cartas-historial.js",
-        "maer.sugerencias.js", "maer.atajos.js", "maer.etiquetas.js",
-        "maer.compacto.js", "maer.resumen.js", "maer.qr.js", "maer.stats.js",
-        "maer.poder.js", "maer.diagnostico.js", "maer.sinavid.js",
-        "maer.tareas.js", "maer.memoria.js", "maer.sistema.js",
-        "maer.guardian.js", "maer.whatsapp.js", "maer.notificaciones.js",
-        "maer.exportar.js", "maer.ajustes.js", "maer.test.js",
+        "maer.core.js",
+        "maer.diccionario.js",
+        "maer.voz.js",
+        "maer.chat.js",
+        "maer.aprendizaje.js",
+        "maer.archivos.js",
+        "maer.busqueda.js",
+        "maer.organizar.js",
+        "maer.imagenes.js",
+        "maer.pension.js",
+        "maer.timeline.js",
+        "maer.recordatorios.js",
+        "maer.cartas-historial.js",
+        "maer.sugerencias.js",
+        "maer.atajos.js",
+        "maer.etiquetas.js",
+        "maer.compacto.js",
+        "maer.resumen.js",
+        "maer.qr.js",
+        "maer.stats.js",
+        "maer.poder.js",
+        "maer.diagnostico.js",
+        "maer.sinavid.js",
+        "maer.tareas.js",
+        "maer.memoria.js",
+        "maer.sistema.js",
+        "maer.guardian.js",
+        "maer.whatsapp.js",
+        "maer.notificaciones.js",
+        "maer.exportar.js",
+        "maer.ajustes.js",
+        "maer.test.js",
     ]
 
     def test_todos_los_js_existen(self):
         faltantes = [
-            m for m in self.MODULOS_JS_REQUERIDOS
-            if not (self.JS_DIR / m).exists()
+            m for m in self.MODULOS_JS_REQUERIDOS if not (self.JS_DIR / m).exists()
         ]
         assert not faltantes, f"Archivos JS faltantes: {faltantes}"
 
     def test_todos_los_js_no_vacios(self):
         vacios = [
-            m for m in self.MODULOS_JS_REQUERIDOS
-            if (self.JS_DIR / m).exists()
-            and (self.JS_DIR / m).stat().st_size < 50
+            m
+            for m in self.MODULOS_JS_REQUERIDOS
+            if (self.JS_DIR / m).exists() and (self.JS_DIR / m).stat().st_size < 50
         ]
         assert not vacios, f"Archivos JS vacíos: {vacios}"
 
@@ -416,21 +491,33 @@ class TestAssetsFrontend:
 
     def test_todos_los_js_cargados_en_html(self):
         html = (RAIZ / "maer_backend" / "web_ui" / "static" / "index.html").read_text()
-        no_cargados = [
-            m for m in self.MODULOS_JS_REQUERIDOS
-            if m not in html
-        ]
+        no_cargados = [m for m in self.MODULOS_JS_REQUERIDOS if m not in html]
         assert not no_cargados, f"Scripts no cargados en index.html: {no_cargados}"
 
     def test_guardian_registra_todos_los_modulos_clave(self):
         guardian = (self.JS_DIR / "maer.guardian.js").read_text()
-        for modulo in ["MAER.timeline", "MAER.recordatorios", "MAER.cartasHistorial",
-                       "MAER.sugerencias", "MAER.atajos", "MAER.etiquetas"]:
+        for modulo in [
+            "MAER.timeline",
+            "MAER.recordatorios",
+            "MAER.cartasHistorial",
+            "MAER.sugerencias",
+            "MAER.atajos",
+            "MAER.etiquetas",
+        ]:
             assert modulo in guardian, f"Guardian no registra '{modulo}'"
 
     def test_core_inicializa_todos_los_modulos(self):
         core = (self.JS_DIR / "maer.core.js").read_text()
-        for llamada in ["timeline.init()", "recordatorios.init()", "cartasHistorial.init()",
-                        "sugerencias.init()", "atajos.init()", "etiquetas.init()",
-                        "compacto.init()", "resumen.init()", "qr.init()", "stats.init()"]:
+        for llamada in [
+            "timeline.init()",
+            "recordatorios.init()",
+            "cartasHistorial.init()",
+            "sugerencias.init()",
+            "atajos.init()",
+            "etiquetas.init()",
+            "compacto.init()",
+            "resumen.init()",
+            "qr.init()",
+            "stats.init()",
+        ]:
             assert llamada in core, f"maer.core.js no llama '{llamada}'"

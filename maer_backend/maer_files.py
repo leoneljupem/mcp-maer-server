@@ -2,14 +2,14 @@
 # 🦁 MAER FILES BACKEND v2.0 — Motor de análisis documental multimodal
 # Leonel Mojica — Ecatepec MX — 2026
 
-import os
-import sys
-import json
-import re
-import logging
 import hashlib
-from pathlib import Path
+import json
+import logging
+import os
+import re
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Asegurar que el directorio padre está en sys.path para imports de maer_backend.*
 _THIS_DIR = Path(__file__).parent.resolve()
@@ -29,6 +29,7 @@ logger = logging.getLogger("maer")
 # ── Cargar .env si existe ──
 try:
     from dotenv import load_dotenv
+
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
@@ -36,26 +37,52 @@ try:
 except ImportError:
     pass
 
-# ── Imports base ──
-from pypdf import PdfReader
+import requests
 from docx import Document
 from PIL import Image
-import requests
+# ── Imports base ──
+from pypdf import PdfReader
 
 # ── Config ──
-API_CURP_URL = os.environ.get("API_CURP_URL", "https://api-curp-renapo.ejemplo.com/curp")
+API_CURP_URL = os.environ.get(
+    "API_CURP_URL", "https://api-curp-renapo.ejemplo.com/curp"
+)
 API_CURP_TOKEN = os.environ.get("API_CURP_TOKEN", "")
 MAER_OCR_ENGINE = os.environ.get("MAER_OCR_ENGINE", "auto")
 
 TEXT_EXTS = {
-    ".txt", ".md", ".log",
-    ".py", ".js", ".mjs", ".ts", ".mts", ".jsx", ".tsx",
-    ".html", ".htm", ".css",
-    ".json", ".yml", ".yaml", ".xml",
-    ".c", ".cpp", ".h", ".hpp",
-    ".java", ".php", ".rb", ".go", ".rs",
-    ".sh", ".bash", ".zsh",
-    ".sql", ".csv", ".tsv",
+    ".txt",
+    ".md",
+    ".log",
+    ".py",
+    ".js",
+    ".mjs",
+    ".ts",
+    ".mts",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".htm",
+    ".css",
+    ".json",
+    ".yml",
+    ".yaml",
+    ".xml",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".java",
+    ".php",
+    ".rb",
+    ".go",
+    ".rs",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".sql",
+    ".csv",
+    ".tsv",
 }
 
 DOC_EXTS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"}
@@ -64,8 +91,10 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"}
 
 # ── Directorios excluidos de indexación ──
 EXCLUDED_DIRS = set(
-    os.environ.get("MAER_EXCLUDED_DIRS",
-                   ".git,.svn,.hg,node_modules,__pycache__,.venv,venv,.ssh,.gnupg,.aws,.config,.Trash,Library").split(",")
+    os.environ.get(
+        "MAER_EXCLUDED_DIRS",
+        ".git,.svn,.hg,node_modules,__pycache__,.venv,venv,.ssh,.gnupg,.aws,.config,.Trash,Library",
+    ).split(",")
 )
 
 EXCLUDED_EXTS = {".key", ".pem", ".p12", ".pfx", ".keystore", ".DS_Store"}
@@ -74,6 +103,7 @@ EXCLUDED_EXTS = {".key", ".pem", ".p12", ".pfx", ".keystore", ".DS_Store"}
 # ═══════════════════════════════════════════════════════════
 # Respuesta uniforme
 # ═══════════════════════════════════════════════════════════
+
 
 def make_response(ok: bool, code: str, message: str, data: dict = None) -> dict:
     """Esquema de respuesta uniforme para TODAS las acciones."""
@@ -118,8 +148,8 @@ RFC_REGEX = re.compile(
     r"\b"
     r"[A-ZÑ&]{3,4}"
     r"\d{2}"
-    r"(?:0[1-9]|1[0-2])"     # mes — grupo NO-capturante
-    r"(?:0[1-9]|[12]\d|3[01])" # día — grupo NO-capturante
+    r"(?:0[1-9]|1[0-2])"  # mes — grupo NO-capturante
+    r"(?:0[1-9]|[12]\d|3[01])"  # día — grupo NO-capturante
     r"[A-Z0-9]{3}"
     r"\b",
     re.IGNORECASE,
@@ -142,6 +172,7 @@ NSS_REGEX = re.compile(r"\b\d{11}\b")
 # ═══════════════════════════════════════════════════════════
 
 RFC_DIC = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ"
+
 
 def normalize_id(s: str) -> str:
     return s.strip().upper().replace("-", "").replace(" ", "")
@@ -182,6 +213,7 @@ def rfc_valido(rfc: str, aceptar_generico: bool = True):
 
 CURP_DIC = "0123456789ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
 
+
 def curp_valida(curp: str):
     """
     Valida una CURP. Retorna la CURP si el formato es correcto.
@@ -208,6 +240,7 @@ def curp_tronco(curp: str):
 # ═══════════════════════════════════════════════════════════
 # Utilidades
 # ═══════════════════════════════════════════════════════════
+
 
 def is_text_like(path: Path) -> bool:
     return path.suffix.lower() in TEXT_EXTS
@@ -250,10 +283,11 @@ def file_hash_sha256(path: Path) -> str:
 # Extracción de texto
 # ═══════════════════════════════════════════════════════════
 
+
 def _preprocesar_imagen_ocr(img_pil):
     """Preprocesa imagen para maximizar calidad OCR en documentos IMSS escaneados."""
-    import numpy as np
     import cv2
+    import numpy as np
 
     # Convertir a array numpy
     img_np = np.array(img_pil)
@@ -267,36 +301,37 @@ def _preprocesar_imagen_ocr(img_pil):
     # Deskew (corregir inclinación de escáner)
     try:
         from deskew import determine_skew
+
         angle = determine_skew(gray)
         if angle is not None and abs(angle) > 0.3:
             h, w = gray.shape
             M = cv2.getRotationMatrix2D((w / 2, h / 2), angle, 1.0)
-            gray = cv2.warpAffine(gray, M, (w, h),
-                                  flags=cv2.INTER_CUBIC,
-                                  borderMode=cv2.BORDER_REPLICATE)
-    except Exception:
+            gray = cv2.warpAffine(
+                gray, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
+            )
+    except Exception as e:
         pass  # Si falla deskew, continúa
 
     # Denoising suave (ideal para documentos IMSS con ruido de fax/escáner)
-    gray = cv2.fastNlMeansDenoising(gray, h=10, templateWindowSize=7, searchWindowSize=21)
+    gray = cv2.fastNlMeansDenoising(
+        gray, h=10, templateWindowSize=7, searchWindowSize=21
+    )
 
     # Umbralización adaptativa (mejor que global para documentos con iluminación irregular)
     thresh = cv2.adaptiveThreshold(
-        gray, 255,
-        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY,
-        blockSize=31,
-        C=11
+        gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, blockSize=31, C=11
     )
 
     # Escalar imagen si es muy pequeña (mejora Tesseract)
     h, w = thresh.shape
     if w < 1800:
         scale = 1800 / w
-        thresh = cv2.resize(thresh, (int(w * scale), int(h * scale)),
-                            interpolation=cv2.INTER_LANCZOS4)
+        thresh = cv2.resize(
+            thresh, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LANCZOS4
+        )
 
     from PIL import Image
+
     return Image.fromarray(thresh)
 
 
@@ -311,6 +346,7 @@ def _ocr_pdf_mejorado(path: Path, max_pages: int = 50, prefijo_texto: str = "") 
     # Intentar con PyMuPDF primero (más rápido y mejor calidad que pdf2image)
     try:
         import fitz  # PyMuPDF
+
         doc = fitz.open(str(path))
         total = min(len(doc), max_pages)
         for idx in range(total):
@@ -320,8 +356,10 @@ def _ocr_pdf_mejorado(path: Path, max_pages: int = 50, prefijo_texto: str = "") 
                 mat = fitz.Matrix(300 / 72, 300 / 72)
                 pix = page.get_pixmap(matrix=mat, colorspace=fitz.csGRAY)
                 img_data = pix.tobytes("png")
-                from PIL import Image
                 import io
+
+                from PIL import Image
+
                 img = Image.open(io.BytesIO(img_data))
                 img_proc = _preprocesar_imagen_ocr(img)
                 txt = pytesseract.image_to_string(img_proc, config=TESS_CONFIG)
@@ -355,7 +393,9 @@ def _ocr_pdf_mejorado(path: Path, max_pages: int = 50, prefijo_texto: str = "") 
     return prefijo_texto + "\n".join(ocr_text)
 
 
-def extract_text_from_pdf(path: Path, ocr_if_needed: bool = True, max_pages: int = 50) -> str:
+def extract_text_from_pdf(
+    path: Path, ocr_if_needed: bool = True, max_pages: int = 50
+) -> str:
     text_direct = ""
     try:
         reader = PdfReader(str(path))
@@ -363,7 +403,7 @@ def extract_text_from_pdf(path: Path, ocr_if_needed: bool = True, max_pages: int
         for i in range(num_pages):
             page = reader.pages[i]
             text_direct += page.extract_text() or ""
-    except Exception:
+    except Exception as e:
         text_direct = ""
 
     if text_direct and len(text_direct.strip()) > 100:
@@ -375,6 +415,7 @@ def extract_text_from_pdf(path: Path, ocr_if_needed: bool = True, max_pages: int
     # Usar motor OCR multimodal
     try:
         from maer_backend.ocr_engine import ocr_pdf
+
         result = ocr_pdf(path, engine=MAER_OCR_ENGINE, max_pages=max_pages)
         if result.get("ok"):
             return result["text"]
@@ -406,6 +447,7 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
     if ext in IMAGE_EXTS:
         try:
             from maer_backend.ocr_engine import ocr_image
+
             result = ocr_image(path, engine=MAER_OCR_ENGINE)
             if result.get("ok"):
                 return result["text"]
@@ -414,9 +456,12 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
         # Fallback Tesseract mejorado con preprocesado
         try:
             import pytesseract
+
             img = Image.open(str(path))
             img_proc = _preprocesar_imagen_ocr(img)
-            return pytesseract.image_to_string(img_proc, config="--oem 3 --psm 6 -l spa+eng")
+            return pytesseract.image_to_string(
+                img_proc, config="--oem 3 --psm 6 -l spa+eng"
+            )
         except Exception as e:
             return f"[ERROR OCR IMAGEN: {e}]"
     if is_text_like(path):
@@ -427,6 +472,7 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
 # ═══════════════════════════════════════════════════════════
 # Detección de IDs
 # ═══════════════════════════════════════════════════════════
+
 
 def detect_ids_in_text(text: str):
     curp_candidates = set(m.group(0).upper() for m in CURP_REGEX_SEARCH.finditer(text))
@@ -477,6 +523,7 @@ def extract_related_info(text: str):
 # Acciones (todas con respuesta uniforme)
 # ═══════════════════════════════════════════════════════════
 
+
 def action_search_files(payload: dict):
     base_dir = Path(payload.get("base_dir") or str(Path.home()))
     query = str(payload.get("query") or "").strip()
@@ -506,14 +553,23 @@ def action_search_files(payload: dict):
         elif mode == "content" and content_match:
             results.append({"path": str(path), "match": "content"})
         elif mode == "both" and (name_match or content_match):
-            results.append({
-                "path": str(path),
-                "match": "name+content" if (name_match and content_match) else ("name" if name_match else "content"),
-            })
+            results.append(
+                {
+                    "path": str(path),
+                    "match": (
+                        "name+content"
+                        if (name_match and content_match)
+                        else ("name" if name_match else "content")
+                    ),
+                }
+            )
 
-    return make_response(True, "SEARCH_OK", f"{len(results)} resultados encontrados", {
-        "query": query, "base_dir": str(base_dir), "mode": mode, "results": results
-    })
+    return make_response(
+        True,
+        "SEARCH_OK",
+        f"{len(results)} resultados encontrados",
+        {"query": query, "base_dir": str(base_dir), "mode": mode, "results": results},
+    )
 
 
 def action_analyze_file(payload: dict):
@@ -540,14 +596,16 @@ def action_analyze_file(payload: dict):
             info["width"] = img.width
             info["height"] = img.height
             info["image_mode"] = img.mode
-        except Exception:
+        except Exception as e:
             pass
         info["preview"] = "[ARCHIVO IMAGEN]"
     else:
         info["preview"] = "[ARCHIVO NO TEXTO]"
         info["line_count"] = None
 
-    return make_response(True, "ANALYZE_OK", f"Análisis completo: {path.name}", {"info": info})
+    return make_response(
+        True, "ANALYZE_OK", f"Análisis completo: {path.name}", {"info": info}
+    )
 
 
 def action_fix_code_file(payload: dict):
@@ -557,7 +615,9 @@ def action_fix_code_file(payload: dict):
     if not path.exists():
         return make_response(False, "FILE_NOT_FOUND", f"Archivo no existe: {path}")
     if not is_text_like(path):
-        return make_response(False, "NOT_TEXT_FILE", "Solo se corrigen archivos de texto/código")
+        return make_response(
+            False, "NOT_TEXT_FILE", "Solo se corrigen archivos de texto/código"
+        )
 
     text = safe_read_text(path)
     original = text
@@ -569,9 +629,12 @@ def action_fix_code_file(payload: dict):
         return make_response(False, "UNSUPPORTED_MODE", f"Modo no soportado: {mode}")
 
     if fixed_text == original:
-        return make_response(True, "FIX_NO_CHANGE", "No hubo cambios", {
-            "changed": False, "path": str(path)
-        })
+        return make_response(
+            True,
+            "FIX_NO_CHANGE",
+            "No hubo cambios",
+            {"changed": False, "path": str(path)},
+        )
 
     backup_path = path.with_suffix(path.suffix + ".maer.bak")
     try:
@@ -580,10 +643,17 @@ def action_fix_code_file(payload: dict):
     except Exception as e:
         return make_response(False, "FIX_ERROR", f"Error escribiendo archivo: {e}")
 
-    return make_response(True, "FIX_OK", "Archivo corregido correctamente", {
-        "changed": True, "path": str(path), "backup": str(backup_path),
-        "details": f"Se quitaron espacios finales de cada línea. Backup en {backup_path}",
-    })
+    return make_response(
+        True,
+        "FIX_OK",
+        "Archivo corregido correctamente",
+        {
+            "changed": True,
+            "path": str(path),
+            "backup": str(backup_path),
+            "details": f"Se quitaron espacios finales de cada línea. Backup en {backup_path}",
+        },
+    )
 
 
 def action_extract_text(payload: dict):
@@ -600,10 +670,18 @@ def action_extract_text(payload: dict):
         text = text[:max_chars]
         truncated = True
 
-    return make_response(True, "EXTRACT_OK", f"Texto extraído: {len(text)} caracteres", {
-        "path": str(path), "ext": path.suffix.lower(), "length": len(text),
-        "truncated": truncated, "text": text
-    })
+    return make_response(
+        True,
+        "EXTRACT_OK",
+        f"Texto extraído: {len(text)} caracteres",
+        {
+            "path": str(path),
+            "ext": path.suffix.lower(),
+            "length": len(text),
+            "truncated": truncated,
+            "text": text,
+        },
+    )
 
 
 def action_index_full(payload: dict):
@@ -640,7 +718,7 @@ def action_index_full(payload: dict):
                 img = Image.open(str(path))
                 entry["width"] = img.width
                 entry["height"] = img.height
-            except Exception:
+            except Exception as e:
                 pass
         index_entries.append(entry)
         processed += 1
@@ -650,12 +728,21 @@ def action_index_full(payload: dict):
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(index_entries, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        return make_response(False, "INDEX_WRITE_ERROR", f"Error escribiendo índice: {e}")
+        return make_response(
+            False, "INDEX_WRITE_ERROR", f"Error escribiendo índice: {e}"
+        )
 
-    return make_response(True, "INDEX_OK", f"Indexación completa: {processed} archivos", {
-        "base_dir": str(base_dir), "out_file": str(out_file),
-        "processed": processed, "errors": errors,
-    })
+    return make_response(
+        True,
+        "INDEX_OK",
+        f"Indexación completa: {processed} archivos",
+        {
+            "base_dir": str(base_dir),
+            "out_file": str(out_file),
+            "processed": processed,
+            "errors": errors,
+        },
+    )
 
 
 def action_search_index(payload: dict):
@@ -666,12 +753,16 @@ def action_search_index(payload: dict):
 
     if not index_file:
         if not base_dir:
-            return make_response(False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'")
+            return make_response(
+                False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'"
+            )
         index_file = str(Path(base_dir) / "maer_index.json")
 
     idx_path = Path(index_file)
     if not idx_path.exists():
-        return make_response(False, "INDEX_NOT_FOUND", f"Índice JSON no existe: {idx_path}")
+        return make_response(
+            False, "INDEX_NOT_FOUND", f"Índice JSON no existe: {idx_path}"
+        )
     if not query:
         return make_response(False, "SEARCH_EMPTY", "Query vacío")
 
@@ -688,16 +779,25 @@ def action_search_index(payload: dict):
             break
         snippet = str(entry.get("snippet") or "")
         if q_lower in snippet.lower() or q_lower in str(entry.get("path", "")).lower():
-            results.append({
-                "path": entry.get("path"),
-                "ext": entry.get("ext"),
-                "size_bytes": entry.get("size_bytes"),
-                "snippet_preview": snippet[:300],
-            })
+            results.append(
+                {
+                    "path": entry.get("path"),
+                    "ext": entry.get("ext"),
+                    "size_bytes": entry.get("size_bytes"),
+                    "snippet_preview": snippet[:300],
+                }
+            )
 
-    return make_response(True, "SEARCH_INDEX_OK", f"{len(results)} resultados en índice", {
-        "query": query, "index_file": str(idx_path), "results": results,
-    })
+    return make_response(
+        True,
+        "SEARCH_INDEX_OK",
+        f"{len(results)} resultados en índice",
+        {
+            "query": query,
+            "index_file": str(idx_path),
+            "results": results,
+        },
+    )
 
 
 def action_detect_ids(payload: dict):
@@ -711,9 +811,17 @@ def action_detect_ids(payload: dict):
         text = extract_text_generic(path, use_ocr_for_pdf=ocr_for_pdf)
         ids = detect_ids_in_text(text)
         related = extract_related_info(text)
-        return make_response(True, "DETECT_IDS_OK", "IDs detectados en archivo", {
-            "mode": "file", "path": str(path), "ids": ids, "related": related,
-        })
+        return make_response(
+            True,
+            "DETECT_IDS_OK",
+            "IDs detectados en archivo",
+            {
+                "mode": "file",
+                "path": str(path),
+                "ids": ids,
+                "related": related,
+            },
+        )
 
     elif mode == "index":
         index_file = payload.get("index_file")
@@ -722,37 +830,58 @@ def action_detect_ids(payload: dict):
 
         if not index_file:
             if not base_dir:
-                return make_response(False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir' en modo index")
+                return make_response(
+                    False,
+                    "MISSING_PARAMS",
+                    "Debe proporcionar 'index_file' o 'base_dir' en modo index",
+                )
             index_file = str(Path(base_dir) / "maer_index.json")
 
         idx_path = Path(index_file)
         if not idx_path.exists():
-            return make_response(False, "INDEX_NOT_FOUND", f"Índice no existe: {idx_path}")
+            return make_response(
+                False, "INDEX_NOT_FOUND", f"Índice no existe: {idx_path}"
+            )
 
         try:
             with open(idx_path, "r", encoding="utf-8") as f:
                 entries = json.load(f)
         except Exception as e:
-            return make_response(False, "INDEX_READ_ERROR", f"Error leyendo índice: {e}")
+            return make_response(
+                False, "INDEX_READ_ERROR", f"Error leyendo índice: {e}"
+            )
 
         found = []
         for entry in entries[:max_entries]:
             snippet = str(entry.get("snippet") or "")
             ids = detect_ids_in_text(snippet)
-            if ids["curp_validas"] or ids["curp_invalidas"] or ids["rfc_validos"] or ids["ine_clave"]:
+            if (
+                ids["curp_validas"]
+                or ids["curp_invalidas"]
+                or ids["rfc_validos"]
+                or ids["ine_clave"]
+            ):
                 related = extract_related_info(snippet)
-                found.append({
-                    "path": entry.get("path"),
-                    "ext": entry.get("ext"),
-                    "ids": ids,
-                    "related": related,
-                })
+                found.append(
+                    {
+                        "path": entry.get("path"),
+                        "ext": entry.get("ext"),
+                        "ids": ids,
+                        "related": related,
+                    }
+                )
 
-        return make_response(True, "DETECT_IDS_INDEX_OK",
-                           f"{len(found)} archivos con IDs detectados", {
-            "mode": "index", "index_file": str(idx_path),
-            "checked_entries": min(len(entries), max_entries), "matches": found,
-        })
+        return make_response(
+            True,
+            "DETECT_IDS_INDEX_OK",
+            f"{len(found)} archivos con IDs detectados",
+            {
+                "mode": "index",
+                "index_file": str(idx_path),
+                "checked_entries": min(len(entries), max_entries),
+                "matches": found,
+            },
+        )
     else:
         return make_response(False, "UNSUPPORTED_MODE", f"Modo no soportado: {mode}")
 
@@ -780,7 +909,9 @@ def action_detect_related(payload: dict):
 
     if not index_file:
         if not base_dir:
-            return make_response(False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'")
+            return make_response(
+                False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'"
+            )
         index_file = str(Path(base_dir) / "maer_index.json")
 
     idx_path = Path(index_file)
@@ -798,20 +929,27 @@ def action_detect_related(payload: dict):
         snippet = str(entry.get("snippet") or "")
         if id_value in snippet.replace(" ", "").upper() or id_value in snippet.upper():
             related = extract_related_info(snippet)
-            matches.append({
-                "path": entry.get("path"),
-                "ext": entry.get("ext"),
-                "snippet_preview": snippet[:300],
-                "related": related,
-            })
+            matches.append(
+                {
+                    "path": entry.get("path"),
+                    "ext": entry.get("ext"),
+                    "snippet_preview": snippet[:300],
+                    "related": related,
+                }
+            )
 
-    return make_response(True, "DETECT_RELATED_OK",
-                       f"{len(matches)} archivos con {id_type}", {
-        "id_value": id_value, "id_type": id_type,
-        "index_file": str(idx_path),
-        "checked_entries": min(len(entries), max_entries),
-        "matches": matches,
-    })
+    return make_response(
+        True,
+        "DETECT_RELATED_OK",
+        f"{len(matches)} archivos con {id_type}",
+        {
+            "id_value": id_value,
+            "id_type": id_type,
+            "index_file": str(idx_path),
+            "checked_entries": min(len(entries), max_entries),
+            "matches": matches,
+        },
+    )
 
 
 def action_curp_renapo_check(payload: dict):
@@ -821,9 +959,16 @@ def action_curp_renapo_check(payload: dict):
 
     curp = normalize_id(curp)
     if not curp_valida(curp):
-        return make_response(False, "INVALID_CURP", "La CURP no pasa validación local", {
-            "curp": curp, "source": "local", "status": "INVALID_LOCAL",
-        })
+        return make_response(
+            False,
+            "INVALID_CURP",
+            "La CURP no pasa validación local",
+            {
+                "curp": curp,
+                "source": "local",
+                "status": "INVALID_LOCAL",
+            },
+        )
 
     headers = {"Accept": "application/json"}
     if API_CURP_TOKEN:
@@ -831,31 +976,55 @@ def action_curp_renapo_check(payload: dict):
 
     try:
         resp = requests.get(
-            API_CURP_URL, params={"curp": curp},
-            headers=headers, timeout=10,
+            API_CURP_URL,
+            params={"curp": curp},
+            headers=headers,
+            timeout=10,
         )
     except Exception as e:
-        return make_response(False, "API_ERROR", f"Error al llamar API CURP: {e}", {
-            "curp": curp, "source": "remote", "status": "ERROR",
-        })
+        return make_response(
+            False,
+            "API_ERROR",
+            f"Error al llamar API CURP: {e}",
+            {
+                "curp": curp,
+                "source": "remote",
+                "status": "ERROR",
+            },
+        )
 
     try:
         data = resp.json()
-    except Exception:
-        return make_response(False, "API_PARSE_ERROR", "Respuesta no JSON", {
-            "curp": curp, "source": "remote", "raw": resp.text[:500],
-        })
+    except Exception as e:
+        return make_response(
+            False,
+            "API_PARSE_ERROR",
+            "Respuesta no JSON",
+            {
+                "curp": curp,
+                "source": "remote",
+                "raw": resp.text[:500],
+            },
+        )
 
     status = data.get("status") or ("VALID" if data.get("success") else "INVALID")
-    return make_response(bool(data.get("success", False)), "RENAPO_CHECK_OK",
-                       f"CURP verificada: {status}", {
-        "curp": curp, "source": "remote", "status": status, "raw": data,
-    })
+    return make_response(
+        bool(data.get("success", False)),
+        "RENAPO_CHECK_OK",
+        f"CURP verificada: {status}",
+        {
+            "curp": curp,
+            "source": "remote",
+            "status": status,
+            "raw": data,
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════
 # Nuevas acciones multimodales
 # ═══════════════════════════════════════════════════════════
+
 
 def action_ocr_multimodal(payload: dict):
     """OCR con selección de motor."""
@@ -868,19 +1037,26 @@ def action_ocr_multimodal(payload: dict):
 
     ext = path.suffix.lower()
     try:
-        from maer_backend.ocr_engine import ocr_pdf, ocr_image
+        from maer_backend.ocr_engine import ocr_image, ocr_pdf
+
         if ext == ".pdf":
             result = ocr_pdf(path, engine=engine, use_cache=use_cache)
         elif ext in IMAGE_EXTS:
             result = ocr_image(path, engine=engine, use_cache=use_cache)
         else:
-            return make_response(False, "UNSUPPORTED_TYPE",
-                               f"OCR no soportado para: {ext}")
+            return make_response(
+                False, "UNSUPPORTED_TYPE", f"OCR no soportado para: {ext}"
+            )
 
-        return make_response(result.get("ok", False), "OCR_OK", "OCR completado", result)
+        return make_response(
+            result.get("ok", False), "OCR_OK", "OCR completado", result
+        )
     except ImportError:
-        return make_response(False, "OCR_ENGINE_MISSING",
-                           "Motor OCR no disponible. Verifica instalación.")
+        return make_response(
+            False,
+            "OCR_ENGINE_MISSING",
+            "Motor OCR no disponible. Verifica instalación.",
+        )
 
 
 def action_extract_tables(payload: dict):
@@ -891,9 +1067,16 @@ def action_extract_tables(payload: dict):
 
     try:
         from maer_backend.table_extractor import extract_tables_from_pdf
-        result = extract_tables_from_pdf(path, max_pages=int(payload.get("max_pages") or 50))
-        return make_response(result.get("ok", False), "TABLES_OK",
-                           f"{result.get('total_tables', 0)} tablas encontradas", result)
+
+        result = extract_tables_from_pdf(
+            path, max_pages=int(payload.get("max_pages") or 50)
+        )
+        return make_response(
+            result.get("ok", False),
+            "TABLES_OK",
+            f"{result.get('total_tables', 0)} tablas encontradas",
+            result,
+        )
     except ImportError:
         return make_response(False, "PDFPLUMBER_MISSING", "pdfplumber no instalado")
 
@@ -912,12 +1095,19 @@ def action_nlp_entities(payload: dict):
         return make_response(False, "EMPTY_TEXT", "Texto vacío para NLP")
 
     try:
-        from maer_backend.nlp_engine import extract_entities, classify_document
+        from maer_backend.nlp_engine import classify_document, extract_entities
+
         entities = extract_entities(text)
         classification = classify_document(text)
-        return make_response(True, "NLP_OK", "Entidades extraídas", {
-            "entities": entities, "classification": classification,
-        })
+        return make_response(
+            True,
+            "NLP_OK",
+            "Entidades extraídas",
+            {
+                "entities": entities,
+                "classification": classification,
+            },
+        )
     except ImportError:
         return make_response(False, "SPACY_MISSING", "spaCy no instalado")
 
@@ -929,13 +1119,20 @@ def action_image_duplicates(payload: dict):
     max_files = int(payload.get("max_files") or 1000)
 
     if not base_dir.exists():
-        return make_response(False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}")
+        return make_response(
+            False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}"
+        )
 
     try:
         from maer_backend.image_analyzer import find_duplicates
+
         result = find_duplicates(base_dir, threshold=threshold, max_files=max_files)
-        return make_response(result.get("ok", False), "DUPLICATES_OK",
-                           f"{result.get('total_groups', 0)} grupos de duplicados", result)
+        return make_response(
+            result.get("ok", False),
+            "DUPLICATES_OK",
+            f"{result.get('total_groups', 0)} grupos de duplicados",
+            result,
+        )
     except ImportError:
         return make_response(False, "IMAGEHASH_MISSING", "imagehash no instalado")
 
@@ -951,9 +1148,14 @@ def action_face_detect(payload: dict):
             return make_response(False, "FILE_NOT_FOUND", f"Archivo no existe: {p}")
         try:
             from maer_backend.image_analyzer import detect_faces
+
             result = detect_faces(p)
-            return make_response(result.get("ok", False), "FACES_OK",
-                               f"{result.get('total_faces', 0)} rostros detectados", result)
+            return make_response(
+                result.get("ok", False),
+                "FACES_OK",
+                f"{result.get('total_faces', 0)} rostros detectados",
+                result,
+            )
         except ImportError:
             return make_response(False, "DEEPFACE_MISSING", "DeepFace no instalado")
 
@@ -963,9 +1165,16 @@ def action_face_detect(payload: dict):
             return make_response(False, "DIR_NOT_FOUND", f"Directorio no existe: {bd}")
         try:
             from maer_backend.image_analyzer import find_and_group_faces
-            result = find_and_group_faces(bd, max_files=int(payload.get("max_files") or 200))
-            return make_response(result.get("ok", False), "FACES_GROUP_OK",
-                               f"{result.get('total_groups', 0)} grupos de rostros", result)
+
+            result = find_and_group_faces(
+                bd, max_files=int(payload.get("max_files") or 200)
+            )
+            return make_response(
+                result.get("ok", False),
+                "FACES_GROUP_OK",
+                f"{result.get('total_groups', 0)} grupos de rostros",
+                result,
+            )
         except ImportError:
             return make_response(False, "DEEPFACE_MISSING", "DeepFace no instalado")
 
@@ -978,18 +1187,29 @@ def action_cluster_files(payload: dict):
     cluster_type = payload.get("type") or "images"  # images, text, all
 
     if not base_dir.exists():
-        return make_response(False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}")
+        return make_response(
+            False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}"
+        )
 
     if cluster_type == "images":
         try:
             from maer_backend.image_analyzer import cluster_images
-            result = cluster_images(base_dir, max_files=int(payload.get("max_files") or 500))
-            return make_response(result.get("ok", False), "CLUSTER_OK",
-                               f"{result.get('total_clusters', 0)} clusters de imágenes", result)
+
+            result = cluster_images(
+                base_dir, max_files=int(payload.get("max_files") or 500)
+            )
+            return make_response(
+                result.get("ok", False),
+                "CLUSTER_OK",
+                f"{result.get('total_clusters', 0)} clusters de imágenes",
+                result,
+            )
         except ImportError:
             return make_response(False, "SKLEARN_MISSING", "scikit-learn no instalado")
 
-    return make_response(False, "UNSUPPORTED_TYPE", f"Tipo de clustering no soportado: {cluster_type}")
+    return make_response(
+        False, "UNSUPPORTED_TYPE", f"Tipo de clustering no soportado: {cluster_type}"
+    )
 
 
 def action_llm_summarize(payload: dict):
@@ -1001,17 +1221,23 @@ def action_llm_summarize(payload: dict):
             text = extract_text_generic(p)
     if not text:
         return make_response(False, "EMPTY_TEXT", "Proporciona text o un path válido")
-        
+
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         res = engine.summarize_text(text)
-        return make_response(res.get("ok", False), "LLM_SUMMARIZE_OK" if res.get("ok") else "LLM_ERROR", 
-                             "Resumen generado" if res.get("ok") else res.get("error", ""), res)
+        return make_response(
+            res.get("ok", False),
+            "LLM_SUMMARIZE_OK" if res.get("ok") else "LLM_ERROR",
+            "Resumen generado" if res.get("ok") else res.get("error", ""),
+            res,
+        )
     except ImportError as e:
         return make_response(False, "LLM_MISSING", f"Librerías LLM no instaladas: {e}")
     except Exception as e:
         return make_response(False, "LLM_FAIL", str(e))
+
 
 def action_llm_extract_json(payload: dict):
     path = payload.get("path")
@@ -1023,85 +1249,168 @@ def action_llm_extract_json(payload: dict):
             text = extract_text_generic(p)
     if not text:
         return make_response(False, "EMPTY_TEXT", "Proporciona text o un path válido")
-        
+
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         res = engine.extract_structured_data(text, schema_desc)
-        return make_response(res.get("ok", False), "LLM_EXTRACT_OK" if res.get("ok") else "LLM_ERROR", 
-                             "Datos extraídos" if res.get("ok") else res.get("error", ""), res)
+        return make_response(
+            res.get("ok", False),
+            "LLM_EXTRACT_OK" if res.get("ok") else "LLM_ERROR",
+            "Datos extraídos" if res.get("ok") else res.get("error", ""),
+            res,
+        )
     except ImportError as e:
         return make_response(False, "LLM_MISSING", f"Librerías LLM no instaladas: {e}")
     except Exception as e:
         return make_response(False, "LLM_FAIL", str(e))
 
+
 def action_renapo_verify_identity(payload: dict):
     """Acción compuesta: OCR -> Detect IDs -> Verificación LLM"""
     path = payload.get("path")
     if not path or not Path(path).exists():
-        return make_response(False, "FILE_NOT_FOUND", "Archivo no proporcionado o no existe")
-        
+        return make_response(
+            False, "FILE_NOT_FOUND", "Archivo no proporcionado o no existe"
+        )
+
     # 1. Extraer texto
     p = Path(path)
     text = extract_text_generic(p)
     if not text.strip():
-        return make_response(False, "EMPTY_TEXT", "No se pudo extraer texto del archivo")
-        
+        return make_response(
+            False, "EMPTY_TEXT", "No se pudo extraer texto del archivo"
+        )
+
     # 2. Detectar IDs
     ids_info = detect_ids_in_text(text)
     curps = ids_info.get("curp_validas", [])
-    
+
     if not curps:
-        return make_response(False, "NO_CURP_FOUND", "No se encontraron CURPs válidas en el documento", {"text_preview": text[:200]})
-        
+        return make_response(
+            False,
+            "NO_CURP_FOUND",
+            "No se encontraron CURPs válidas en el documento",
+            {"text_preview": text[:200]},
+        )
+
     # 3. Validar la primera CURP con "Renapo"
     target_curp = curps[0]
     renapo_res = action_curp_renapo_check({"curp": target_curp})
     status = renapo_res.get("data", {}).get("status", "UNKNOWN")
-    
+
     # 4. Usar LLM para verificar correspondencia
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         schema = "Crea un JSON con: {'nombre_completo': '...', 'fecha_nacimiento': '...', 'es_curp_coherente_con_nombre': true o false}"
         llm_res = engine.extract_structured_data(text, schema)
-        
-        return make_response(True, "RENAPO_VERIFY_OK", "Verificación de identidad completada", {
-            "curp_analizada": target_curp,
-            "renapo_status": status,
-            "llm_analysis": llm_res.get("json", {}),
-            "otras_curps_encontradas": curps[1:]
-        })
+
+        return make_response(
+            True,
+            "RENAPO_VERIFY_OK",
+            "Verificación de identidad completada",
+            {
+                "curp_analizada": target_curp,
+                "renapo_status": status,
+                "llm_analysis": llm_res.get("json", {}),
+                "otras_curps_encontradas": curps[1:],
+            },
+        )
     except ImportError:
-        return make_response(True, "RENAPO_VERIFY_PARTIAL", "Verificación básica completada (sin LLM cruzado)", {
-            "curp_analizada": target_curp,
-            "renapo_status": status,
-            "llm_analysis": "Librería LLM no instalada"
-        })
+        return make_response(
+            True,
+            "RENAPO_VERIFY_PARTIAL",
+            "Verificación básica completada (sin LLM cruzado)",
+            {
+                "curp_analizada": target_curp,
+                "renapo_status": status,
+                "llm_analysis": "Librería LLM no instalada",
+            },
+        )
     except Exception as e:
-         return make_response(False, "RENAPO_VERIFY_FAIL", str(e))
+        return make_response(False, "RENAPO_VERIFY_FAIL", str(e))
 
 
 # ═══════════════════════════════════════════════════════════
 # Dispatcher
 # ═══════════════════════════════════════════════════════════
 
-def _llm_ollama(prompt: str, model: str = None) -> dict:
+_MAER_SYSTEM_PROMPT = (
+    "Eres MAER (Motor de Asistencia), un asistente inteligente y versátil. "
+    "Tu especialidad principal es ayudar con trámites de pensión del IMSS mexicano "
+    "(Ley 73, Ley 97, semanas cotizadas, AFORE, CURP, NSS, recursos de inconformidad, "
+    "modalidad 40, SINAVID, amparos), pero puedes responder con conocimiento experto "
+    "sobre CUALQUIER tema: historia, ciencia, tecnología, medicina, derecho, finanzas, "
+    "cultura general, idiomas, redacción y más. "
+    "Respondes siempre en español claro y directo. Eres amable y paciente."
+)
+
+
+def _llm_anthropic(
+    prompt: str, system: str = None, history: list = None, max_tokens: int = 2048
+) -> dict:
+    """
+    Claude API (Anthropic). Motor primario — responde sobre cualquier tema.
+    Requiere ANTHROPIC_API_KEY en .env.
+    Soporta historial de conversación: history=[{role, content}, ...]
+    """
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        raise ValueError("ANTHROPIC_API_KEY no configurada en .env")
+    try:
+        import anthropic
+    except ImportError:
+        raise ImportError("SDK anthropic no instalado — ejecuta: pip install anthropic")
+
+    model = os.environ.get("ANTHROPIC_MODEL", "claude-haiku-4-5-20251001")
+    client = anthropic.Anthropic(api_key=api_key)
+
+    messages = []
+    if history:
+        for msg in history:
+            role = msg.get("role", "user")
+            content = str(msg.get("content", ""))
+            if role in ("user", "assistant") and content:
+                messages.append({"role": role, "content": content})
+    messages.append({"role": "user", "content": prompt})
+
+    response = client.messages.create(
+        model=model,
+        max_tokens=max_tokens,
+        system=system or _MAER_SYSTEM_PROMPT,
+        messages=messages,
+    )
+    text = response.content[0].text
+    return {"ok": True, "text": text, "engine": f"claude/{model}"}
+
+
+def _llm_ollama(
+    prompt: str, model: str = None, system: str = None, timeout: int = 300
+) -> dict:
     """
     Usa Ollama local con detección automática de modelos instalados.
     Busca Ollama en rutas comunes de macOS/Linux/Windows y elige el
     mejor modelo disponible según preferencia automática.
     """
+    system = system or _MAER_SYSTEM_PROMPT
     try:
         # Importar el módulo de detección inteligente de Ollama
-        from maer_backend.maer_ollama import chat as ollama_chat, estado_completo
-        result = ollama_chat(prompt, model=model)
+        from maer_backend.maer_ollama import chat as ollama_chat
+
+        result = ollama_chat(prompt, model=model, system=system, timeout=timeout)
         return {"ok": True, "text": result["text"], "engine": result["engine"]}
     except ImportError:
         pass  # Fallback a método directo si no está disponible el módulo
 
     # Fallback: intento directo con detección básica
-    import urllib.request, json as _json, shutil, subprocess
+    import json as _json
+    import shutil
+    import subprocess
+    import urllib.request
+
     ollama_url = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
     # Si no está activo, intentar arrancarlo
@@ -1109,7 +1418,7 @@ def _llm_ollama(prompt: str, model: str = None) -> dict:
         try:
             urllib.request.urlopen(f"{ollama_url}/api/tags", timeout=3)
             return True
-        except Exception:
+        except Exception as e:
             return False
 
     if not _activo():
@@ -1121,10 +1430,15 @@ def _llm_ollama(prompt: str, model: str = None) -> dict:
             "/Applications/Ollama.app/Contents/MacOS/ollama",
         ]:
             if ruta and Path(ruta).exists():
-                subprocess.Popen([ruta, "serve"],
-                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                    start_new_session=True)
-                import time; time.sleep(3)
+                subprocess.Popen(
+                    [ruta, "serve"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    start_new_session=True,
+                )
+                import time
+
+                time.sleep(3)
                 break
         if not _activo():
             raise ConnectionError("Ollama no disponible")
@@ -1135,68 +1449,114 @@ def _llm_ollama(prompt: str, model: str = None) -> dict:
             with urllib.request.urlopen(f"{ollama_url}/api/tags", timeout=5) as r:
                 tags = _json.loads(r.read())
             nombres = [m["name"] for m in tags.get("models", [])]
-            preferencia = ["llama3.3","llama3.2","llama3.1","llama3","mistral",
-                           "gemma3","gemma2","qwen2.5","phi4","phi3","deepseek-r1"]
+            preferencia = [
+                "qwen3.5",
+                "qwen3",
+                "deepseek-r1",
+                "deepseek-ocr",
+                "glm-ocr",
+                "gemma3",
+                "gemma2",
+                "llama3.3",
+                "llama3.2",
+                "llama3.1",
+                "llama3",
+                "mistral",
+                "qwen2.5",
+                "phi4",
+                "phi3",
+            ]
             for pref in preferencia:
                 for n in nombres:
                     if pref in n.lower():
-                        model = n; break
-                if model: break
+                        model = n
+                        break
+                if model:
+                    break
             if not model and nombres:
                 model = nombres[0]
-        except Exception:
+        except Exception as e:
             pass
     model = model or os.environ.get("OLLAMA_MODEL", "llama3.2")
 
-    url  = f"{ollama_url}/api/generate"
-    body = _json.dumps({"model": model, "prompt": prompt, "stream": False}).encode()
-    req  = urllib.request.Request(url, data=body, headers={"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=90) as r:
+    url = f"{ollama_url}/api/generate"
+    payload = {
+        "model": model,
+        "prompt": prompt,
+        "stream": False,
+        "system": system or _MAER_SYSTEM_PROMPT,
+    }
+    body = _json.dumps(payload).encode()
+    req = urllib.request.Request(
+        url, data=body, headers={"Content-Type": "application/json"}
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as r:
         resp = _json.loads(r.read())
-        return {"ok": True, "text": resp.get("response", ""), "engine": f"ollama/{model}"}
+        return {
+            "ok": True,
+            "text": resp.get("response", ""),
+            "engine": f"ollama/{model}",
+        }
 
 
-def _llm_groq(prompt: str) -> dict:
-    """Groq API (gratuita con clave). Usa llama-3.3-70b-versatile."""
-    import urllib.request, json as _json
+def _llm_groq(prompt: str, system: str = None) -> dict:
+    """Groq API (gratuita con clave). Usa groq SDK oficial."""
     api_key = os.environ.get("GROQ_API_KEY", "")
     if not api_key:
         raise ValueError("GROQ_API_KEY no configurada en .env")
+    try:
+        from groq import Groq
+    except ImportError:
+        raise ImportError("SDK de Groq no instalado — ejecuta: pip install groq")
     model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
-    url = "https://api.groq.com/openai/v1/chat/completions"
-    body = _json.dumps({
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 1500, "temperature": 0.6
-    }).encode()
-    req = urllib.request.Request(url, data=body, headers={
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    })
-    with urllib.request.urlopen(req, timeout=30) as r:
-        resp = _json.loads(r.read())
-        text = resp["choices"][0]["message"]["content"]
-        return {"ok": True, "text": text, "engine": f"groq/{model}"}
+    client = Groq(api_key=api_key)
+    system_msg = system or (
+        "Eres MAER, un asistente experto en trámites de pensión del IMSS mexicano. "
+        "Respondes siempre en español claro y preciso, con información actualizada "
+        "sobre Ley 73, Ley 97, semanas cotizadas, AFORE, CURP y NSS. "
+        "Eres amable y paciente con adultos mayores y sus familias."
+    )
+    messages = [
+        {"role": "system", "content": system_msg},
+        {"role": "user", "content": prompt},
+    ]
+    response = client.chat.completions.create(
+        model=model,
+        messages=messages,
+        max_tokens=1500,
+        temperature=0.6,
+    )
+    text = response.choices[0].message.content
+    return {"ok": True, "text": text, "engine": f"groq/{model}"}
 
 
 def _llm_openai_compat(prompt: str) -> dict:
     """LMStudio / OpenAI / cualquier API compatible con OpenAI en .env."""
-    import urllib.request, json as _json
-    api_key  = os.environ.get("OPENAI_API_KEY", "")
+    import json as _json
+    import urllib.request
+
+    api_key = os.environ.get("OPENAI_API_KEY", "")
     base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com")
-    model    = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
     if not api_key:
         raise ValueError("OPENAI_API_KEY no configurada en .env")
     url = f"{base_url.rstrip('/')}/v1/chat/completions"
-    body = _json.dumps({
-        "model": model,
-        "messages": [{"role": "user", "content": prompt}],
-        "max_tokens": 1500, "temperature": 0.6
-    }).encode()
-    req = urllib.request.Request(url, data=body, headers={
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    })
+    body = _json.dumps(
+        {
+            "model": model,
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 1500,
+            "temperature": 0.6,
+        }
+    ).encode()
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+    )
     with urllib.request.urlopen(req, timeout=30) as r:
         resp = _json.loads(r.read())
         text = resp["choices"][0]["message"]["content"]
@@ -1216,707 +1576,943 @@ def _llm_diccionario_local(prompt: str) -> dict:
     # Se evalúan en orden, se usa la primera que hace match.
     # ══════════════════════════════════════════════════════════════
     CONOCIMIENTO = [
-
         # ── LEY 73 — PENSIONES GENERALES ─────────────────────────
-        (["ley 73", "lss 1973", "antes de 1997", "régimen anterior"],
-         "📋 LEY 73 DEL IMSS (régimen anterior a 1997)\n"
-         "Aplica si tu primera afiliación al IMSS fue ANTES del 1° de julio de 1997.\n"
-         "• Pensión de VEJEZ: 65 años + mínimo 500 semanas cotizadas\n"
-         "• Pensión de CESANTÍA: 60 años + 500 semanas + sin trabajo remunerado\n"
-         "• Pensión de INVALIDEZ: cualquier edad + 150 semanas + dictamen IMSS\n"
-         "• Pensión de VIUDEZ: 90% de la pensión del asegurado fallecido\n"
-         "• Pensión de ORFANDAD: 20% por cada hijo menor de 16 años\n"
-         "• Cuantía mínima garantizada: igual al salario mínimo vigente\n"
-         "• Salario base: promedio de las últimas 250 semanas cotizadas"),
-
-        (["ley 97", "1997", "afore", "cuenta individual", "después de 1997", "sistema de ahorro"],
-         "💼 LEY 97 DEL IMSS (régimen vigente desde 1997)\n"
-         "Aplica si tu primera afiliación fue el 1° de julio de 1997 o después.\n"
-         "• Pensión por retiro: acumulado en tu AFORE + gobierno garantiza pensión mínima\n"
-         "• Mínimo 1,250 semanas cotizadas para acceder a la pensión garantizada\n"
-         "• Edad de retiro: 60-65 años (según modalidad)\n"
-         "• Tu ahorro incluye: cuotas obrero-patronales + aportaciones gobierno + voluntarias\n"
-         "• Subcuentas: Retiro-Cesantía-Vejez (RCV), Vivienda (INFONAVIT), Aportaciones Voluntarias\n"
-         "• Consulta tu AFORE en: www.e-sar.com.mx o llama al 800-500-0747"),
-
-        (["cuál ley", "qué ley", "mi ley", "saber mi ley", "ley aplica", "ley me corresponde"],
-         "🔍 ¿CÓMO SABER TU LEY APLICABLE?\n"
-         "Tu ley se determina por la FECHA DE TU PRIMERA AFILIACIÓN AL IMSS:\n"
-         "• Primera afiliación ANTES del 1-julio-1997 → Ley 73 (régimen anterior)\n"
-         "• Primera afiliación EL 1-julio-1997 O DESPUÉS → Ley 97 (AFORE)\n"
-         "• Si trabajaste antes y después de 1997 → puedes elegir la más favorable\n"
-         "Cómo verificarlo:\n"
-         "1. Pide tu 'Historia Laboral' en cualquier subdelegación IMSS\n"
-         "2. Revisa tu NSS: los primeros 2 dígitos indican la subdelegación de afiliación\n"
-         "3. Consulta en serviciosdigitales.imss.gob.mx con tu CURP"),
-
+        (
+            ["ley 73", "lss 1973", "antes de 1997", "régimen anterior"],
+            "📋 LEY 73 DEL IMSS (régimen anterior a 1997)\n"
+            "Aplica si tu primera afiliación al IMSS fue ANTES del 1° de julio de 1997.\n"
+            "• Pensión de VEJEZ: 65 años + mínimo 500 semanas cotizadas\n"
+            "• Pensión de CESANTÍA: 60 años + 500 semanas + sin trabajo remunerado\n"
+            "• Pensión de INVALIDEZ: cualquier edad + 150 semanas + dictamen IMSS\n"
+            "• Pensión de VIUDEZ: 90% de la pensión del asegurado fallecido\n"
+            "• Pensión de ORFANDAD: 20% por cada hijo menor de 16 años\n"
+            "• Cuantía mínima garantizada: igual al salario mínimo vigente\n"
+            "• Salario base: promedio de las últimas 250 semanas cotizadas",
+        ),
+        (
+            [
+                "ley 97",
+                "1997",
+                "afore",
+                "cuenta individual",
+                "después de 1997",
+                "sistema de ahorro",
+            ],
+            "💼 LEY 97 DEL IMSS (régimen vigente desde 1997)\n"
+            "Aplica si tu primera afiliación fue el 1° de julio de 1997 o después.\n"
+            "• Pensión por retiro: acumulado en tu AFORE + gobierno garantiza pensión mínima\n"
+            "• Mínimo 1,250 semanas cotizadas para acceder a la pensión garantizada\n"
+            "• Edad de retiro: 60-65 años (según modalidad)\n"
+            "• Tu ahorro incluye: cuotas obrero-patronales + aportaciones gobierno + voluntarias\n"
+            "• Subcuentas: Retiro-Cesantía-Vejez (RCV), Vivienda (INFONAVIT), Aportaciones Voluntarias\n"
+            "• Consulta tu AFORE en: www.e-sar.com.mx o llama al 800-500-0747",
+        ),
+        (
+            [
+                "cuál ley",
+                "qué ley",
+                "mi ley",
+                "saber mi ley",
+                "ley aplica",
+                "ley me corresponde",
+            ],
+            "🔍 ¿CÓMO SABER TU LEY APLICABLE?\n"
+            "Tu ley se determina por la FECHA DE TU PRIMERA AFILIACIÓN AL IMSS:\n"
+            "• Primera afiliación ANTES del 1-julio-1997 → Ley 73 (régimen anterior)\n"
+            "• Primera afiliación EL 1-julio-1997 O DESPUÉS → Ley 97 (AFORE)\n"
+            "• Si trabajaste antes y después de 1997 → puedes elegir la más favorable\n"
+            "Cómo verificarlo:\n"
+            "1. Pide tu 'Historia Laboral' en cualquier subdelegación IMSS\n"
+            "2. Revisa tu NSS: los primeros 2 dígitos indican la subdelegación de afiliación\n"
+            "3. Consulta en serviciosdigitales.imss.gob.mx con tu CURP",
+        ),
         # ── SEMANAS COTIZADAS ─────────────────────────────────────
-        (["semanas cotizadas", "cuántas semanas", "semanas necesito", "semanas mínimo",
-          "500 semanas", "1250 semanas", "1750 semanas"],
-         "📊 SEMANAS COTIZADAS — GUÍA COMPLETA\n"
-         "LEY 73 (antes de 1997):\n"
-         "• 500 semanas  → mínimo para pensión por vejez/cesantía (≈10 años)\n"
-         "• 750 semanas  → con este mínimo se accede a pensión de invalidez\n"
-         "• 1,500 semanas → cuantía aproximada del 80% del salario\n"
-         "• 1,750+ semanas → cuantía máxima (hasta 100% del SBC)\n"
-         "LEY 97 (desde 1997):\n"
-         "• 1,250 semanas → mínimo para pensión garantizada del gobierno\n"
-         "Importante:\n"
-         "• Las semanas de DIFERENTES empleadores se ACUMULAN (Art. 35 LSS)\n"
-         "• Las semanas cotizadas NO caducan (derechos imprescriptibles, SCJN)\n"
-         "• Puedes consultar tus semanas en: serviciosdigitales.imss.gob.mx"),
-
-        (["cómo verificar semanas", "consultar semanas", "ver semanas", "ver mis semanas"],
-         "🔍 CÓMO VERIFICAR TUS SEMANAS COTIZADAS\n"
-         "Opción 1 — Portal IMSS (sin costo):\n"
-         "  • Ve a: serviciosdigitales.imss.gob.mx\n"
-         "  • Selecciona 'Semanas Cotizadas'\n"
-         "  • Necesitas: CURP + NSS\n"
-         "Opción 2 — Aplicación IMSS Digital:\n"
-         "  • Descarga la app 'IMSS Digital' (iOS/Android)\n"
-         "  • Regístrate con tu CURP y NSS\n"
-         "Opción 3 — Presencial:\n"
-         "  • Acude a cualquier Subdelegación IMSS\n"
-         "  • Lleva: CURP, identificación oficial, NSS\n"
-         "  • Solicita tu 'Constancia de Semanas Cotizadas'\n"
-         "Opción 4 — MAER:\n"
-         "  • En el panel SINAVID ingresa tu CURP + NSS\n"
-         "  • MAER intenta la consulta automática"),
-
-        (["acumul", "diferentes empleadores", "varios patrones", "cambié trabajo",
-          "semanas de diferentes", "sumar semanas"],
-         "✅ ACUMULACIÓN DE SEMANAS (Art. 35 LSS)\n"
-         "SÍ, las semanas cotizadas con DIFERENTES empleadores se acumulan automáticamente.\n"
-         "• No importa cuántas veces hayas cambiado de trabajo\n"
-         "• No importa si hubo períodos sin cotizar (se conservan los derechos)\n"
-         "• Las semanas de empleos formales (IMSS) siempre quedan registradas\n"
-         "• Las semanas cotizadas en el ISSSTE NO se transfieren al IMSS (son sistemas distintos)\n"
-         "• Las semanas en el extranjero pueden convalidarse mediante convenios internacionales\n"
-         "Recomendación: solicita tu 'Historia Laboral Completa' en el IMSS para verificar\n"
-         "que todos tus empleadores registraron correctamente tus semanas."),
-
+        (
+            [
+                "semanas cotizadas",
+                "cuántas semanas",
+                "semanas necesito",
+                "semanas mínimo",
+                "500 semanas",
+                "1250 semanas",
+                "1750 semanas",
+            ],
+            "📊 SEMANAS COTIZADAS — GUÍA COMPLETA\n"
+            "LEY 73 (antes de 1997):\n"
+            "• 500 semanas  → mínimo para pensión por vejez/cesantía (≈10 años)\n"
+            "• 750 semanas  → con este mínimo se accede a pensión de invalidez\n"
+            "• 1,500 semanas → cuantía aproximada del 80% del salario\n"
+            "• 1,750+ semanas → cuantía máxima (hasta 100% del SBC)\n"
+            "LEY 97 (desde 1997):\n"
+            "• 1,250 semanas → mínimo para pensión garantizada del gobierno\n"
+            "Importante:\n"
+            "• Las semanas de DIFERENTES empleadores se ACUMULAN (Art. 35 LSS)\n"
+            "• Las semanas cotizadas NO caducan (derechos imprescriptibles, SCJN)\n"
+            "• Puedes consultar tus semanas en: serviciosdigitales.imss.gob.mx",
+        ),
+        (
+            [
+                "cómo verificar semanas",
+                "consultar semanas",
+                "ver semanas",
+                "ver mis semanas",
+            ],
+            "🔍 CÓMO VERIFICAR TUS SEMANAS COTIZADAS\n"
+            "Opción 1 — Portal IMSS (sin costo):\n"
+            "  • Ve a: serviciosdigitales.imss.gob.mx\n"
+            "  • Selecciona 'Semanas Cotizadas'\n"
+            "  • Necesitas: CURP + NSS\n"
+            "Opción 2 — Aplicación IMSS Digital:\n"
+            "  • Descarga la app 'IMSS Digital' (iOS/Android)\n"
+            "  • Regístrate con tu CURP y NSS\n"
+            "Opción 3 — Presencial:\n"
+            "  • Acude a cualquier Subdelegación IMSS\n"
+            "  • Lleva: CURP, identificación oficial, NSS\n"
+            "  • Solicita tu 'Constancia de Semanas Cotizadas'\n"
+            "Opción 4 — MAER:\n"
+            "  • En el panel SINAVID ingresa tu CURP + NSS\n"
+            "  • MAER intenta la consulta automática",
+        ),
+        (
+            [
+                "acumul",
+                "diferentes empleadores",
+                "varios patrones",
+                "cambié trabajo",
+                "semanas de diferentes",
+                "sumar semanas",
+            ],
+            "✅ ACUMULACIÓN DE SEMANAS (Art. 35 LSS)\n"
+            "SÍ, las semanas cotizadas con DIFERENTES empleadores se acumulan automáticamente.\n"
+            "• No importa cuántas veces hayas cambiado de trabajo\n"
+            "• No importa si hubo períodos sin cotizar (se conservan los derechos)\n"
+            "• Las semanas de empleos formales (IMSS) siempre quedan registradas\n"
+            "• Las semanas cotizadas en el ISSSTE NO se transfieren al IMSS (son sistemas distintos)\n"
+            "• Las semanas en el extranjero pueden convalidarse mediante convenios internacionales\n"
+            "Recomendación: solicita tu 'Historia Laboral Completa' en el IMSS para verificar\n"
+            "que todos tus empleadores registraron correctamente tus semanas.",
+        ),
         # ── CÁLCULO DE PENSIÓN ────────────────────────────────────
-        (["calcular pensión", "cuánto cobro", "monto pensión", "cuantía pensión",
-          "porcentaje pensión", "35%", "cuantía básica"],
-         "🧮 CÁLCULO DE PENSIÓN — LEY 73\n"
-         "Cuantía básica: 35% del Salario Base de Cotización (SBC) promedio\n"
-         "Salario base = promedio de las últimas 250 semanas cotizadas\n\n"
-         "Incrementos por semanas adicionales (Art. 167):\n"
-         "• Por cada 25 semanas sobre las 500: +1.25%\n"
-         "• 500 sem → 35% | 750 sem → 47.5% | 1000 sem → 60%\n"
-         "• 1250 sem → 72.5% | 1500 sem → 85% | 1750 sem → 97.5%\n\n"
-         "Incrementos anuales (Art. 168):\n"
-         "• +2.0% por cada año de edad mayor a 65 (hasta cierto límite)\n\n"
-         "Cuantía máxima: 10 veces el salario mínimo general (SMG)\n"
-         "Cuantía mínima garantizada: igual a 1 SMG\n\n"
-         "EJEMPLO: 1,250 semanas con SBC de $20,000:\n"
-         "• Base: 35% + (750/25 × 1.25%) = 35% + 37.5% = 72.5%\n"
-         "• Pensión mensual ≈ $14,500"),
-
-        (["salario base cotización", "sbc", "salario promedio", "salario cotización",
-          "últimas 250", "250 semanas"],
-         "💰 SALARIO BASE DE COTIZACIÓN (SBC) — LEY 73\n"
-         "¿Qué es el SBC?\n"
-         "Es el promedio del salario diario integrado sobre el que se cotizó al IMSS.\n"
-         "Incluye: sueldo base + partes proporcionales de gratificaciones, vacaciones,\n"
-         "prima vacacional, comisiones, y demás prestaciones ordinarias.\n\n"
-         "¿Cómo se calcula para la pensión?\n"
-         "• Se promedian las ÚLTIMAS 250 semanas cotizadas (≈5 años)\n"
-         "• Si tienes menos de 250 semanas: se promedian todas las disponibles\n"
-         "• Se ajusta por inflación (factor de actualización INPC)\n\n"
-         "Tope máximo del SBC: 25 UMAS (Unidad de Medida y Actualización)\n"
-         "1 UMA (2026) ≈ $113.14 diarios → tope ≈ $2,828.50 diarios\n\n"
-         "Consejo: verifica que tu empleador haya registrado el SBC correcto en el IMSS."),
-
+        (
+            [
+                "calcular pensión",
+                "cuánto cobro",
+                "monto pensión",
+                "cuantía pensión",
+                "porcentaje pensión",
+                "35%",
+                "cuantía básica",
+            ],
+            "🧮 CÁLCULO DE PENSIÓN — LEY 73\n"
+            "Cuantía básica: 35% del Salario Base de Cotización (SBC) promedio\n"
+            "Salario base = promedio de las últimas 250 semanas cotizadas\n\n"
+            "Incrementos por semanas adicionales (Art. 167):\n"
+            "• Por cada 25 semanas sobre las 500: +1.25%\n"
+            "• 500 sem → 35% | 750 sem → 47.5% | 1000 sem → 60%\n"
+            "• 1250 sem → 72.5% | 1500 sem → 85% | 1750 sem → 97.5%\n\n"
+            "Incrementos anuales (Art. 168):\n"
+            "• +2.0% por cada año de edad mayor a 65 (hasta cierto límite)\n\n"
+            "Cuantía máxima: 10 veces el salario mínimo general (SMG)\n"
+            "Cuantía mínima garantizada: igual a 1 SMG\n\n"
+            "EJEMPLO: 1,250 semanas con SBC de $20,000:\n"
+            "• Base: 35% + (750/25 × 1.25%) = 35% + 37.5% = 72.5%\n"
+            "• Pensión mensual ≈ $14,500",
+        ),
+        (
+            [
+                "salario base cotización",
+                "sbc",
+                "salario promedio",
+                "salario cotización",
+                "últimas 250",
+                "250 semanas",
+            ],
+            "💰 SALARIO BASE DE COTIZACIÓN (SBC) — LEY 73\n"
+            "¿Qué es el SBC?\n"
+            "Es el promedio del salario diario integrado sobre el que se cotizó al IMSS.\n"
+            "Incluye: sueldo base + partes proporcionales de gratificaciones, vacaciones,\n"
+            "prima vacacional, comisiones, y demás prestaciones ordinarias.\n\n"
+            "¿Cómo se calcula para la pensión?\n"
+            "• Se promedian las ÚLTIMAS 250 semanas cotizadas (≈5 años)\n"
+            "• Si tienes menos de 250 semanas: se promedian todas las disponibles\n"
+            "• Se ajusta por inflación (factor de actualización INPC)\n\n"
+            "Tope máximo del SBC: 25 UMAS (Unidad de Medida y Actualización)\n"
+            "1 UMA (2026) ≈ $113.14 diarios → tope ≈ $2,828.50 diarios\n\n"
+            "Consejo: verifica que tu empleador haya registrado el SBC correcto en el IMSS.",
+        ),
         # ── TIPOS DE PENSIÓN ──────────────────────────────────────
-        (["pensión vejez", "vejez", "65 años", "retiro vejez"],
-         "🏛️ PENSIÓN DE VEJEZ (Ley 73, Arts. 138-141)\n"
-         "Requisitos:\n"
-         "• 65 años de edad cumplidos\n"
-         "• Mínimo 500 semanas cotizadas\n"
-         "• Haber sido dado de baja del IMSS (o tener 60+ días sin cotizar)\n"
-         "No es necesario demostrar desempleo (a diferencia de cesantía).\n\n"
-         "Prestaciones que incluye:\n"
-         "• Pensión mensual vitalicia\n"
-         "• Asistencia médica para el pensionado y su cónyuge\n"
-         "• Ayuda para gastos de funeral ($$ cubiertos por IMSS)\n"
-         "• Aguinaldo anual (proporcional al año de pensionamiento)\n\n"
-         "Dónde tramitar:\n"
-         "Acude a la Subdelegación IMSS con: CURP, NSS, acta de nacimiento,\n"
-         "identificación oficial, CLABE bancaria."),
-
-        (["pensión cesantía", "cesantía", "cesantia", "60 años", "sin trabajo"],
-         "🏛️ PENSIÓN POR CESANTÍA EN EDAD AVANZADA (Ley 73, Arts. 128-137)\n"
-         "Requisitos:\n"
-         "• 60 a 64 años de edad\n"
-         "• Mínimo 500 semanas cotizadas\n"
-         "• Haber quedado privado de trabajo remunerado\n\n"
-         "Cuantía: 75% de lo que correspondería por vejez a los 65 años.\n"
-         "• A los 60 años → 75% de la cuantía de vejez\n"
-         "• A los 61 años → 80% | 62 años → 85% | 63 → 90% | 64 → 95%\n\n"
-         "También incluye:\n"
-         "• Asistencia médica permanente\n"
-         "• Aguinaldo anual\n"
-         "• Ayuda asistencial\n\n"
-         "Nota: si sigues cotizando de forma voluntaria entre 60-65 años,\n"
-         "puedes mejorar tu pensión antes de solicitarla."),
-
-        (["pensión invalidez", "invalidez", "incapacidad permanente", "dictamen invalidez",
-          "no puedo trabajar", "enfermedad invalida"],
-         "🏥 PENSIÓN DE INVALIDEZ (Ley 73, Arts. 119-127)\n"
-         "Requisitos:\n"
-         "• Dictamen de invalidez emitido por el IMSS (reducción ≥50% de capacidad)\n"
-         "• 150 semanas cotizadas (causa no laboral) — o menos si es riesgo de trabajo\n"
-         "• No haber cumplido 65 años (si llega a 65 se convierte en pensión vejez)\n\n"
-         "Cuantía:\n"
-         "• Invalidez parcial (25-50%): pensión proporcional\n"
-         "• Invalidez total (>50%): 35% SBC + incrementos + asignaciones familiares\n"
-         "• Cuantía mínima: igual al salario mínimo\n\n"
-         "Proceso:\n"
-         "1. Solicita cita en Subdelegación IMSS\n"
-         "2. Evaluación médica por Comisión Mixta\n"
-         "3. Dictamen de invalidez (puede apelarse)\n"
-         "4. Resolución en ≈60 días hábiles\n\n"
-         "Si IMSS niega la invalidez: presentar Recurso de Inconformidad en 30 días hábiles."),
-
-        (["viudez", "viuda", "viudo", "esposa fallecida", "esposo fallecido",
-          "murió el asegurado", "pensión viuda"],
-         "👨‍👩‍👧 PENSIÓN DE VIUDEZ (Ley 73, Arts. 152-159)\n"
-         "¿Quién tiene derecho?\n"
-         "• Cónyuge (esposo/a) del asegurado o pensionado fallecido\n"
-         "• Concubino/a con mínimo 2 años de vida en común o con hijos en común\n\n"
-         "Cuantía: 90% de la pensión que percibía o que hubiera correspondido al fallecido\n\n"
-         "Requisitos para el asegurado fallecido:\n"
-         "• Por enfermedad general: mínimo 150 semanas cotizadas\n"
-         "  (o 75 semanas si tiene hijos menores)\n"
-         "• Por riesgo de trabajo: sin mínimo de semanas\n\n"
-         "Documentos para tramitar:\n"
-         "• Acta de defunción | Acta de matrimonio (o prueba de concubinato)\n"
-         "• CURP del fallecido | NSS del fallecido | Identificación oficial\n"
-         "• CLABE bancaria del beneficiario\n\n"
-         "Plazo: hasta 4 años para reclamar retroactivos desde el fallecimiento."),
-
-        (["orfandad", "huérfano", "hijos", "pensión hijos", "menor de edad"],
-         "👶 PENSIÓN DE ORFANDAD (Ley 73, Arts. 162-165)\n"
-         "¿Quiénes tienen derecho?\n"
-         "• Hijos menores de 16 años del asegurado/pensionado fallecido\n"
-         "• Hijos de 16 a 25 años si estudian en plantel oficial (IMSS lo verifica)\n"
-         "• Hijos de cualquier edad si tienen invalidez permanente\n\n"
-         "Cuantía: 20% de la pensión del asegurado por cada hijo\n"
-         "Si el fallecido no tiene cónyuge/concubino: 30% por cada hijo (huérfano de padre Y madre)\n\n"
-         "Importante:\n"
-         "• Los hijos fuera del matrimonio tienen los mismos derechos si son reconocidos\n"
-         "• La pensión se deposita a la persona que tenga la tutela legal\n"
-         "• Se puede acumular con pensión de viudez hasta el tope legal"),
-
-        (["pensión ascendientes", "padres fallecido", "ascendencia", "ascendientes"],
-         "👴 PENSIÓN A ASCENDIENTES (Ley 73, Art. 166)\n"
-         "¿Cuándo aplica?\n"
-         "Cuando el asegurado fallece Y no deja cónyuge, concubino ni hijos con derecho.\n\n"
-         "¿Quiénes son beneficiarios?\n"
-         "• Los padres (padre y/o madre) del asegurado fallecido\n\n"
-         "Cuantía: 20% de la pensión del asegurado por cada ascendiente\n\n"
-         "Requisito: que los padres dependieran económicamente del trabajador fallecido\n"
-         "(deben demostrarlo con documentación)."),
-
+        (
+            ["pensión vejez", "vejez", "65 años", "retiro vejez"],
+            "🏛️ PENSIÓN DE VEJEZ (Ley 73, Arts. 138-141)\n"
+            "Requisitos:\n"
+            "• 65 años de edad cumplidos\n"
+            "• Mínimo 500 semanas cotizadas\n"
+            "• Haber sido dado de baja del IMSS (o tener 60+ días sin cotizar)\n"
+            "No es necesario demostrar desempleo (a diferencia de cesantía).\n\n"
+            "Prestaciones que incluye:\n"
+            "• Pensión mensual vitalicia\n"
+            "• Asistencia médica para el pensionado y su cónyuge\n"
+            "• Ayuda para gastos de funeral ($$ cubiertos por IMSS)\n"
+            "• Aguinaldo anual (proporcional al año de pensionamiento)\n\n"
+            "Dónde tramitar:\n"
+            "Acude a la Subdelegación IMSS con: CURP, NSS, acta de nacimiento,\n"
+            "identificación oficial, CLABE bancaria.",
+        ),
+        (
+            ["pensión cesantía", "cesantía", "cesantia", "60 años", "sin trabajo"],
+            "🏛️ PENSIÓN POR CESANTÍA EN EDAD AVANZADA (Ley 73, Arts. 128-137)\n"
+            "Requisitos:\n"
+            "• 60 a 64 años de edad\n"
+            "• Mínimo 500 semanas cotizadas\n"
+            "• Haber quedado privado de trabajo remunerado\n\n"
+            "Cuantía: 75% de lo que correspondería por vejez a los 65 años.\n"
+            "• A los 60 años → 75% de la cuantía de vejez\n"
+            "• A los 61 años → 80% | 62 años → 85% | 63 → 90% | 64 → 95%\n\n"
+            "También incluye:\n"
+            "• Asistencia médica permanente\n"
+            "• Aguinaldo anual\n"
+            "• Ayuda asistencial\n\n"
+            "Nota: si sigues cotizando de forma voluntaria entre 60-65 años,\n"
+            "puedes mejorar tu pensión antes de solicitarla.",
+        ),
+        (
+            [
+                "pensión invalidez",
+                "invalidez",
+                "incapacidad permanente",
+                "dictamen invalidez",
+                "no puedo trabajar",
+                "enfermedad invalida",
+            ],
+            "🏥 PENSIÓN DE INVALIDEZ (Ley 73, Arts. 119-127)\n"
+            "Requisitos:\n"
+            "• Dictamen de invalidez emitido por el IMSS (reducción ≥50% de capacidad)\n"
+            "• 150 semanas cotizadas (causa no laboral) — o menos si es riesgo de trabajo\n"
+            "• No haber cumplido 65 años (si llega a 65 se convierte en pensión vejez)\n\n"
+            "Cuantía:\n"
+            "• Invalidez parcial (25-50%): pensión proporcional\n"
+            "• Invalidez total (>50%): 35% SBC + incrementos + asignaciones familiares\n"
+            "• Cuantía mínima: igual al salario mínimo\n\n"
+            "Proceso:\n"
+            "1. Solicita cita en Subdelegación IMSS\n"
+            "2. Evaluación médica por Comisión Mixta\n"
+            "3. Dictamen de invalidez (puede apelarse)\n"
+            "4. Resolución en ≈60 días hábiles\n\n"
+            "Si IMSS niega la invalidez: presentar Recurso de Inconformidad en 30 días hábiles.",
+        ),
+        (
+            [
+                "viudez",
+                "viuda",
+                "viudo",
+                "esposa fallecida",
+                "esposo fallecido",
+                "murió el asegurado",
+                "pensión viuda",
+            ],
+            "👨‍👩‍👧 PENSIÓN DE VIUDEZ (Ley 73, Arts. 152-159)\n"
+            "¿Quién tiene derecho?\n"
+            "• Cónyuge (esposo/a) del asegurado o pensionado fallecido\n"
+            "• Concubino/a con mínimo 2 años de vida en común o con hijos en común\n\n"
+            "Cuantía: 90% de la pensión que percibía o que hubiera correspondido al fallecido\n\n"
+            "Requisitos para el asegurado fallecido:\n"
+            "• Por enfermedad general: mínimo 150 semanas cotizadas\n"
+            "  (o 75 semanas si tiene hijos menores)\n"
+            "• Por riesgo de trabajo: sin mínimo de semanas\n\n"
+            "Documentos para tramitar:\n"
+            "• Acta de defunción | Acta de matrimonio (o prueba de concubinato)\n"
+            "• CURP del fallecido | NSS del fallecido | Identificación oficial\n"
+            "• CLABE bancaria del beneficiario\n\n"
+            "Plazo: hasta 4 años para reclamar retroactivos desde el fallecimiento.",
+        ),
+        (
+            ["orfandad", "huérfano", "hijos", "pensión hijos", "menor de edad"],
+            "👶 PENSIÓN DE ORFANDAD (Ley 73, Arts. 162-165)\n"
+            "¿Quiénes tienen derecho?\n"
+            "• Hijos menores de 16 años del asegurado/pensionado fallecido\n"
+            "• Hijos de 16 a 25 años si estudian en plantel oficial (IMSS lo verifica)\n"
+            "• Hijos de cualquier edad si tienen invalidez permanente\n\n"
+            "Cuantía: 20% de la pensión del asegurado por cada hijo\n"
+            "Si el fallecido no tiene cónyuge/concubino: 30% por cada hijo (huérfano de padre Y madre)\n\n"
+            "Importante:\n"
+            "• Los hijos fuera del matrimonio tienen los mismos derechos si son reconocidos\n"
+            "• La pensión se deposita a la persona que tenga la tutela legal\n"
+            "• Se puede acumular con pensión de viudez hasta el tope legal",
+        ),
+        (
+            ["pensión ascendientes", "padres fallecido", "ascendencia", "ascendientes"],
+            "👴 PENSIÓN A ASCENDIENTES (Ley 73, Art. 166)\n"
+            "¿Cuándo aplica?\n"
+            "Cuando el asegurado fallece Y no deja cónyuge, concubino ni hijos con derecho.\n\n"
+            "¿Quiénes son beneficiarios?\n"
+            "• Los padres (padre y/o madre) del asegurado fallecido\n\n"
+            "Cuantía: 20% de la pensión del asegurado por cada ascendiente\n\n"
+            "Requisito: que los padres dependieran económicamente del trabajador fallecido\n"
+            "(deben demostrarlo con documentación).",
+        ),
         # ── MODALIDAD 40 ──────────────────────────────────────────
-        (["modalidad 40", "mod 40", "cotización voluntaria", "continuar cotizando",
-          "cotizar voluntariamente", "seguir cotizando"],
-         "📌 MODALIDAD 40 (Art. 218 LSS) — COTIZACIÓN VOLUNTARIA\n"
-         "¿Qué es?\n"
-         "Permite seguir cotizando al IMSS de forma voluntaria cuando ya no tienes\n"
-         "un patrón o cuando estás entre empleos. Muy recomendada para Ley 73.\n\n"
-         "Beneficios:\n"
-         "• Incrementa tus semanas cotizadas para mejorar tu pensión\n"
-         "• Puedes elegir el SBC (salario base) sobre el que cotizas\n"
-         "• Mantiene vigencia de derechos médicos\n"
-         "• El SBC elegido afecta directamente el monto de tu pensión\n\n"
-         "Reglas importantes:\n"
-         "• El SBC de Modalidad 40 NO puede ser menor al último SBC patronal\n"
-         "• Máximo: 25 UMAs diarias (tope IMSS)\n"
-         "• Se paga mensualmente en bancos autorizados\n"
-         "• Requiere registrarte en la Subdelegación IMSS\n\n"
-         "Estrategia: si tus últimos empleos fueron con SBC bajo, Modalidad 40\n"
-         "con SBC mayor puede mejorar significativamente tu pensión."),
-
+        (
+            [
+                "modalidad 40",
+                "mod 40",
+                "cotización voluntaria",
+                "continuar cotizando",
+                "cotizar voluntariamente",
+                "seguir cotizando",
+            ],
+            "📌 MODALIDAD 40 (Art. 218 LSS) — COTIZACIÓN VOLUNTARIA\n"
+            "¿Qué es?\n"
+            "Permite seguir cotizando al IMSS de forma voluntaria cuando ya no tienes\n"
+            "un patrón o cuando estás entre empleos. Muy recomendada para Ley 73.\n\n"
+            "Beneficios:\n"
+            "• Incrementa tus semanas cotizadas para mejorar tu pensión\n"
+            "• Puedes elegir el SBC (salario base) sobre el que cotizas\n"
+            "• Mantiene vigencia de derechos médicos\n"
+            "• El SBC elegido afecta directamente el monto de tu pensión\n\n"
+            "Reglas importantes:\n"
+            "• El SBC de Modalidad 40 NO puede ser menor al último SBC patronal\n"
+            "• Máximo: 25 UMAs diarias (tope IMSS)\n"
+            "• Se paga mensualmente en bancos autorizados\n"
+            "• Requiere registrarte en la Subdelegación IMSS\n\n"
+            "Estrategia: si tus últimos empleos fueron con SBC bajo, Modalidad 40\n"
+            "con SBC mayor puede mejorar significativamente tu pensión.",
+        ),
         # ── CONSERVACIÓN DE DERECHOS ──────────────────────────────
-        (["conservación de derechos", "conservacion", "art 182", "baja del imss",
-          "dejé de trabajar", "deje de cotizar", "sin trabajo formal"],
-         "⏳ CONSERVACIÓN DE DERECHOS (Ley 73, Art. 182)\n"
-         "¿Qué es?\n"
-         "Cuando dejas de cotizar, tus derechos al IMSS se conservan por un período.\n\n"
-         "¿Cuánto tiempo se conservan?\n"
-         "• El equivalente a 1/4 del tiempo que cotizaste\n"
-         "• Mínimo: 12 meses | Máximo: 4 años\n"
-         "Ejemplo: si cotizaste 20 años = conservas derechos 4 años más (el máximo).\n\n"
-         "¿Qué derechos se conservan?\n"
-         "• Derecho a pensión por vejez/cesantía/invalidez\n"
-         "• Asistencia médica del IMSS (por tiempo limitado)\n\n"
-         "IMPORTANTE — Criterio SCJN:\n"
-         "El Supremo ha determinado que los derechos a PENSIÓN son IMPRESCRIPTIBLES.\n"
-         "Puedes reclamar tu pensión aunque hayan pasado años desde que dejaste de cotizar,\n"
-         "siempre que cumplas los requisitos (edad + semanas)."),
-
+        (
+            [
+                "conservación de derechos",
+                "conservacion",
+                "art 182",
+                "baja del imss",
+                "dejé de trabajar",
+                "deje de cotizar",
+                "sin trabajo formal",
+            ],
+            "⏳ CONSERVACIÓN DE DERECHOS (Ley 73, Art. 182)\n"
+            "¿Qué es?\n"
+            "Cuando dejas de cotizar, tus derechos al IMSS se conservan por un período.\n\n"
+            "¿Cuánto tiempo se conservan?\n"
+            "• El equivalente a 1/4 del tiempo que cotizaste\n"
+            "• Mínimo: 12 meses | Máximo: 4 años\n"
+            "Ejemplo: si cotizaste 20 años = conservas derechos 4 años más (el máximo).\n\n"
+            "¿Qué derechos se conservan?\n"
+            "• Derecho a pensión por vejez/cesantía/invalidez\n"
+            "• Asistencia médica del IMSS (por tiempo limitado)\n\n"
+            "IMPORTANTE — Criterio SCJN:\n"
+            "El Supremo ha determinado que los derechos a PENSIÓN son IMPRESCRIPTIBLES.\n"
+            "Puedes reclamar tu pensión aunque hayan pasado años desde que dejaste de cotizar,\n"
+            "siempre que cumplas los requisitos (edad + semanas).",
+        ),
         # ── NSS Y CURP ────────────────────────────────────────────
-        (["qué es el nss", "número de seguridad social", "obtener nss", "tramitar nss",
-          "perdí mi nss", "olvidé mi nss"],
-         "🔑 NSS — NÚMERO DE SEGURIDAD SOCIAL\n"
-         "¿Qué es?\n"
-         "Identificador único de 11 dígitos que el IMSS asigna al afiliarte.\n"
-         "Nunca cambia aunque cambies de trabajo, ciudad o nombre.\n\n"
-         "Estructura del NSS:\n"
-         "• Dígitos 1-2: Subdelegación donde te afiliaste\n"
-         "• Dígitos 3-4: Año de alta en el IMSS\n"
-         "• Dígitos 5-10: Número consecutivo\n"
-         "• Dígito 11: Dígito verificador\n\n"
-         "¿Cómo obtener o recuperar tu NSS?\n"
-         "Opción 1 (en línea): serviciosdigitales.imss.gob.mx → 'Localiza tu NSS'\n"
-         "  → solo necesitas tu CURP\n"
-         "Opción 2 (presencial): cualquier Subdelegación IMSS con CURP + ID oficial\n"
-         "Opción 3 (app): IMSS Digital → 'Mi NSS'\n\n"
-         "El NSS es necesario para: pensión, AFORE, INFONAVIT, SINAVID, historial laboral."),
-
-        (["qué es la curp", "clave única", "obtener curp", "curp incorrecta",
-          "error en curp", "tramitar curp"],
-         "🆔 CURP — CLAVE ÚNICA DE REGISTRO DE POBLACIÓN\n"
-         "¿Qué es?\n"
-         "Clave alfanumérica de 18 caracteres asignada por RENAPO a cada mexicano.\n\n"
-         "Estructura:\n"
-         "• Posiciones 1-4:  Iniciales del nombre (apellido paterno, materno, nombre)\n"
-         "• Posiciones 5-10: Fecha de nacimiento (AAMMDD)\n"
-         "• Posición 11:     Sexo (H=Hombre, M=Mujer)\n"
-         "• Posiciones 12-13: Estado de nacimiento (clave 2 letras)\n"
-         "• Posiciones 14-16: Consonantes internas del nombre\n"
-         "• Posición 17:     Diferenciador de homónimos\n"
-         "• Posición 18:     Dígito verificador\n\n"
-         "¿Cómo obtener o corregir tu CURP?\n"
-         "• En línea: https://www.gob.mx/curp (RENAPO)\n"
-         "• Para correcciones: acude al Registro Civil con acta de nacimiento\n\n"
-         "Para trámites IMSS, SAT, AFORE e INFONAVIT tu CURP debe estar correcta."),
-
+        (
+            [
+                "qué es el nss",
+                "número de seguridad social",
+                "obtener nss",
+                "tramitar nss",
+                "perdí mi nss",
+                "olvidé mi nss",
+            ],
+            "🔑 NSS — NÚMERO DE SEGURIDAD SOCIAL\n"
+            "¿Qué es?\n"
+            "Identificador único de 11 dígitos que el IMSS asigna al afiliarte.\n"
+            "Nunca cambia aunque cambies de trabajo, ciudad o nombre.\n\n"
+            "Estructura del NSS:\n"
+            "• Dígitos 1-2: Subdelegación donde te afiliaste\n"
+            "• Dígitos 3-4: Año de alta en el IMSS\n"
+            "• Dígitos 5-10: Número consecutivo\n"
+            "• Dígito 11: Dígito verificador\n\n"
+            "¿Cómo obtener o recuperar tu NSS?\n"
+            "Opción 1 (en línea): serviciosdigitales.imss.gob.mx → 'Localiza tu NSS'\n"
+            "  → solo necesitas tu CURP\n"
+            "Opción 2 (presencial): cualquier Subdelegación IMSS con CURP + ID oficial\n"
+            "Opción 3 (app): IMSS Digital → 'Mi NSS'\n\n"
+            "El NSS es necesario para: pensión, AFORE, INFONAVIT, SINAVID, historial laboral.",
+        ),
+        (
+            [
+                "qué es la curp",
+                "clave única",
+                "obtener curp",
+                "curp incorrecta",
+                "error en curp",
+                "tramitar curp",
+            ],
+            "🆔 CURP — CLAVE ÚNICA DE REGISTRO DE POBLACIÓN\n"
+            "¿Qué es?\n"
+            "Clave alfanumérica de 18 caracteres asignada por RENAPO a cada mexicano.\n\n"
+            "Estructura:\n"
+            "• Posiciones 1-4:  Iniciales del nombre (apellido paterno, materno, nombre)\n"
+            "• Posiciones 5-10: Fecha de nacimiento (AAMMDD)\n"
+            "• Posición 11:     Sexo (H=Hombre, M=Mujer)\n"
+            "• Posiciones 12-13: Estado de nacimiento (clave 2 letras)\n"
+            "• Posiciones 14-16: Consonantes internas del nombre\n"
+            "• Posición 17:     Diferenciador de homónimos\n"
+            "• Posición 18:     Dígito verificador\n\n"
+            "¿Cómo obtener o corregir tu CURP?\n"
+            "• En línea: https://www.gob.mx/curp (RENAPO)\n"
+            "• Para correcciones: acude al Registro Civil con acta de nacimiento\n\n"
+            "Para trámites IMSS, SAT, AFORE e INFONAVIT tu CURP debe estar correcta.",
+        ),
         # ── RFC ───────────────────────────────────────────────────
-        (["rfc", "registro federal contribuyentes", "tramitar rfc", "obtener rfc", "sat"],
-         "🏛️ RFC — REGISTRO FEDERAL DE CONTRIBUYENTES (SAT)\n"
-         "¿Qué es?\n"
-         "Identificador fiscal de 13 caracteres (personas físicas) emitido por el SAT.\n\n"
-         "Estructura:\n"
-         "• 4 letras: iniciales del nombre/apellidos\n"
-         "• 6 dígitos: fecha de nacimiento (AAMMDD)\n"
-         "• 3 caracteres: homoclave asignada por SAT\n\n"
-         "¿Cómo obtenerlo?\n"
-         "• En línea: https://www.sat.gob.mx (CURP requerida)\n"
-         "• Presencial: SAT con identificación oficial y CURP\n\n"
-         "Necesitas el RFC para:\n"
-         "• Constancia Fiscal del SAT\n"
-         "• Declaraciones de impuestos\n"
-         "• Tramitar algunos beneficios de pensión\n"
-         "• Comprobar retención de ISR en nómina"),
-
+        (
+            [
+                "rfc",
+                "registro federal contribuyentes",
+                "tramitar rfc",
+                "obtener rfc",
+                "sat",
+            ],
+            "🏛️ RFC — REGISTRO FEDERAL DE CONTRIBUYENTES (SAT)\n"
+            "¿Qué es?\n"
+            "Identificador fiscal de 13 caracteres (personas físicas) emitido por el SAT.\n\n"
+            "Estructura:\n"
+            "• 4 letras: iniciales del nombre/apellidos\n"
+            "• 6 dígitos: fecha de nacimiento (AAMMDD)\n"
+            "• 3 caracteres: homoclave asignada por SAT\n\n"
+            "¿Cómo obtenerlo?\n"
+            "• En línea: https://www.sat.gob.mx (CURP requerida)\n"
+            "• Presencial: SAT con identificación oficial y CURP\n\n"
+            "Necesitas el RFC para:\n"
+            "• Constancia Fiscal del SAT\n"
+            "• Declaraciones de impuestos\n"
+            "• Tramitar algunos beneficios de pensión\n"
+            "• Comprobar retención de ISR en nómina",
+        ),
         # ── AFORE Y SAR ───────────────────────────────────────────
-        (["afore", "cuenta individual", "sar", "subcuenta", "ahorro retiro", "estado cuenta afore"],
-         "💼 AFORE — ADMINISTRADORA DE FONDOS PARA EL RETIRO\n"
-         "¿Qué es?\n"
-         "Empresa privada autorizada que administra tu cuenta individual de ahorro\n"
-         "para el retiro (para trabajadores con Ley 97).\n\n"
-         "Subcuentas de tu AFORE:\n"
-         "• RCV (Retiro-Cesantía-Vejez): principal cuenta de pensión\n"
-         "  - Patrón aporta: 3.15% del SBC\n"
-         "  - Gobierno aporta: cuota social diaria (según salario)\n"
-         "  - Trabajador aporta: 1.125% del SBC\n"
-         "• Vivienda (INFONAVIT): 5% del SBC (aportación patronal)\n"
-         "• Aportaciones Voluntarias: montos adicionales que tú decides\n\n"
-         "¿Cómo consultar mi AFORE?\n"
-         "• www.e-sar.com.mx con CURP\n"
-         "• App 'e-SAR' (iOS/Android)\n"
-         "• Teléfono CONSAR: 800-500-0747\n\n"
-         "Traspaso: puedes cambiar de AFORE una vez al año si encuentras mejores rendimientos."),
-
-        (["infonavit", "crédito infonavit", "subcuenta vivienda", "fovissste"],
-         "🏠 INFONAVIT — INSTITUTO DEL FONDO NACIONAL DE LA VIVIENDA\n"
-         "¿Qué es?\n"
-         "El INFONAVIT administra la subcuenta de vivienda (5% del SBC que aporta tu patrón).\n\n"
-         "Beneficios:\n"
-         "• Crédito hipotecario para comprar, construir o remodelar vivienda\n"
-         "• Si no usas el crédito, el saldo puede aplicarse a tu pensión (Art. 141 LSS)\n"
-         "• Para Ley 73: el saldo de vivienda se suma a la pensión IMSS\n"
-         "• Para Ley 97: el saldo de vivienda se integra a tu cuenta AFORE al retiro\n\n"
-         "¿Cómo consultar tu saldo?\n"
-         "• www.infonavit.org.mx con NSS\n"
-         "• App 'Mi Cuenta INFONAVIT'\n"
-         "• Teléfono: 800-008-3900\n\n"
-         "Alerta: si tienes crédito INFONAVIT activo, los descuentos de nómina\n"
-         "se reportan al IMSS y se reflejan en tu historial laboral."),
-
+        (
+            [
+                "afore",
+                "cuenta individual",
+                "sar",
+                "subcuenta",
+                "ahorro retiro",
+                "estado cuenta afore",
+            ],
+            "💼 AFORE — ADMINISTRADORA DE FONDOS PARA EL RETIRO\n"
+            "¿Qué es?\n"
+            "Empresa privada autorizada que administra tu cuenta individual de ahorro\n"
+            "para el retiro (para trabajadores con Ley 97).\n\n"
+            "Subcuentas de tu AFORE:\n"
+            "• RCV (Retiro-Cesantía-Vejez): principal cuenta de pensión\n"
+            "  - Patrón aporta: 3.15% del SBC\n"
+            "  - Gobierno aporta: cuota social diaria (según salario)\n"
+            "  - Trabajador aporta: 1.125% del SBC\n"
+            "• Vivienda (INFONAVIT): 5% del SBC (aportación patronal)\n"
+            "• Aportaciones Voluntarias: montos adicionales que tú decides\n\n"
+            "¿Cómo consultar mi AFORE?\n"
+            "• www.e-sar.com.mx con CURP\n"
+            "• App 'e-SAR' (iOS/Android)\n"
+            "• Teléfono CONSAR: 800-500-0747\n\n"
+            "Traspaso: puedes cambiar de AFORE una vez al año si encuentras mejores rendimientos.",
+        ),
+        (
+            ["infonavit", "crédito infonavit", "subcuenta vivienda", "fovissste"],
+            "🏠 INFONAVIT — INSTITUTO DEL FONDO NACIONAL DE LA VIVIENDA\n"
+            "¿Qué es?\n"
+            "El INFONAVIT administra la subcuenta de vivienda (5% del SBC que aporta tu patrón).\n\n"
+            "Beneficios:\n"
+            "• Crédito hipotecario para comprar, construir o remodelar vivienda\n"
+            "• Si no usas el crédito, el saldo puede aplicarse a tu pensión (Art. 141 LSS)\n"
+            "• Para Ley 73: el saldo de vivienda se suma a la pensión IMSS\n"
+            "• Para Ley 97: el saldo de vivienda se integra a tu cuenta AFORE al retiro\n\n"
+            "¿Cómo consultar tu saldo?\n"
+            "• www.infonavit.org.mx con NSS\n"
+            "• App 'Mi Cuenta INFONAVIT'\n"
+            "• Teléfono: 800-008-3900\n\n"
+            "Alerta: si tienes crédito INFONAVIT activo, los descuentos de nómina\n"
+            "se reportan al IMSS y se reflejan en tu historial laboral.",
+        ),
         # ── TRÁMITES IMSS ─────────────────────────────────────────
-        (["tramitar pensión", "cómo pedir pensión", "solicitar pensión", "iniciar trámite",
-          "documentos pensión", "qué documentos"],
-         "📋 TRÁMITE DE PENSIÓN IMSS — GUÍA PASO A PASO\n"
-         "Documentos necesarios (tenerlos listos):\n"
-         "• CURP (original y copia)\n"
-         "• NSS (Número de Seguridad Social)\n"
-         "• Acta de nacimiento (original certificada + copia)\n"
-         "• Identificación oficial vigente (INE, pasaporte)\n"
-         "• CLABE bancaria interbancaria de 18 dígitos (cuenta a tu nombre)\n"
-         "• Constancia de semanas cotizadas (emitida por IMSS)\n"
-         "• Para cesantía: constancia de baja del último empleo\n"
-         "• Para invalidez: expediente médico + dictamen\n"
-         "• Comprobante de domicilio (reciente, máx 3 meses)\n\n"
-         "Proceso:\n"
-         "1. Agenda cita: serviciosdigitales.imss.gob.mx\n"
-         "2. Acude a la Subdelegación IMSS de tu localidad\n"
-         "3. Entrega documentos y llena solicitud\n"
-         "4. IMSS emite resolución en ≈30-60 días hábiles\n"
-         "5. Si aprueban: recibes primer pago en tu CLABE\n\n"
-         "Primera paga: incluye meses retroactivos desde que cumpliste requisitos."),
-
-        (["historia laboral", "historial laboral", "expediente laboral", "constancia patronal"],
-         "📁 HISTORIA LABORAL IMSS\n"
-         "¿Qué es?\n"
-         "Documento oficial del IMSS que lista todos tus empleos registrados,\n"
-         "semanas cotizadas por período, SBC y datos del patrón.\n\n"
-         "Es crucial para:\n"
-         "• Verificar que todos tus empleadores te registraron correctamente\n"
-         "• Detectar semanas 'perdidas' por errores patronales\n"
-         "• Base para calcular tu pensión\n\n"
-         "¿Cómo obtenerla?\n"
-         "Opción 1: serviciosdigitales.imss.gob.mx → 'Historia Laboral'\n"
-         "  → Necesitas: CURP + NSS + e-firma o contraseña digital IMSS\n"
-         "Opción 2: Presencial en Subdelegación IMSS (sin costo)\n"
-         "  → Lleva: CURP + NSS + identificación oficial\n\n"
-         "Qué hacer si hay errores:\n"
-         "• Si falta un patrón: presenta contratos, recibos de pago o referencias laborales\n"
-         "• Abre proceso de 'Aclaración de Semanas' en el IMSS"),
-
-        (["subdelegación", "subdelegacion", "oficina imss", "dónde ir al imss",
-          "clínica imss", "umf", "unidad médica"],
-         "🏥 OFICINAS IMSS — CÓMO ACCEDER\n"
-         "Tipos de instalaciones IMSS:\n"
-         "• UMF (Unidad de Medicina Familiar): atención médica primer nivel\n"
-         "• Hospital General de Zona: urgencias y especialidades\n"
-         "• Subdelegación IMSS: trámites administrativos (pensión, NSS, historial)\n"
-         "• CESI (Centro de Seguridad Social): servicios complementarios\n\n"
-         "Trámites en Subdelegación:\n"
-         "• Solicitud de pensión | Historia Laboral | NSS | Constancias\n"
-         "• Recursos de Inconformidad | Aclaraciones de semanas\n\n"
-         "Citas:\n"
-         "• serviciosdigitales.imss.gob.mx → 'Agenda tu Cita'\n"
-         "• Teléfono IMSS: 800-623-2323\n\n"
-         "Tu Subdelegación: determina los primeros 2 dígitos de tu NSS.\n"
-         "Puedes acudir a cualquier subdelegación del país, no solo la de origen."),
-
+        (
+            [
+                "tramitar pensión",
+                "cómo pedir pensión",
+                "solicitar pensión",
+                "iniciar trámite",
+                "documentos pensión",
+                "qué documentos",
+            ],
+            "📋 TRÁMITE DE PENSIÓN IMSS — GUÍA PASO A PASO\n"
+            "Documentos necesarios (tenerlos listos):\n"
+            "• CURP (original y copia)\n"
+            "• NSS (Número de Seguridad Social)\n"
+            "• Acta de nacimiento (original certificada + copia)\n"
+            "• Identificación oficial vigente (INE, pasaporte)\n"
+            "• CLABE bancaria interbancaria de 18 dígitos (cuenta a tu nombre)\n"
+            "• Constancia de semanas cotizadas (emitida por IMSS)\n"
+            "• Para cesantía: constancia de baja del último empleo\n"
+            "• Para invalidez: expediente médico + dictamen\n"
+            "• Comprobante de domicilio (reciente, máx 3 meses)\n\n"
+            "Proceso:\n"
+            "1. Agenda cita: serviciosdigitales.imss.gob.mx\n"
+            "2. Acude a la Subdelegación IMSS de tu localidad\n"
+            "3. Entrega documentos y llena solicitud\n"
+            "4. IMSS emite resolución en ≈30-60 días hábiles\n"
+            "5. Si aprueban: recibes primer pago en tu CLABE\n\n"
+            "Primera paga: incluye meses retroactivos desde que cumpliste requisitos.",
+        ),
+        (
+            [
+                "historia laboral",
+                "historial laboral",
+                "expediente laboral",
+                "constancia patronal",
+            ],
+            "📁 HISTORIA LABORAL IMSS\n"
+            "¿Qué es?\n"
+            "Documento oficial del IMSS que lista todos tus empleos registrados,\n"
+            "semanas cotizadas por período, SBC y datos del patrón.\n\n"
+            "Es crucial para:\n"
+            "• Verificar que todos tus empleadores te registraron correctamente\n"
+            "• Detectar semanas 'perdidas' por errores patronales\n"
+            "• Base para calcular tu pensión\n\n"
+            "¿Cómo obtenerla?\n"
+            "Opción 1: serviciosdigitales.imss.gob.mx → 'Historia Laboral'\n"
+            "  → Necesitas: CURP + NSS + e-firma o contraseña digital IMSS\n"
+            "Opción 2: Presencial en Subdelegación IMSS (sin costo)\n"
+            "  → Lleva: CURP + NSS + identificación oficial\n\n"
+            "Qué hacer si hay errores:\n"
+            "• Si falta un patrón: presenta contratos, recibos de pago o referencias laborales\n"
+            "• Abre proceso de 'Aclaración de Semanas' en el IMSS",
+        ),
+        (
+            [
+                "subdelegación",
+                "subdelegacion",
+                "oficina imss",
+                "dónde ir al imss",
+                "clínica imss",
+                "umf",
+                "unidad médica",
+            ],
+            "🏥 OFICINAS IMSS — CÓMO ACCEDER\n"
+            "Tipos de instalaciones IMSS:\n"
+            "• UMF (Unidad de Medicina Familiar): atención médica primer nivel\n"
+            "• Hospital General de Zona: urgencias y especialidades\n"
+            "• Subdelegación IMSS: trámites administrativos (pensión, NSS, historial)\n"
+            "• CESI (Centro de Seguridad Social): servicios complementarios\n\n"
+            "Trámites en Subdelegación:\n"
+            "• Solicitud de pensión | Historia Laboral | NSS | Constancias\n"
+            "• Recursos de Inconformidad | Aclaraciones de semanas\n\n"
+            "Citas:\n"
+            "• serviciosdigitales.imss.gob.mx → 'Agenda tu Cita'\n"
+            "• Teléfono IMSS: 800-623-2323\n\n"
+            "Tu Subdelegación: determina los primeros 2 dígitos de tu NSS.\n"
+            "Puedes acudir a cualquier subdelegación del país, no solo la de origen.",
+        ),
         # ── RECURSOS LEGALES ──────────────────────────────────────
-        (["recurso inconformidad", "recurso de inconformidad", "inconformidad imss",
-          "negativa pensión", "negaron pensión", "apelar imss", "art 294"],
-         "⚖️ RECURSO DE INCONFORMIDAD — ART. 294 LSS\n"
-         "¿Cuándo presentarlo?\n"
-         "Cuando el IMSS niega o reduce tu pensión, invalidez, o cualquier resolución\n"
-         "que consideres incorrecta.\n\n"
-         "Plazo: 30 días hábiles desde que te notifican la resolución.\n\n"
-         "¿Cómo presentarlo?\n"
-         "1. Escrito dirigido al Consejo Consultivo Delegacional del IMSS\n"
-         "2. Describe los hechos y el derecho violado\n"
-         "3. Adjunta: resolución impugnada + documentos que acrediten tu derecho\n"
-         "4. IMSS debe resolver en 45 días hábiles\n"
-         "5. Si no resuelve en 45 días = silencio negativo (puedes ir al siguiente paso)\n\n"
-         "Siguiente paso si el recurso no prospera:\n"
-         "• Demanda ante la Junta Federal de Conciliación y Arbitraje (JFCA)\n"
-         "• O ante el Tribunal Federal de Conciliación (empleados del gobierno)\n"
-         "• Plazo para demandar: 2 años desde la última actuación\n\n"
-         "Pruebas más importantes:\n"
-         "• Recibos de nómina originales | Contratos laborales\n"
-         "• Constancias patronales | Movimientos SUA\n"
-         "• Declaraciones del IMSS de pagos de cuotas"),
-
-        (["prescripción", "prescripcion", "tiempo para reclamar", "plazo reclamar",
-          "años para tramitar", "imprescriptible"],
-         "⏰ PRESCRIPCIÓN Y PLAZOS — DERECHOS DE PENSIÓN\n"
-         "Criterio fundamental de la Suprema Corte de Justicia (SCJN):\n"
-         "Los derechos a pensión son IMPRESCRIPTIBLES.\n"
-         "Esto significa que aunque hayan pasado años, DÉCADAS, sin reclamar,\n"
-         "puedes tramitar tu pensión si cumples los requisitos.\n\n"
-         "PERO atención con los pagos retroactivos:\n"
-         "• Los mensajes de pensión NO cobrados SÍ prescriben a los 5 años\n"
-         "  (Art. 300 LSS): puedes reclamar hasta 5 años de pagos atrasados\n\n"
-         "Plazos específicos:\n"
-         "• Recurso de Inconformidad: 30 días hábiles desde notificación\n"
-         "• Demanda laboral: 2 años desde último acto o desde que nació el derecho\n"
-         "• Viudez/orfandad: hasta 4 años de retroactivos desde el fallecimiento\n"
-         "• Corrección de semanas: sin prescripción (es obligación del patrón)\n\n"
-         "Recomendación: aunque no prescriba el derecho, tramítalo cuanto antes\n"
-         "para no perder meses de pago retroactivo."),
-
+        (
+            [
+                "recurso inconformidad",
+                "recurso de inconformidad",
+                "inconformidad imss",
+                "negativa pensión",
+                "negaron pensión",
+                "apelar imss",
+                "art 294",
+            ],
+            "⚖️ RECURSO DE INCONFORMIDAD — ART. 294 LSS\n"
+            "¿Cuándo presentarlo?\n"
+            "Cuando el IMSS niega o reduce tu pensión, invalidez, o cualquier resolución\n"
+            "que consideres incorrecta.\n\n"
+            "Plazo: 30 días hábiles desde que te notifican la resolución.\n\n"
+            "¿Cómo presentarlo?\n"
+            "1. Escrito dirigido al Consejo Consultivo Delegacional del IMSS\n"
+            "2. Describe los hechos y el derecho violado\n"
+            "3. Adjunta: resolución impugnada + documentos que acrediten tu derecho\n"
+            "4. IMSS debe resolver en 45 días hábiles\n"
+            "5. Si no resuelve en 45 días = silencio negativo (puedes ir al siguiente paso)\n\n"
+            "Siguiente paso si el recurso no prospera:\n"
+            "• Demanda ante la Junta Federal de Conciliación y Arbitraje (JFCA)\n"
+            "• O ante el Tribunal Federal de Conciliación (empleados del gobierno)\n"
+            "• Plazo para demandar: 2 años desde la última actuación\n\n"
+            "Pruebas más importantes:\n"
+            "• Recibos de nómina originales | Contratos laborales\n"
+            "• Constancias patronales | Movimientos SUA\n"
+            "• Declaraciones del IMSS de pagos de cuotas",
+        ),
+        (
+            [
+                "prescripción",
+                "prescripcion",
+                "tiempo para reclamar",
+                "plazo reclamar",
+                "años para tramitar",
+                "imprescriptible",
+            ],
+            "⏰ PRESCRIPCIÓN Y PLAZOS — DERECHOS DE PENSIÓN\n"
+            "Criterio fundamental de la Suprema Corte de Justicia (SCJN):\n"
+            "Los derechos a pensión son IMPRESCRIPTIBLES.\n"
+            "Esto significa que aunque hayan pasado años, DÉCADAS, sin reclamar,\n"
+            "puedes tramitar tu pensión si cumples los requisitos.\n\n"
+            "PERO atención con los pagos retroactivos:\n"
+            "• Los mensajes de pensión NO cobrados SÍ prescriben a los 5 años\n"
+            "  (Art. 300 LSS): puedes reclamar hasta 5 años de pagos atrasados\n\n"
+            "Plazos específicos:\n"
+            "• Recurso de Inconformidad: 30 días hábiles desde notificación\n"
+            "• Demanda laboral: 2 años desde último acto o desde que nació el derecho\n"
+            "• Viudez/orfandad: hasta 4 años de retroactivos desde el fallecimiento\n"
+            "• Corrección de semanas: sin prescripción (es obligación del patrón)\n\n"
+            "Recomendación: aunque no prescriba el derecho, tramítalo cuanto antes\n"
+            "para no perder meses de pago retroactivo.",
+        ),
         # ── BENEFICIOS IMSS ───────────────────────────────────────
-        (["guardería", "estancias infantiles", "hijos al imss", "hijos guardería"],
-         "👶 SERVICIO DE GUARDERÍA IMSS (Art. 201-209 LSS)\n"
-         "¿Quiénes tienen derecho?\n"
-         "• Trabajadoras madres aseguradas (directamente)\n"
-         "• Trabajadores padres viudos o divorciados con custodia de los hijos\n"
-         "• Trabajadores solteros con hijos bajo su cuidado\n\n"
-         "Edades: hijos de 43 días a 4 años (en algunas guarderías hasta 6 años)\n\n"
-         "Sin costo: el servicio es gratuito para el asegurado\n\n"
-         "¿Cómo solicitar?\n"
-         "1. Acude a la Subdelegación IMSS con: NSS + acta de nacimiento del menor\n"
-         "   + Identificación oficial + comprobante domicilio\n"
-         "2. Te asignan una Guardería o Estancia Infantil participante\n"
-         "Nota: la lista de guarderías participantes está en www.imss.gob.mx"),
-
-        (["incapacidad", "incapacidades", "subsidio incapacidad", "días de incapacidad",
-          "médico imss", "reposo médico"],
-         "🏥 INCAPACIDADES Y SUBSIDIOS IMSS\n"
-         "Tipos de incapacidad:\n"
-         "1. Temporal por enfermedad general:\n"
-         "   • IMSS paga el 60% del SBC diario a partir del 4° día\n"
-         "   • Los primeros 3 días los paga el patrón (o no se pagan si eres nuevo)\n"
-         "   • Máximo 52 semanas prorrogables a 26 más\n\n"
-         "2. Temporal por riesgo de trabajo:\n"
-         "   • IMSS paga el 100% del SBC desde el primer día\n"
-         "   • Sin límite de tiempo mientras dure la incapacidad\n\n"
-         "3. Incapacidad permanente parcial:\n"
-         "   • Renta vitalicia proporcional al % de incapacidad\n\n"
-         "4. Incapacidad permanente total:\n"
-         "   • 70% del SBC de manera vitalicia\n\n"
-         "Maternidad:\n"
-         "• 100% del SBC por 42 días antes del parto + 42 días después\n"
-         "• Adopción: 42 días de subsidio\n\n"
-         "Importante: las semanas de incapacidad SÍ cuentan como cotizadas."),
-
-        (["atención médica", "clínica familiar", "derechohabiente", "medicina imss",
-          "urgencias imss", "especialista imss"],
-         "🏥 SERVICIOS MÉDICOS IMSS — GUÍA RÁPIDA\n"
-         "Niveles de atención:\n"
-         "1° Nivel — UMF (Unidad de Medicina Familiar):\n"
-         "   • Medicina general, preventiva, revisiones, vacunas\n"
-         "   • Aquí inicia TODA atención; se te da referencia para especialidades\n\n"
-         "2° Nivel — Hospital General de Zona (HGZ):\n"
-         "   • Especialidades médicas con referencia de la UMF\n"
-         "   • Urgencias las 24 horas (sin referencia previa)\n\n"
-         "3° Nivel — Centro Médico Nacional (CMN):\n"
-         "   • Padecimientos complejos; referencia de HGZ\n\n"
-         "¿Cómo obtener atención?\n"
-         "• Urgencias: presentarte directamente (no requiere cita)\n"
-         "• Consulta: app IMSS Digital o serviciosdigitales.imss.gob.mx\n"
-         "• Lleva: Cartilla de citas IMSS o NSS + identificación\n\n"
-         "Pensionados: conservan atención médica de por vida."),
-
+        (
+            ["guardería", "estancias infantiles", "hijos al imss", "hijos guardería"],
+            "👶 SERVICIO DE GUARDERÍA IMSS (Art. 201-209 LSS)\n"
+            "¿Quiénes tienen derecho?\n"
+            "• Trabajadoras madres aseguradas (directamente)\n"
+            "• Trabajadores padres viudos o divorciados con custodia de los hijos\n"
+            "• Trabajadores solteros con hijos bajo su cuidado\n\n"
+            "Edades: hijos de 43 días a 4 años (en algunas guarderías hasta 6 años)\n\n"
+            "Sin costo: el servicio es gratuito para el asegurado\n\n"
+            "¿Cómo solicitar?\n"
+            "1. Acude a la Subdelegación IMSS con: NSS + acta de nacimiento del menor\n"
+            "   + Identificación oficial + comprobante domicilio\n"
+            "2. Te asignan una Guardería o Estancia Infantil participante\n"
+            "Nota: la lista de guarderías participantes está en www.imss.gob.mx",
+        ),
+        (
+            [
+                "incapacidad",
+                "incapacidades",
+                "subsidio incapacidad",
+                "días de incapacidad",
+                "médico imss",
+                "reposo médico",
+            ],
+            "🏥 INCAPACIDADES Y SUBSIDIOS IMSS\n"
+            "Tipos de incapacidad:\n"
+            "1. Temporal por enfermedad general:\n"
+            "   • IMSS paga el 60% del SBC diario a partir del 4° día\n"
+            "   • Los primeros 3 días los paga el patrón (o no se pagan si eres nuevo)\n"
+            "   • Máximo 52 semanas prorrogables a 26 más\n\n"
+            "2. Temporal por riesgo de trabajo:\n"
+            "   • IMSS paga el 100% del SBC desde el primer día\n"
+            "   • Sin límite de tiempo mientras dure la incapacidad\n\n"
+            "3. Incapacidad permanente parcial:\n"
+            "   • Renta vitalicia proporcional al % de incapacidad\n\n"
+            "4. Incapacidad permanente total:\n"
+            "   • 70% del SBC de manera vitalicia\n\n"
+            "Maternidad:\n"
+            "• 100% del SBC por 42 días antes del parto + 42 días después\n"
+            "• Adopción: 42 días de subsidio\n\n"
+            "Importante: las semanas de incapacidad SÍ cuentan como cotizadas.",
+        ),
+        (
+            [
+                "atención médica",
+                "clínica familiar",
+                "derechohabiente",
+                "medicina imss",
+                "urgencias imss",
+                "especialista imss",
+            ],
+            "🏥 SERVICIOS MÉDICOS IMSS — GUÍA RÁPIDA\n"
+            "Niveles de atención:\n"
+            "1° Nivel — UMF (Unidad de Medicina Familiar):\n"
+            "   • Medicina general, preventiva, revisiones, vacunas\n"
+            "   • Aquí inicia TODA atención; se te da referencia para especialidades\n\n"
+            "2° Nivel — Hospital General de Zona (HGZ):\n"
+            "   • Especialidades médicas con referencia de la UMF\n"
+            "   • Urgencias las 24 horas (sin referencia previa)\n\n"
+            "3° Nivel — Centro Médico Nacional (CMN):\n"
+            "   • Padecimientos complejos; referencia de HGZ\n\n"
+            "¿Cómo obtener atención?\n"
+            "• Urgencias: presentarte directamente (no requiere cita)\n"
+            "• Consulta: app IMSS Digital o serviciosdigitales.imss.gob.mx\n"
+            "• Lleva: Cartilla de citas IMSS o NSS + identificación\n\n"
+            "Pensionados: conservan atención médica de por vida.",
+        ),
         # ── SINAVID Y VIGENCIA ─────────────────────────────────────
-        (["sinavid", "vigencia derechos", "derechos vigentes", "estoy vigente",
-          "tengo vigencia", "activo imss"],
-         "🏥 VIGENCIA DE DERECHOS IMSS — SINAVID\n"
-         "¿Qué es la vigencia?\n"
-         "Es el estado activo de tus derechos de seguridad social.\n"
-         "Mientras estás vigente, tienes derecho a atención médica.\n\n"
-         "¿Cuándo estás vigente?\n"
-         "• Mientras cotizas activamente con un patrón\n"
-         "• Durante el periodo de conservación de derechos (Art. 182)\n"
-         "• Si eres pensionado: vigencia permanente\n"
-         "• Si estás en incapacidad temporal\n"
-         "• Hasta 8 semanas después de una baja\n\n"
-         "¿Cómo verificar tu vigencia?\n"
-         "Opción 1: Portal SINAVID en serviciosdigitales.imss.gob.mx\n"
-         "  → Selecciona 'Vigencia de Derechos'\n"
-         "  → Ingresa CURP o NSS\n"
-         "Opción 2: MAER → pestaña SINAVID → ingresa CURP + NSS\n"
-         "Opción 3: Teléfono IMSS: 800-623-2323"),
-
+        (
+            [
+                "sinavid",
+                "vigencia derechos",
+                "derechos vigentes",
+                "estoy vigente",
+                "tengo vigencia",
+                "activo imss",
+            ],
+            "🏥 VIGENCIA DE DERECHOS IMSS — SINAVID\n"
+            "¿Qué es la vigencia?\n"
+            "Es el estado activo de tus derechos de seguridad social.\n"
+            "Mientras estás vigente, tienes derecho a atención médica.\n\n"
+            "¿Cuándo estás vigente?\n"
+            "• Mientras cotizas activamente con un patrón\n"
+            "• Durante el periodo de conservación de derechos (Art. 182)\n"
+            "• Si eres pensionado: vigencia permanente\n"
+            "• Si estás en incapacidad temporal\n"
+            "• Hasta 8 semanas después de una baja\n\n"
+            "¿Cómo verificar tu vigencia?\n"
+            "Opción 1: Portal SINAVID en serviciosdigitales.imss.gob.mx\n"
+            "  → Selecciona 'Vigencia de Derechos'\n"
+            "  → Ingresa CURP o NSS\n"
+            "Opción 2: MAER → pestaña SINAVID → ingresa CURP + NSS\n"
+            "Opción 3: Teléfono IMSS: 800-623-2323",
+        ),
         # ── CUOTA SOCIAL ──────────────────────────────────────────
-        (["cuota social", "gobierno aporta", "aportación gobierno", "subsidio gobierno"],
-         "💰 CUOTA SOCIAL DEL GOBIERNO\n"
-         "¿Qué es?\n"
-         "Aportación diaria que el Gobierno Federal hace a tu cuenta de retiro\n"
-         "(aplica para trabajadores con Ley 97).\n\n"
-         "¿A quién aplica?\n"
-         "• Trabajadores que ganan hasta 15 UMAs diarias (~$1,697/día en 2026)\n"
-         "• A mayor salario, menor cuota social; con salario muy alto puede ser $0\n\n"
-         "Monto aproximado:\n"
-         "• Trabajador con 1 SMG: cuota social más alta (~$20 diarios en 2026)\n"
-         "• La cuota se actualiza anualmente con el INPC\n\n"
-         "Se deposita en tu subcuenta RCV de AFORE, junto con las cuotas obrero-patronales."),
-
+        (
+            [
+                "cuota social",
+                "gobierno aporta",
+                "aportación gobierno",
+                "subsidio gobierno",
+            ],
+            "💰 CUOTA SOCIAL DEL GOBIERNO\n"
+            "¿Qué es?\n"
+            "Aportación diaria que el Gobierno Federal hace a tu cuenta de retiro\n"
+            "(aplica para trabajadores con Ley 97).\n\n"
+            "¿A quién aplica?\n"
+            "• Trabajadores que ganan hasta 15 UMAs diarias (~$1,697/día en 2026)\n"
+            "• A mayor salario, menor cuota social; con salario muy alto puede ser $0\n\n"
+            "Monto aproximado:\n"
+            "• Trabajador con 1 SMG: cuota social más alta (~$20 diarios en 2026)\n"
+            "• La cuota se actualiza anualmente con el INPC\n\n"
+            "Se deposita en tu subcuenta RCV de AFORE, junto con las cuotas obrero-patronales.",
+        ),
         # ── SALARIO MÍNIMO Y UMA ──────────────────────────────────
-        (["uma", "unidad de medida", "salario mínimo pensión", "smg pensión"],
-         "📐 UMA — UNIDAD DE MEDIDA Y ACTUALIZACIÓN\n"
-         "¿Qué es la UMA?\n"
-         "Desde 2016 reemplazó al salario mínimo como referencia para multas, pensiones\n"
-         "y límites de cotización del IMSS/INFONAVIT.\n\n"
-         "Valor UMA 2026 (referencia):\n"
-         "• Diaria:   ~$113.14 pesos\n"
-         "• Mensual:  ~$3,441.10 pesos\n"
-         "• Anual:    ~$41,293.20 pesos\n"
-         "Se actualiza cada año en febrero con el INPC.\n\n"
-         "Importancia para pensiones:\n"
-         "• Tope máximo SBC: 25 UMAs diarias (~$2,828.50)\n"
-         "• Pensión mínima garantizada: 1 UMA mensual (antes era 1 salario mínimo)\n"
-         "• Límite de INFONAVIT: calculado en UMAs\n\n"
-         "Diferencia IMPORTANTE:\n"
-         "El salario mínimo sigue subiendo más que la UMA → la pensión mínima\n"
-         "para Ley 73 sigue siendo 1 SALARIO MÍNIMO (no 1 UMA) por jurisprudencia."),
-
+        (
+            ["uma", "unidad de medida", "salario mínimo pensión", "smg pensión"],
+            "📐 UMA — UNIDAD DE MEDIDA Y ACTUALIZACIÓN\n"
+            "¿Qué es la UMA?\n"
+            "Desde 2016 reemplazó al salario mínimo como referencia para multas, pensiones\n"
+            "y límites de cotización del IMSS/INFONAVIT.\n\n"
+            "Valor UMA 2026 (referencia):\n"
+            "• Diaria:   ~$113.14 pesos\n"
+            "• Mensual:  ~$3,441.10 pesos\n"
+            "• Anual:    ~$41,293.20 pesos\n"
+            "Se actualiza cada año en febrero con el INPC.\n\n"
+            "Importancia para pensiones:\n"
+            "• Tope máximo SBC: 25 UMAs diarias (~$2,828.50)\n"
+            "• Pensión mínima garantizada: 1 UMA mensual (antes era 1 salario mínimo)\n"
+            "• Límite de INFONAVIT: calculado en UMAs\n\n"
+            "Diferencia IMPORTANTE:\n"
+            "El salario mínimo sigue subiendo más que la UMA → la pensión mínima\n"
+            "para Ley 73 sigue siendo 1 SALARIO MÍNIMO (no 1 UMA) por jurisprudencia.",
+        ),
         # ── PENSIÓN MÍNIMA GARANTIZADA ────────────────────────────
-        (["pensión mínima", "mínimo garantizado", "garantía pensión", "cuánto mínimo"],
-         "✅ PENSIÓN MÍNIMA GARANTIZADA\n"
-         "LEY 73:\n"
-         "• Si tu pensión calculada es menor al salario mínimo, el gobierno complementa\n"
-         "• La pensión mínima garantizada = 1 salario mínimo general vigente\n"
-         "• En 2026: ~$278.00 diarios = ~$8,500 mensuales aproximadamente\n\n"
-         "LEY 97:\n"
-         "• Si el saldo de tu AFORE no alcanza para una pensión mensual mínima,\n"
-         "  el gobierno garantiza una pensión mínima (requiere 1,250 semanas)\n"
-         "• Monto 2026: ~$4,300 mensuales (valor de referencia)\n\n"
-         "Nota: la pensión mínima garantizada aplica de por vida y se actualiza anualmente."),
-
+        (
+            [
+                "pensión mínima",
+                "mínimo garantizado",
+                "garantía pensión",
+                "cuánto mínimo",
+            ],
+            "✅ PENSIÓN MÍNIMA GARANTIZADA\n"
+            "LEY 73:\n"
+            "• Si tu pensión calculada es menor al salario mínimo, el gobierno complementa\n"
+            "• La pensión mínima garantizada = 1 salario mínimo general vigente\n"
+            "• En 2026: ~$278.00 diarios = ~$8,500 mensuales aproximadamente\n\n"
+            "LEY 97:\n"
+            "• Si el saldo de tu AFORE no alcanza para una pensión mensual mínima,\n"
+            "  el gobierno garantiza una pensión mínima (requiere 1,250 semanas)\n"
+            "• Monto 2026: ~$4,300 mensuales (valor de referencia)\n\n"
+            "Nota: la pensión mínima garantizada aplica de por vida y se actualiza anualmente.",
+        ),
         # ── PAGOS Y ADMINISTRACIÓN ────────────────────────────────
-        (["cuándo cobro", "cuando cobro", "fecha de pago", "primer pago",
-          "depósito pensión", "retroactivos"],
-         "💳 PAGOS DE PENSIÓN — CÓMO Y CUÁNDO\n"
-         "Primer pago:\n"
-         "• Incluye todos los meses retroactivos desde que cumpliste requisitos\n"
-         "  (desde el día que tenías derecho, no desde que tramitaste)\n"
-         "• Se deposita en tu CLABE bancaria registrada ante el IMSS\n\n"
-         "Pagos mensuales:\n"
-         "• Los pensionados cobran los días 1-3 de cada mes\n"
-         "• Si el día 1 es inhábil, el depósito se adelanta\n\n"
-         "Actualizaciones anuales:\n"
-         "• La pensión se actualiza cada año en febrero con el INPC\n"
-         "  (nunca puede bajar, solo aumenta o se mantiene)\n\n"
-         "Aguinaldo:\n"
-         "• Los pensionados tienen derecho a aguinaldo anual (Art. 205 bis LSS)\n"
-         "• Se paga en diciembre; el primer año es proporcional\n\n"
-         "Suma asegurada:\n"
-         "• Si el pensionado fallece, los beneficiarios reciben una suma adicional"),
-
-        (["cambiar cuenta", "cambiar banco", "actualizar clabe", "clabe pensión",
-          "datos bancarios imss"],
-         "🏦 CAMBIAR CUENTA BANCARIA PARA PENSIÓN\n"
-         "¿Por qué es importante tener la CLABE actualizada?\n"
-         "Si tu cuenta está mal o cancelada, el IMSS devuelve los pagos y no los reenvía.\n\n"
-         "¿Cómo actualizar tu CLABE?\n"
-         "Opción 1 (presencial — más segura):\n"
-         "  • Acude a la Subdelegación IMSS con:\n"
-         "    - Identificación oficial vigente\n"
-         "    - Estado de cuenta bancario reciente (con CLABE impresa)\n"
-         "    - NSS + CURP\n\n"
-         "Opción 2 (en línea):\n"
-         "  • serviciosdigitales.imss.gob.mx → 'Actualización de Cuenta Bancaria'\n"
-         "  • Requiere e-firma (FIEL) o contraseña digital\n\n"
-         "IMPORTANTE: solo el pensionado puede cambiar su cuenta. No delegues esto a terceros."),
-
+        (
+            [
+                "cuándo cobro",
+                "cuando cobro",
+                "fecha de pago",
+                "primer pago",
+                "depósito pensión",
+                "retroactivos",
+            ],
+            "💳 PAGOS DE PENSIÓN — CÓMO Y CUÁNDO\n"
+            "Primer pago:\n"
+            "• Incluye todos los meses retroactivos desde que cumpliste requisitos\n"
+            "  (desde el día que tenías derecho, no desde que tramitaste)\n"
+            "• Se deposita en tu CLABE bancaria registrada ante el IMSS\n\n"
+            "Pagos mensuales:\n"
+            "• Los pensionados cobran los días 1-3 de cada mes\n"
+            "• Si el día 1 es inhábil, el depósito se adelanta\n\n"
+            "Actualizaciones anuales:\n"
+            "• La pensión se actualiza cada año en febrero con el INPC\n"
+            "  (nunca puede bajar, solo aumenta o se mantiene)\n\n"
+            "Aguinaldo:\n"
+            "• Los pensionados tienen derecho a aguinaldo anual (Art. 205 bis LSS)\n"
+            "• Se paga en diciembre; el primer año es proporcional\n\n"
+            "Suma asegurada:\n"
+            "• Si el pensionado fallece, los beneficiarios reciben una suma adicional",
+        ),
+        (
+            [
+                "cambiar cuenta",
+                "cambiar banco",
+                "actualizar clabe",
+                "clabe pensión",
+                "datos bancarios imss",
+            ],
+            "🏦 CAMBIAR CUENTA BANCARIA PARA PENSIÓN\n"
+            "¿Por qué es importante tener la CLABE actualizada?\n"
+            "Si tu cuenta está mal o cancelada, el IMSS devuelve los pagos y no los reenvía.\n\n"
+            "¿Cómo actualizar tu CLABE?\n"
+            "Opción 1 (presencial — más segura):\n"
+            "  • Acude a la Subdelegación IMSS con:\n"
+            "    - Identificación oficial vigente\n"
+            "    - Estado de cuenta bancario reciente (con CLABE impresa)\n"
+            "    - NSS + CURP\n\n"
+            "Opción 2 (en línea):\n"
+            "  • serviciosdigitales.imss.gob.mx → 'Actualización de Cuenta Bancaria'\n"
+            "  • Requiere e-firma (FIEL) o contraseña digital\n\n"
+            "IMPORTANTE: solo el pensionado puede cambiar su cuenta. No delegues esto a terceros.",
+        ),
         # ── PENSIÓN POR RIESGO DE TRABAJO ─────────────────────────
-        (["riesgo de trabajo", "accidente trabajo", "accidente laboral",
-          "enfermedad profesional", "incapacidad laboral"],
-         "⚠️ RIESGO DE TRABAJO (Ley 73, Arts. 42-76)\n"
-         "¿Qué es un riesgo de trabajo?\n"
-         "• Accidente ocurrido durante el trabajo o en el trayecto al trabajo\n"
-         "• Enfermedad profesional derivada del tipo de trabajo\n\n"
-         "Beneficios (sin mínimo de semanas):\n"
-         "• Atención médica completa (sin costo)\n"
-         "• Subsidio del 100% del SBC durante incapacidad temporal\n"
-         "• Si hay incapacidad permanente parcial: renta proporcional\n"
-         "• Si hay incapacidad permanente total: 70% del SBC vitalicio\n"
-         "• Si fallece: pensión de viudez y orfandad para beneficiarios\n\n"
-         "Proceso:\n"
-         "1. Informar al patrón de inmediato\n"
-         "2. El patrón debe reportar al IMSS en 24 horas (Art. 51 LFTSS)\n"
-         "3. El IMSS califica si es o no riesgo de trabajo\n"
-         "4. Si no te reconocen el riesgo: puedes apelar con recurso de inconformidad"),
-
+        (
+            [
+                "riesgo de trabajo",
+                "accidente trabajo",
+                "accidente laboral",
+                "enfermedad profesional",
+                "incapacidad laboral",
+            ],
+            "⚠️ RIESGO DE TRABAJO (Ley 73, Arts. 42-76)\n"
+            "¿Qué es un riesgo de trabajo?\n"
+            "• Accidente ocurrido durante el trabajo o en el trayecto al trabajo\n"
+            "• Enfermedad profesional derivada del tipo de trabajo\n\n"
+            "Beneficios (sin mínimo de semanas):\n"
+            "• Atención médica completa (sin costo)\n"
+            "• Subsidio del 100% del SBC durante incapacidad temporal\n"
+            "• Si hay incapacidad permanente parcial: renta proporcional\n"
+            "• Si hay incapacidad permanente total: 70% del SBC vitalicio\n"
+            "• Si fallece: pensión de viudez y orfandad para beneficiarios\n\n"
+            "Proceso:\n"
+            "1. Informar al patrón de inmediato\n"
+            "2. El patrón debe reportar al IMSS en 24 horas (Art. 51 LFTSS)\n"
+            "3. El IMSS califica si es o no riesgo de trabajo\n"
+            "4. Si no te reconocen el riesgo: puedes apelar con recurso de inconformidad",
+        ),
         # ── CUOTAS IMSS ───────────────────────────────────────────
-        (["cuotas imss", "quién paga imss", "cuánto paga patrón", "cotización",
-          "porcentaje imss", "aportaciones"],
-         "💼 CUOTAS IMSS — ¿QUIÉN PAGA QUÉ?\n"
-         "Las cuotas se dividen entre patrón, trabajador y gobierno:\n\n"
-         "Ramo Enfermedad y Maternidad:\n"
-         "  Patrón: 20.40% del SBC | Trabajador: 2.0% | Gobierno: 7.14%\n\n"
-         "Ramo Retiro (RCV):\n"
-         "  Patrón: 3.15% | Trabajador: 1.125% | Gobierno: cuota social\n\n"
-         "Riesgo de Trabajo:\n"
-         "  Solo el patrón: entre 0.5% y 7.58% según giro de la empresa\n\n"
-         "Invalidez y Vida:\n"
-         "  Patrón: 1.75% | Trabajador: 0.625%\n\n"
-         "Guardería:\n"
-         "  Solo el patrón: 1.0%\n\n"
-         "INFONAVIT:\n"
-         "  Solo el patrón: 5.0%\n\n"
-         "Total aproximado patrón: ~30-35% del SBC del trabajador"),
-
+        (
+            [
+                "cuotas imss",
+                "quién paga imss",
+                "cuánto paga patrón",
+                "cotización",
+                "porcentaje imss",
+                "aportaciones",
+            ],
+            "💼 CUOTAS IMSS — ¿QUIÉN PAGA QUÉ?\n"
+            "Las cuotas se dividen entre patrón, trabajador y gobierno:\n\n"
+            "Ramo Enfermedad y Maternidad:\n"
+            "  Patrón: 20.40% del SBC | Trabajador: 2.0% | Gobierno: 7.14%\n\n"
+            "Ramo Retiro (RCV):\n"
+            "  Patrón: 3.15% | Trabajador: 1.125% | Gobierno: cuota social\n\n"
+            "Riesgo de Trabajo:\n"
+            "  Solo el patrón: entre 0.5% y 7.58% según giro de la empresa\n\n"
+            "Invalidez y Vida:\n"
+            "  Patrón: 1.75% | Trabajador: 0.625%\n\n"
+            "Guardería:\n"
+            "  Solo el patrón: 1.0%\n\n"
+            "INFONAVIT:\n"
+            "  Solo el patrón: 5.0%\n\n"
+            "Total aproximado patrón: ~30-35% del SBC del trabajador",
+        ),
         # ── ERRORES DEL PATRÓN ────────────────────────────────────
-        (["patrón no pagó", "patron no pago", "semanas perdidas", "patrón no registró",
-          "patron no registro", "semanas no reportadas", "error patrón"],
-         "⚠️ CUANDO EL PATRÓN NO TE REGISTRÓ O NO PAGÓ CUOTAS\n"
-         "Es responsabilidad EXCLUSIVA del patrón registrarte y pagar cuotas al IMSS.\n"
-         "Si no lo hizo, tiene consecuencias legales graves.\n\n"
-         "Qué puedes hacer:\n"
-         "1. Aclaración de semanas en el IMSS:\n"
-         "   • Lleva: contratos, recibos de nómina, talones de pago, comprobantes\n"
-         "   • El IMSS investiga y puede obligar al patrón a pagar\n\n"
-         "2. Denuncia ante el IMSS:\n"
-         "   • Art. 15 LSS: el patrón DEBE registrarte dentro de los 5 días de ingreso\n"
-         "   • El IMSS puede imponer multas al patrón y cargos retroactivos\n\n"
-         "3. Demanda laboral ante JFCA:\n"
-         "   • Reclama al patrón el pago de cuotas no enteradas\n"
-         "   • Puedes reclamar daños y perjuicios\n\n"
-         "Pruebas útiles:\n"
-         "• Recibos de nómina (físicos o digitales)\n"
-         "• Contratos de trabajo | Correos con el patrón\n"
-         "• Comprobantes de pago de IMSS que te descontaban\n"
-         "• Testigos compañeros de trabajo"),
-
+        (
+            [
+                "patrón no pagó",
+                "patron no pago",
+                "semanas perdidas",
+                "patrón no registró",
+                "patron no registro",
+                "semanas no reportadas",
+                "error patrón",
+            ],
+            "⚠️ CUANDO EL PATRÓN NO TE REGISTRÓ O NO PAGÓ CUOTAS\n"
+            "Es responsabilidad EXCLUSIVA del patrón registrarte y pagar cuotas al IMSS.\n"
+            "Si no lo hizo, tiene consecuencias legales graves.\n\n"
+            "Qué puedes hacer:\n"
+            "1. Aclaración de semanas en el IMSS:\n"
+            "   • Lleva: contratos, recibos de nómina, talones de pago, comprobantes\n"
+            "   • El IMSS investiga y puede obligar al patrón a pagar\n\n"
+            "2. Denuncia ante el IMSS:\n"
+            "   • Art. 15 LSS: el patrón DEBE registrarte dentro de los 5 días de ingreso\n"
+            "   • El IMSS puede imponer multas al patrón y cargos retroactivos\n\n"
+            "3. Demanda laboral ante JFCA:\n"
+            "   • Reclama al patrón el pago de cuotas no enteradas\n"
+            "   • Puedes reclamar daños y perjuicios\n\n"
+            "Pruebas útiles:\n"
+            "• Recibos de nómina (físicos o digitales)\n"
+            "• Contratos de trabajo | Correos con el patrón\n"
+            "• Comprobantes de pago de IMSS que te descontaban\n"
+            "• Testigos compañeros de trabajo",
+        ),
         # ── PENSIÓN INTERNACIONAL ─────────────────────────────────
-        (["trabajé en el extranjero", "pensión extranjero", "convenio internacional",
-          "semanas en usa", "semanas en europa"],
-         "🌍 SEMANAS EN EL EXTRANJERO — CONVENIOS INTERNACIONALES\n"
-         "México tiene convenios de seguridad social con:\n"
-         "• España, Canadá, Estados Unidos (parcial), Alemania, entre otros\n\n"
-         "¿Qué permite el convenio?\n"
-         "• Totalización: sumar semanas cotizadas en ambos países\n"
-         "• Evitar doble cotización para empleados temporales\n\n"
-         "Proceso para México-España (ejemplo):\n"
-         "1. Solicita certificado de semanas en el país extranjero\n"
-         "2. Presenta ante la Subdelegación IMSS con tu historial\n"
-         "3. El IMSS reconoce las semanas para completar el mínimo\n"
-         "4. Cada país paga la parte proporcional de tu pensión\n\n"
-         "Limitación:\n"
-         "Las semanas extranjeras generalmente solo sirven para COMPLETAR el mínimo,\n"
-         "no incrementan el monto de la pensión mexicana."),
-
+        (
+            [
+                "trabajé en el extranjero",
+                "pensión extranjero",
+                "convenio internacional",
+                "semanas en usa",
+                "semanas en europa",
+            ],
+            "🌍 SEMANAS EN EL EXTRANJERO — CONVENIOS INTERNACIONALES\n"
+            "México tiene convenios de seguridad social con:\n"
+            "• España, Canadá, Estados Unidos (parcial), Alemania, entre otros\n\n"
+            "¿Qué permite el convenio?\n"
+            "• Totalización: sumar semanas cotizadas en ambos países\n"
+            "• Evitar doble cotización para empleados temporales\n\n"
+            "Proceso para México-España (ejemplo):\n"
+            "1. Solicita certificado de semanas en el país extranjero\n"
+            "2. Presenta ante la Subdelegación IMSS con tu historial\n"
+            "3. El IMSS reconoce las semanas para completar el mínimo\n"
+            "4. Cada país paga la parte proporcional de tu pensión\n\n"
+            "Limitación:\n"
+            "Las semanas extranjeras generalmente solo sirven para COMPLETAR el mínimo,\n"
+            "no incrementan el monto de la pensión mexicana.",
+        ),
         # ── TRÁMITES DIGITALES ─────────────────────────────────────
-        (["portal imss", "servicios digitales", "cita imss", "trámite en línea",
-          "imss digital", "app imss"],
-         "🖥️ TRÁMITES DIGITALES IMSS\n"
-         "Portal oficial: serviciosdigitales.imss.gob.mx\n\n"
-         "Servicios disponibles en línea:\n"
-         "• 📅 Agendar citas médicas\n"
-         "• 🔑 Localizar tu NSS con CURP\n"
-         "• 📊 Consultar semanas cotizadas\n"
-         "• 🏥 Verificar vigencia de derechos (SINAVID)\n"
-         "• 📋 Descargar historia laboral\n"
-         "• 💊 Surtir recetas (algunas clínicas)\n"
-         "• 📄 Tramitar constancias\n\n"
-         "App IMSS Digital (iOS y Android):\n"
-         "• Todo lo anterior desde tu celular\n"
-         "• Además: resultados de laboratorio, citas, medicamentos\n\n"
-         "Para trámites de pensión:\n"
-         "Aún se requiere acudir presencialmente a la Subdelegación con documentos originales."),
-
+        (
+            [
+                "portal imss",
+                "servicios digitales",
+                "cita imss",
+                "trámite en línea",
+                "imss digital",
+                "app imss",
+            ],
+            "🖥️ TRÁMITES DIGITALES IMSS\n"
+            "Portal oficial: serviciosdigitales.imss.gob.mx\n\n"
+            "Servicios disponibles en línea:\n"
+            "• 📅 Agendar citas médicas\n"
+            "• 🔑 Localizar tu NSS con CURP\n"
+            "• 📊 Consultar semanas cotizadas\n"
+            "• 🏥 Verificar vigencia de derechos (SINAVID)\n"
+            "• 📋 Descargar historia laboral\n"
+            "• 💊 Surtir recetas (algunas clínicas)\n"
+            "• 📄 Tramitar constancias\n\n"
+            "App IMSS Digital (iOS y Android):\n"
+            "• Todo lo anterior desde tu celular\n"
+            "• Además: resultados de laboratorio, citas, medicamentos\n\n"
+            "Para trámites de pensión:\n"
+            "Aún se requiere acudir presencialmente a la Subdelegación con documentos originales.",
+        ),
         # ── INFORMACIÓN GENERAL ───────────────────────────────────
-        (["qué es el imss", "imss", "seguro social", "instituto mexicano"],
-         "🦺 IMSS — INSTITUTO MEXICANO DEL SEGURO SOCIAL\n"
-         "Es el organismo público que brinda seguridad social a los trabajadores\n"
-         "del sector privado en México.\n\n"
-         "Principales ramos:\n"
-         "• Enfermedad y Maternidad (atención médica)\n"
-         "• Riesgo de Trabajo\n"
-         "• Invalidez y Vida\n"
-         "• Retiro, Cesantía y Vejez (pensión)\n"
-         "• Guardería y Prestaciones Sociales\n\n"
-         "¿Quiénes cotizan al IMSS?\n"
-         "• Trabajadores del sector privado (subordinados)\n"
-         "• Trabajadores del hogar (desde 2020, obligatorio)\n"
-         "• Trabajadores independientes (voluntario, Modalidad 10 o 40)\n\n"
-         "¿Quiénes NO cotizan al IMSS?\n"
-         "• Trabajadores del gobierno federal → ISSSTE\n"
-         "• Militares → ISSFAM\n"
-         "• Empleados de PEMEX → propio régimen\n\n"
-         "Contacto: www.imss.gob.mx | Tel: 800-623-2323"),
+        (
+            ["qué es el imss", "imss", "seguro social", "instituto mexicano"],
+            "🦺 IMSS — INSTITUTO MEXICANO DEL SEGURO SOCIAL\n"
+            "Es el organismo público que brinda seguridad social a los trabajadores\n"
+            "del sector privado en México.\n\n"
+            "Principales ramos:\n"
+            "• Enfermedad y Maternidad (atención médica)\n"
+            "• Riesgo de Trabajo\n"
+            "• Invalidez y Vida\n"
+            "• Retiro, Cesantía y Vejez (pensión)\n"
+            "• Guardería y Prestaciones Sociales\n\n"
+            "¿Quiénes cotizan al IMSS?\n"
+            "• Trabajadores del sector privado (subordinados)\n"
+            "• Trabajadores del hogar (desde 2020, obligatorio)\n"
+            "• Trabajadores independientes (voluntario, Modalidad 10 o 40)\n\n"
+            "¿Quiénes NO cotizan al IMSS?\n"
+            "• Trabajadores del gobierno federal → ISSSTE\n"
+            "• Militares → ISSFAM\n"
+            "• Empleados de PEMEX → propio régimen\n\n"
+            "Contacto: www.imss.gob.mx | Tel: 800-623-2323",
+        ),
     ]
 
     # ── Evaluación: buscar el match más específico ─────────────────
@@ -1928,14 +2524,29 @@ def _llm_diccionario_local(prompt: str) -> dict:
         score = sum(1 for kw in palabras_clave if kw in p_limpio)
         if score > mejor_score:
             mejor_score = score
-            mejor_resp  = respuesta
+            mejor_resp = respuesta
 
     if mejor_resp and mejor_score >= 1:
         return {"ok": True, "text": mejor_resp, "engine": "local_diccionario"}
 
     # ── Respuesta genérica de orientación ─────────────────────────
-    if any(k in p for k in ["pensión", "pension", "imss", "semana", "afore", "jubil",
-                              "retiro", "ley 73", "ley 97", "curp", "nss", "rfc"]):
+    if any(
+        k in p
+        for k in [
+            "pensión",
+            "pension",
+            "imss",
+            "semana",
+            "afore",
+            "jubil",
+            "retiro",
+            "ley 73",
+            "ley 97",
+            "curp",
+            "nss",
+            "rfc",
+        ]
+    ):
         resp = (
             "🦁 MAER — Asistente IMSS (modo local)\n"
             "Temas sobre los que puedo informarte:\n"
@@ -1966,55 +2577,140 @@ def _llm_diccionario_local(prompt: str) -> dict:
 def action_llm_chat(args):
     """
     LLM Chat con cascada de motores:
-    1. Ollama local (llama3.2/mistral) — si está corriendo en localhost:11434
-    2. Groq API (gratuita) — si GROQ_API_KEY está en .env
-    3. OpenAI / LMStudio compatible — si OPENAI_API_KEY está en .env
-    4. Diccionario local IMSS/Ley73 — siempre disponible como fallback
+    1. Claude API (Anthropic) — motor primario, cualquier tema, historial
+    2. Ollama local (qwen/deepseek/gemma) — si está corriendo en localhost:11434
+    3. Groq API (gratuita) — si GROQ_API_KEY está en .env
+    4. OpenAI / LMStudio compatible — si OPENAI_API_KEY está en .env
+    5. Diccionario local IMSS/Ley73 — siempre disponible como fallback
+
+    Parámetros:
+        prompt   — texto de la pregunta (obligatorio)
+        history  — historial de conversación [{role, content}, ...] (opcional)
+        path     — ruta a archivo de contexto (opcional)
+        texto    — texto de contexto directo (opcional)
+        motor    — forzar motor: 'claude', 'ollama', 'groq', 'openai' (opcional)
+        max_tokens — tokens máximos de respuesta (default 2048)
     """
-    prompt  = args.get("prompt", "")
-    path    = args.get("path")
-    texto   = args.get("texto", "")
-    context = texto[:4000] if texto else ""
+    prompt = args.get("prompt", "")
+    path = args.get("path")
+    texto = args.get("texto", "")
+    motor = args.get("motor", "").lower().strip()
+    history = args.get("history") or []
+    max_tokens = int(args.get("max_tokens", 2048))
+    context = texto[:8000] if texto else ""
 
     # Enriquecer contexto con archivo si se provee
     if path and Path(path).exists():
         file_path = Path(path)
         try:
             if file_path.suffix.lower() == ".pdf":
-                import pdfplumber
-                with pdfplumber.open(file_path) as pdf:
-                    context = "\n".join([p.extract_text() or "" for p in pdf.pages])[:4000]
+                from maer_backend.maer_pdf_analyzer import \
+                    extract_pdf_text_enhanced
+
+                context = extract_pdf_text_enhanced(file_path, max_pages=30)[:8000]
             else:
-                context = file_path.read_text("utf-8", errors="ignore")[:4000]
-        except Exception:
+                context = file_path.read_text("utf-8", errors="ignore")[:8000]
+        except Exception as e:
             pass
 
     final_prompt = prompt
     if context:
-        final_prompt = f"[CONTEXTO DEL DOCUMENTO]\n{context}\n[FIN CONTEXTO]\n\n{prompt}"
+        final_prompt = (
+            f"[CONTEXTO DEL DOCUMENTO]\n{context}\n[FIN CONTEXTO]\n\n{prompt}"
+        )
 
-    # Cascada de motores
+    # Si se pide el diccionario local directamente
+    if motor in ("diccionario", "local", "diccionario_local"):
+        result = _llm_diccionario_local(final_prompt)
+        return make_response(
+            True,
+            "CHAT_LOCAL",
+            "Respuesta del diccionario local",
+            {
+                "respuesta": result["text"],
+                "response": result["text"],
+                "engine": "local_diccionario",
+            },
+        )
+
+    # Si se pide un motor específico, intentarlo directamente
+    if motor in ("claude", "anthropic", "ollama", "groq", "openai"):
+        motor_fns = {
+            "claude": lambda: _llm_anthropic(
+                final_prompt, history=history, max_tokens=max_tokens
+            ),
+            "anthropic": lambda: _llm_anthropic(
+                final_prompt, history=history, max_tokens=max_tokens
+            ),
+            "ollama": lambda: _llm_ollama(final_prompt),
+            "groq": lambda: _llm_groq(final_prompt),
+            "openai": lambda: _llm_openai_compat(final_prompt),
+        }
+        try:
+            result = motor_fns[motor]()
+            if result.get("ok") and result.get("text", "").strip():
+                return make_response(
+                    True,
+                    "CHAT_OK",
+                    f"Chat procesado por {result['engine']}",
+                    {
+                        "respuesta": result["text"],
+                        "response": result["text"],
+                        "engine": result["engine"],
+                    },
+                )
+        except Exception as e:
+            return make_response(
+                False, "CHAT_ERROR", f"Motor {motor} no disponible: {str(e)[:120]}", {}
+            )
+
+    # Cascada automática: Claude primero, luego el resto
     errores = []
     for nombre, fn in [
-        ("ollama",  lambda: _llm_ollama(final_prompt)),
-        ("groq",    lambda: _llm_groq(final_prompt)),
-        ("openai",  lambda: _llm_openai_compat(final_prompt)),
+        (
+            "claude",
+            lambda: _llm_anthropic(
+                final_prompt, history=history, max_tokens=max_tokens
+            ),
+        ),
+        ("ollama", lambda: _llm_ollama(final_prompt)),
+        ("groq", lambda: _llm_groq(final_prompt)),
+        ("openai", lambda: _llm_openai_compat(final_prompt)),
     ]:
         try:
             result = fn()
-            if result.get("ok"):
-                return make_response(True, "CHAT_OK", f"Chat procesado por {result['engine']}",
-                                     {"response": result["text"], "engine": result["engine"]})
+            if result.get("ok") and result.get("text", "").strip():
+                return make_response(
+                    True,
+                    "CHAT_OK",
+                    f"Chat procesado por {result['engine']}",
+                    {
+                        "respuesta": result["text"],
+                        "response": result["text"],
+                        "engine": result["engine"],
+                    },
+                )
+            elif result.get("ok"):
+                errores.append(f"{nombre}: respuesta vacía")
         except Exception as e:
-            errores.append(f"{nombre}: {str(e)[:60]}")
+            errores.append(f"{nombre}: {str(e)[:80]}")
             continue
 
     # Fallback final: diccionario local
     result = _llm_diccionario_local(final_prompt)
-    return make_response(True, "CHAT_LOCAL", "Respuesta local (configura LLM para IA completa)",
-                         {"response": result["text"], "engine": "local_diccionario",
-                          "nota": "Para activar IA: agrega GROQ_API_KEY o instala Ollama",
-                          "errores_llm": errores})
+    return make_response(
+        True,
+        "CHAT_LOCAL",
+        "Respuesta local (configura ANTHROPIC_API_KEY para IA completa)",
+        {
+            "respuesta": result["text"],
+            "response": result["text"],
+            "engine": "local_diccionario",
+            "nota": "Agrega ANTHROPIC_API_KEY en .env para activar IA completa",
+            "errores_llm": errores,
+        },
+    )
+
 
 ACTIONS = {
     "search_files": action_search_files,
@@ -2043,8 +2739,13 @@ ACTIONS = {
 
 def main():
     if len(sys.argv) < 2:
-        print(json.dumps(make_response(False, "USAGE_ERROR",
-              "Uso: maer_files.py <accion> [json_payload]")))
+        print(
+            json.dumps(
+                make_response(
+                    False, "USAGE_ERROR", "Uso: maer_files.py <accion> [json_payload]"
+                )
+            )
+        )
         return
 
     action = sys.argv[1]
@@ -2052,13 +2753,16 @@ def main():
 
     try:
         payload = json.loads(payload_raw)
-    except Exception:
+    except Exception as e:
         payload = {}
 
     func = ACTIONS.get(action)
     if not func:
-        print(json.dumps(make_response(False, "UNKNOWN_ACTION",
-              f"Acción desconocida: {action}")))
+        print(
+            json.dumps(
+                make_response(False, "UNKNOWN_ACTION", f"Acción desconocida: {action}")
+            )
+        )
         return
 
     try:

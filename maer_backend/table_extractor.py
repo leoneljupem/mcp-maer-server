@@ -9,16 +9,14 @@ Retorna tablas como listas de diccionarios (JSON-friendly).
 
 import logging
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger("maer.tables")
 
 
-def extract_tables_from_pdf(path: Path, max_pages: int = 50,
-                            min_rows: int = 2) -> dict:
+def extract_tables_from_pdf(path: Path, max_pages: int = 50, min_rows: int = 2) -> dict:
     """
     Extrae todas las tablas de un PDF.
-    
+
     Retorna: {
         ok: bool,
         tables: [
@@ -65,24 +63,23 @@ def extract_tables_from_pdf(path: Path, max_pages: int = 50,
                     # Limpiar celdas
                     cleaned = []
                     for row in table:
-                        cleaned_row = [
-                            (cell.strip() if cell else "")
-                            for cell in row
-                        ]
+                        cleaned_row = [(cell.strip() if cell else "") for cell in row]
                         cleaned.append(cleaned_row)
 
                     # Primera fila como headers
                     headers = cleaned[0] if cleaned else []
                     rows = cleaned[1:] if len(cleaned) > 1 else []
 
-                    tables_found.append({
-                        "page": page_num + 1,
-                        "table_index": table_idx,
-                        "headers": headers,
-                        "rows": rows,
-                        "row_count": len(rows),
-                        "col_count": len(headers),
-                    })
+                    tables_found.append(
+                        {
+                            "page": page_num + 1,
+                            "table_index": table_idx,
+                            "headers": headers,
+                            "rows": rows,
+                            "row_count": len(rows),
+                            "col_count": len(headers),
+                        }
+                    )
 
     except Exception as e:
         logger.error(f"Error extrayendo tablas: {e}")
@@ -112,11 +109,13 @@ def tables_to_dicts(table_data: dict) -> list:
                 key = header or f"col_{i}"
                 d[key] = row[i] if i < len(row) else ""
             dicts.append(d)
-        result.append({
-            "page": table["page"],
-            "table_index": table["table_index"],
-            "records": dicts,
-        })
+        result.append(
+            {
+                "page": table["page"],
+                "table_index": table["table_index"],
+                "records": dicts,
+            }
+        )
     return result
 
 

@@ -7,37 +7,46 @@ Dashboard web para MAER MCP Server.
 Expone todas las herramientas como API REST + interfaz visual.
 """
 
-import os
-import sys
-import subprocess
 import json
+import logging
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
-from pathlib import Path
+import threading
 from datetime import datetime, timezone
+from pathlib import Path
+
+logger = logging.getLogger("maer.server")
 
 # Agregar project root al path para imports
 _project_root = str(Path(__file__).parent.parent.parent.resolve())
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from fastapi import FastAPI, Request, UploadFile, File, Form, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 import uvicorn
+from fastapi import (BackgroundTasks, FastAPI, File, Form, Request,
+                     UploadFile)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 # Importar acciones del backend
-from maer_backend.maer_files import (
-    action_search_files, action_analyze_file, action_fix_code_file,
-    action_extract_text, action_index_full, action_search_index,
-    action_detect_ids, action_detect_related, action_curp_renapo_check,
-    action_ocr_multimodal, action_extract_tables, action_nlp_entities,
-    action_image_duplicates, action_face_detect, action_cluster_files,
-    action_llm_summarize, action_llm_extract_json, action_renapo_verify_identity,
-    make_response,
-)
+from maer_backend.maer_files import (action_analyze_file, action_cluster_files,
+                                     action_curp_renapo_check,
+                                     action_detect_ids, action_detect_related,
+                                     action_extract_tables,
+                                     action_extract_text, action_face_detect,
+                                     action_image_duplicates,
+                                     action_index_full,
+                                     action_llm_extract_json,
+                                     action_llm_summarize,
+                                     action_nlp_entities, action_ocr_multimodal,
+                                     action_renapo_verify_identity,
+                                     action_search_files,
+                                     action_search_index, make_response)
 
 app = FastAPI(
     title="🦁 MAER Dashboard",
@@ -65,6 +74,16 @@ class NoCacheMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(NoCacheMiddleware)
 
+# Restaurar watcher al arrancar (en background para no bloquear startup)
+def _startup_watcher():
+    try:
+        from maer_backend.maer_watcher import restore_from_config
+        restore_from_config()
+    except Exception as e:
+        pass
+
+threading.Thread(target=_startup_watcher, daemon=True).start()
+
 # Directorios base
 STATIC_DIR = Path(__file__).parent / "static"
 BASE_DIR   = Path(__file__).parent.parent.parent.resolve()   # raíz del proyecto (mcp-maer-server/)
@@ -80,15 +99,77 @@ async def root():
     return FileResponse(str(STATIC_DIR / "index.html"))
 
 
+def _auto_index_file(path: Path):
+    """Indexa un archivo recién subido en segundo plano (FTS5)."""
+    try:
+        from maer_backend.maer_search_index import index_file
+        result = index_file(path, ocr=False)
+        logger.info(f"Auto-índice FTS: {path.name} → {result.get('status','?')}")
+    except Exception as e:
+        logger.debug(f"Auto-índice FTS falló para {path.name}: {e}")
+
+
+def _auto_clasificar(path: Path) -> dict:
+    """Clasifica un archivo y retorna el resultado (llamar en background o directo)."""
+    try:
+        from maer_backend.maer_clasificador import clasificar_archivo
+        return clasificar_archivo(path)
+    except Exception as e:
+        return {"tipo": "documento_general", "error": str(e)}
+
+
 @app.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
-    """Sube un archivo para análisis."""
+async def upload_file(file: UploadFile = File(...), background_tasks: BackgroundTasks = None):
+    """Sube un archivo, indexa en FTS y clasifica automáticamente."""
     dest = UPLOAD_DIR / file.filename
     with open(dest, "wb") as f:
         shutil.copyfileobj(file.file, f)
+    # Auto-índice FTS en background
+    if background_tasks is not None:
+        background_tasks.add_task(_auto_index_file, dest)
+    # Clasificación síncrona (rápida — sin OCR)
+    clasificacion = _auto_clasificar(dest)
     return make_response(True, "UPLOAD_OK", f"Archivo subido: {file.filename}", {
         "path": str(dest), "name": file.filename, "size": dest.stat().st_size,
+        "auto_indexed": True,
+        "clasificacion": clasificacion,
     })
+
+
+@app.post("/api/clasificar")
+async def api_clasificar(payload: dict):
+    """
+    Clasifica un documento y extrae campos estructurados.
+    Parámetros: path (ruta al archivo) — o — texto (texto ya extraído)
+    """
+    from maer_backend.maer_clasificador import (clasificar_archivo,
+                                                clasificar_texto)
+
+    path_str = payload.get("path", "")
+    texto    = payload.get("texto", "")
+
+    if path_str:
+        path = Path(path_str)
+        if not path.exists():
+            return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+        result = clasificar_archivo(path, texto_previo=texto or None)
+    elif texto:
+        result = clasificar_texto(texto)
+    else:
+        return make_response(False, "MISSING_INPUT", "Se requiere 'path' o 'texto'")
+
+    result.get("tipo", "documento_general")
+    label = result.get("label", "Documento general")
+    conf  = result.get("confianza", 0)
+    return make_response(True, "CLASIFICADO", f"{label} (confianza {conf:.0%})", result)
+
+
+@app.get("/api/clasificar-tipos")
+async def api_clasificar_tipos():
+    """Lista todos los tipos de documento soportados."""
+    from maer_backend.maer_clasificador import listar_tipos
+    tipos = listar_tipos()
+    return make_response(True, "TIPOS_OK", f"{len(tipos)} tipos de documento soportados", {"tipos": tipos})
 
 
 @app.post("/api/search")
@@ -226,19 +307,16 @@ async def api_status():
     modules = {}
 
     try:
-        import pytesseract
         modules["tesseract"] = True
     except ImportError:
         modules["tesseract"] = False
 
     try:
-        import easyocr
         modules["easyocr"] = True
     except ImportError:
         modules["easyocr"] = False
 
     try:
-        from paddleocr import PaddleOCR
         modules["paddleocr"] = True
     except ImportError:
         modules["paddleocr"] = False
@@ -247,29 +325,25 @@ async def api_status():
         import spacy
         spacy.load("es_core_news_md")
         modules["spacy"] = True
-    except Exception:
+    except Exception as e:
         modules["spacy"] = False
 
     try:
-        from deepface import DeepFace
         modules["deepface"] = True
     except ImportError:
         modules["deepface"] = False
 
     try:
-        import imagehash
         modules["imagehash"] = True
     except ImportError:
         modules["imagehash"] = False
 
     try:
-        import cv2
         modules["opencv"] = True
     except ImportError:
         modules["opencv"] = False
 
     try:
-        import pdfplumber
         modules["pdfplumber"] = True
     except ImportError:
         modules["pdfplumber"] = False
@@ -280,10 +354,112 @@ async def api_status():
     })
 
 
+@app.get("/api/server-info")
+async def api_server_info():
+    """Información del servidor: IP local, puerto, URL ngrok si activa."""
+    import socket
+    port = int(os.environ.get("MAER_PORT", 8765))
+
+    # Detectar IP local de la red (no loopback)
+    ip_local = "localhost"
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.connect(("8.8.8.8", 80))
+        ip_local = s.getsockname()[0]
+        s.close()
+    except Exception as e:
+        pass
+
+    # Detectar URL ngrok activa (si el proceso ngrok está corriendo)
+    ngrok_url = None
+    try:
+        import requests as req_lib
+        r = req_lib.get("http://localhost:4040/api/tunnels", timeout=1)
+        tunnels = r.json().get("tunnels", [])
+        for t in tunnels:
+            if t.get("proto") == "https":
+                ngrok_url = t["public_url"]
+                break
+    except Exception as e:
+        pass
+
+    return make_response(True, "SERVER_INFO", "Información del servidor", {
+        "ip_local":    ip_local,
+        "puerto":      port,
+        "url_local":   f"http://{ip_local}:{port}",
+        "url_ngrok":   ngrok_url,
+        "tasker_url":  f"{ngrok_url}/api/tasker-receive" if ngrok_url else f"http://{ip_local}:{port}/api/tasker-receive",
+    })
+
+
 @app.post("/api/llm-chat")
 async def api_llm_chat(payload: dict):
     from maer_backend.maer_files import action_llm_chat
+
+    # Normalizar: el JS envía "message", la acción espera "prompt"
+    if "message" in payload and "prompt" not in payload:
+        payload = dict(payload)
+        payload["prompt"] = payload["message"]
     return action_llm_chat(payload)
+
+
+@app.get("/api/llm-status")
+async def api_llm_status():
+    """Estado de todos los motores LLM disponibles: Ollama, Groq, OpenAI."""
+    import os
+
+    resultado = {
+        "ollama": {"disponible": False, "modelo_activo": None, "modelos": []},
+        "groq":   {"disponible": False, "modelo": None, "clave_configurada": False},
+        "openai": {"disponible": False, "modelo": None, "clave_configurada": False},
+        "motor_recomendado": None,
+    }
+
+    # ── Ollama ──────────────────────────────────────────────────────────────────
+    try:
+        from maer_backend.maer_ollama import (elegir_modelo,
+                                              listar_modelos_api,
+                                              servidor_activo)
+        if servidor_activo(timeout=3):
+            modelos = listar_modelos_api()
+            modelo_activo = elegir_modelo(modelos)
+            resultado["ollama"] = {
+                "disponible": True,
+                "modelo_activo": modelo_activo,
+                "modelos": [m["name"] for m in modelos[:10]],
+                "total_modelos": len(modelos),
+            }
+            resultado["motor_recomendado"] = f"ollama/{modelo_activo}"
+    except Exception as e:
+        resultado["ollama"]["error"] = str(e)
+
+    # ── Groq ────────────────────────────────────────────────────────────────────
+    groq_key = os.environ.get("GROQ_API_KEY", "")
+    groq_model = os.environ.get("GROQ_MODEL", "llama-3.3-70b-versatile")
+    resultado["groq"]["clave_configurada"] = bool(groq_key)
+    resultado["groq"]["modelo"] = groq_model
+    if groq_key:
+        try:
+            resultado["groq"]["disponible"] = True
+            if not resultado["motor_recomendado"]:
+                resultado["motor_recomendado"] = f"groq/{groq_model}"
+        except ImportError:
+            resultado["groq"]["error"] = "SDK groq no instalado"
+
+    # ── OpenAI ──────────────────────────────────────────────────────────────────
+    openai_key = os.environ.get("OPENAI_API_KEY", "")
+    openai_model = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+    resultado["openai"]["clave_configurada"] = bool(openai_key)
+    resultado["openai"]["modelo"] = openai_model
+    if openai_key:
+        resultado["openai"]["disponible"] = True
+        if not resultado["motor_recomendado"]:
+            resultado["motor_recomendado"] = f"openai/{openai_model}"
+
+    if not resultado["motor_recomendado"]:
+        resultado["motor_recomendado"] = "diccionario_local"
+
+    return make_response(True, "LLM_STATUS_OK", "Estado de motores LLM", resultado)
 
 
 @app.get("/api/ngrok-url")
@@ -300,7 +476,7 @@ async def api_ngrok_url():
         tunnels = ngrok.get_tunnels()
         if tunnels:
             return make_response(True, "NGROK_OK", "Túnel activo", {"url": tunnels[0].public_url})
-    except Exception:
+    except Exception as e:
         pass
     return make_response(False, "NGROK_OFF", "ngrok no activo — usa iniciar_maer_ngrok.py", {"url": None})
 
@@ -330,6 +506,7 @@ async def manifest_json():
 async def favicon():
     """Favicon para evitar errores 404."""
     from fastapi.responses import Response
+
     # SVG favicon incrustado como ICO simulado (PNG base64 1x1 amarillo-azul)
     ico = b'\x00\x00\x01\x00\x01\x00\x10\x10\x00\x00\x01\x00\x18\x00h\x03\x00\x006\x00\x00\x00'
     return Response(content=ico, media_type="image/x-icon")
@@ -339,6 +516,7 @@ async def favicon():
 async def api_move_files(payload: dict):
     """Mueve archivos a una carpeta destino."""
     import shutil
+
     # Acepta tanto "rutas" (JS) como "files" (legacy)
     files       = payload.get("rutas", payload.get("files", []))
     destination = payload.get("destino", payload.get("destination", "")).strip()
@@ -365,7 +543,6 @@ async def api_move_files(payload: dict):
 async def api_copy_files(payload: dict):
     """Copia y organiza archivos a carpeta destino (safe — originals intactos)."""
     import shutil
-    from collections import defaultdict
 
     # Acepta modo simple (files + destination) o modo organización (origen + destino + grupos)
     origen      = payload.get("origen", "")
@@ -444,7 +621,7 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
                 import docx
                 doc = docx.Document(tmp_path)
                 text = "\n".join(p.text for p in doc.paragraphs)
-            except Exception:
+            except Exception as e:
                 text = f"[DOCX sin módulo python-docx]"
         else:
             # Try OCR
@@ -457,7 +634,7 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
         text = f"Error al procesar: {e}"
     finally:
         try: os.unlink(tmp_path)
-        except: pass
+        except Exception as e: pass
     summary = text[:8000]  # max chars to store
     return make_response(True, "LEARN_OK", f"Texto extraído: {len(text)} caracteres", {
         "filename": file.filename, "label": label or file.filename,
@@ -469,6 +646,488 @@ def _normalizar(texto: str) -> str:
     """Normaliza texto: minúsculas + quita acentos para búsquedas sin acentuar."""
     import unicodedata
     return unicodedata.normalize("NFD", texto.lower()).encode("ascii", "ignore").decode("ascii")
+
+
+# ── FASE C: Análisis profundo de PDF ────────────────────────────────────────
+
+@app.post("/api/pdf-analyze-deep")
+async def api_pdf_analyze_deep(payload: dict):
+    """Análisis profundo de PDF: texto con layout, tablas, metadatos, tipo de doc."""
+    from maer_backend.maer_pdf_analyzer import analyze_pdf_deep
+    path_str = payload.get("path", "")
+    max_pages = int(payload.get("max_pages", 50))
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    if path.suffix.lower() != ".pdf":
+        return make_response(False, "NOT_PDF", "Solo se soportan archivos PDF")
+    result = analyze_pdf_deep(path, max_pages=max_pages)
+    if result.get("ok"):
+        return make_response(True, "PDF_ANALYZED", f"PDF analizado: {result['char_count']} caracteres, "
+                             f"{result['total_pages']} páginas, tipo: {result['doc_type']}", result)
+    return make_response(False, "PDF_ERROR", result.get("error", "Error desconocido"))
+
+
+# ── FASE D: Búsqueda semántica ───────────────────────────────────────────────
+
+@app.post("/api/semantic-index")
+async def api_semantic_index(payload: dict):
+    """
+    Construye el índice semántico desde maer_index.json o desde una carpeta.
+    Si se pasa 'index_file': usa ese JSON. Si se pasa 'base_dir': indexa la carpeta.
+    """
+    from pathlib import Path as PPath
+
+    from maer_backend.maer_semantic import get_semantic_index
+
+    index_file = payload.get("index_file")
+    base_dir = payload.get("base_dir")
+    index_dir = payload.get("index_dir")
+
+    sem_idx = get_semantic_index(PPath(index_dir) if index_dir else None)
+
+    if index_file:
+        idx_path = PPath(index_file)
+    elif base_dir:
+        idx_path = PPath(base_dir) / "maer_index.json"
+    else:
+        idx_path = BASE_DIR / "maer_index.json"
+
+    result = sem_idx.build_from_index_file(idx_path)
+    if result.get("ok"):
+        return make_response(True, "SEMANTIC_INDEX_OK",
+                             f"Índice semántico construido: {result['total_docs']} docs "
+                             f"(motor: {result['engine']})", result)
+    return make_response(False, "SEMANTIC_INDEX_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/semantic-search")
+async def api_semantic_search(payload: dict):
+    """
+    Búsqueda semántica en los documentos indexados.
+    Encuentra documentos por significado, no solo por palabras exactas.
+    Parámetros: query, top_k (default 10), mode (semantic|hybrid)
+    """
+    from pathlib import Path as PPath
+
+    from maer_backend.maer_semantic import get_semantic_index
+
+    query = str(payload.get("query") or payload.get("termino") or "").strip()
+    top_k = int(payload.get("top_k", 10))
+    mode = payload.get("mode", "hybrid")
+    index_dir = payload.get("index_dir")
+
+    if not query:
+        return make_response(False, "EMPTY_QUERY", "Query vacío")
+
+    sem_idx = get_semantic_index(PPath(index_dir) if index_dir else None)
+
+    if not sem_idx.is_ready():
+        return make_response(False, "INDEX_NOT_BUILT",
+                             "Índice semántico no construido. Ejecuta /api/semantic-index primero.")
+
+    if mode == "hybrid":
+        index_json = BASE_DIR / "maer_index.json"
+        results = sem_idx.hybrid_search(query, index_json_path=index_json, top_k=top_k)
+    else:
+        results = sem_idx.search(query, top_k=top_k)
+
+    info = sem_idx.info()
+    return make_response(True, "SEMANTIC_SEARCH_OK",
+                         f"{len(results)} resultados semánticos para '{query}'", {
+                             "query": query,
+                             "mode": mode,
+                             "results": results,
+                             "engine": info.get("engine"),
+                             "total_indexed": info.get("total_docs"),
+                         })
+
+
+@app.get("/api/semantic-status")
+async def api_semantic_status():
+    """Estado del índice semántico."""
+    from maer_backend.maer_semantic import get_semantic_index
+    sem_idx = get_semantic_index()
+    info = sem_idx.info()
+    return make_response(True, "SEMANTIC_STATUS", "Estado del índice semántico", info)
+
+
+# ── FASE B: Visión con Claude ────────────────────────────────────────────────
+
+@app.post("/api/vision-analyze")
+async def api_vision_analyze(payload: dict):
+    """
+    Análisis completo de imagen o PDF con Claude Vision.
+    Describe contenido visual, extrae texto, detecta tipo de documento.
+    """
+    from maer_backend.maer_vision import analyze_image
+    path_str = payload.get("path", "")
+    prompt   = payload.get("prompt")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = analyze_image(path, prompt=prompt)
+    if result.get("ok"):
+        return make_response(True, "VISION_OK", "Análisis de imagen completado", result)
+    return make_response(False, "VISION_ERROR", result.get("error", "Error en análisis visual"))
+
+
+@app.post("/api/vision-ocr")
+async def api_vision_ocr(payload: dict):
+    """
+    Extrae texto de imagen/PDF con Claude Vision.
+    Mejor que OCR clásico para imágenes borrosas, inclinadas o manuscritas.
+    """
+    from maer_backend.maer_vision import extract_text_vision
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = extract_text_vision(path)
+    if result.get("ok"):
+        return make_response(True, "VISION_OCR_OK",
+                             f"Texto extraído: {result.get('chars', 0)} caracteres", result)
+    return make_response(False, "VISION_OCR_ERROR", result.get("error", "Error OCR visual"))
+
+
+@app.post("/api/vision-classify")
+async def api_vision_classify(payload: dict):
+    """Clasifica automáticamente el tipo de documento en una imagen."""
+    from maer_backend.maer_vision import classify_document_image
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = classify_document_image(path)
+    if result.get("ok"):
+        return make_response(True, "VISION_CLASSIFY_OK", "Documento clasificado", result)
+    return make_response(False, "VISION_CLASSIFY_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/vision-extract-fields")
+async def api_vision_extract_fields(payload: dict):
+    """
+    Extrae campos específicos de una imagen de documento.
+    Parámetros: path, fields (lista de campos a buscar)
+    """
+    from maer_backend.maer_vision import extract_fields_from_image
+    path_str = payload.get("path", "")
+    fields   = payload.get("fields", [])
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    if not fields:
+        return make_response(False, "MISSING_FIELDS", "Se requiere lista de 'fields'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = extract_fields_from_image(path, fields)
+    if result.get("ok"):
+        return make_response(True, "VISION_FIELDS_OK", "Campos extraídos", result)
+    return make_response(False, "VISION_FIELDS_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/vision-pdf")
+async def api_vision_pdf(payload: dict):
+    """
+    Analiza PDF escaneado página por página con Claude Vision.
+    Ideal para PDFs que no tienen texto extraíble directamente.
+    """
+    from maer_backend.maer_vision import analyze_pdf_pages_vision
+    path_str  = payload.get("path", "")
+    max_pages = int(payload.get("max_pages", 5))
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = analyze_pdf_pages_vision(path, max_pages=max_pages)
+    if result.get("ok"):
+        return make_response(True, "VISION_PDF_OK",
+                             f"PDF analizado: {result['pages_analyzed']} páginas, "
+                             f"{result['char_count']} caracteres", result)
+    return make_response(False, "VISION_PDF_ERROR", result.get("error", "Error"))
+
+
+# ── Motor OCR Avanzado ───────────────────────────────────────────────────────
+
+@app.post("/api/ocr-advanced")
+async def api_ocr_advanced(payload: dict):
+    """
+    OCR avanzado con orquestador automático.
+    Selecciona el mejor motor (surya/docTR/TrOCR/EasyOCR/Tesseract) según la imagen.
+    Parámetros: path, hint (auto|scan|photo|handwritten|form|fast), max_pages
+    """
+    from maer_backend.maer_ocr_advanced import ocr_document_advanced
+    path_str  = payload.get("path", "")
+    hint      = payload.get("hint", "auto")
+    max_pages = int(payload.get("max_pages", 50))
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = ocr_document_advanced(path, hint=hint, max_pages=max_pages)
+    if result.get("ok"):
+        return make_response(True, "OCR_ADVANCED_OK",
+                             f"OCR completado: {len(result.get('text',''))} chars "
+                             f"(motor: {result.get('engine')}, "
+                             f"calidad: {result.get('quality',0):.0%})", result)
+    return make_response(False, "OCR_ADVANCED_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/ocr-full-analyze")
+async def api_ocr_full_analyze(payload: dict):
+    """
+    Análisis completo: OCR + tablas + metadatos + clasificación de documento.
+    Combina todos los motores disponibles.
+    """
+    from maer_backend.maer_ocr_advanced import analyze_document_full
+    path_str  = payload.get("path", "")
+    max_pages = int(payload.get("max_pages", 30))
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = analyze_document_full(path, max_pages=max_pages)
+    return make_response(result.get("ok", False), "FULL_ANALYZE_OK" if result.get("ok") else "FULL_ANALYZE_ERROR",
+                         f"Análisis completo: {result.get('char_count',0)} chars, "
+                         f"tipo: {result.get('doc_type','?')}", result)
+
+
+@app.get("/api/ocr-engines-status")
+async def api_ocr_engines_status():
+    """Estado de todos los motores OCR instalados."""
+    from maer_backend.maer_ocr_advanced import engine_status
+    status = engine_status()
+    available = [k for k, v in status.items() if v]
+    return make_response(True, "OCR_STATUS_OK",
+                         f"{len(available)}/{len(status)} motores disponibles", {
+                             "engines": status,
+                             "available": available,
+                             "total": len(status),
+                         })
+
+
+@app.post("/api/tables-from-image")
+async def api_tables_from_image(payload: dict):
+    """Extrae tablas de imágenes escaneadas con img2table."""
+    from maer_backend.maer_ocr_advanced import extract_tables_from_image
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    result = extract_tables_from_image(path)
+    if result.get("ok"):
+        return make_response(True, "TABLES_IMAGE_OK",
+                             f"{result['total_tables']} tablas detectadas en imagen", result)
+    return make_response(False, "TABLES_IMAGE_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/image-intelligence")
+async def api_image_intelligence(payload: dict):
+    """Análisis exhaustivo de imagen: EXIF, QR/barras, layout, OCR, clasificación."""
+    from maer_backend.maer_image_intelligence import analyze_image_full
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"Archivo no existe: {path_str}")
+    ocr = payload.get("ocr", True)
+    result = analyze_image_full(path, ocr=ocr)
+    if result.get("ok"):
+        return make_response(True, "IMAGE_INTEL_OK",
+                             f"Análisis completo: {result['char_count']} chars, "
+                             f"{result.get('codes_found', 0)} códigos", result)
+    return make_response(False, "IMAGE_INTEL_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/barcode-scan")
+async def api_barcode_scan(payload: dict):
+    """Detecta y decodifica todos los códigos QR y barras en una imagen."""
+    from maer_backend.maer_image_intelligence import detect_barcodes_qr
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"No existe: {path_str}")
+    result = detect_barcodes_qr(path)
+    if result.get("ok"):
+        return make_response(True, "BARCODE_OK",
+                             f"{result['count']} código(s) detectado(s)", result)
+    return make_response(False, "BARCODE_ERROR", result.get("error", "No se encontraron códigos"))
+
+
+@app.post("/api/exif-extract")
+async def api_exif_extract(payload: dict):
+    """Extrae metadatos EXIF de una imagen (fecha, cámara, GPS, orientación)."""
+    from maer_backend.maer_image_intelligence import extract_exif
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"No existe: {path_str}")
+    result = extract_exif(path)
+    if result.get("ok"):
+        return make_response(True, "EXIF_OK",
+                             f"{len(result.get('metadata', {}))} campos EXIF extraídos", result)
+    return make_response(False, "EXIF_ERROR", result.get("error", "Sin EXIF"))
+
+
+@app.post("/api/preprocess-turbo")
+async def api_preprocess_turbo(payload: dict):
+    """Preprocesa imagen con Wand+albumentations y devuelve OCR mejorado."""
+    from maer_backend.maer_ocr_advanced import ocr_advanced
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"No existe: {path_str}")
+    try:
+        from maer_backend.maer_image_intelligence import preprocess_turbo
+        img = preprocess_turbo(path)
+    except Exception as e:
+        from PIL import Image
+        img = Image.open(str(path)).convert("RGB")
+    result = ocr_advanced(img, hint="auto")
+    return make_response(result.get("ok", False), "PREPROCESS_TURBO_OK" if result.get("ok") else "ERROR",
+                         f"Motor: {result.get('engine')}, calidad: {result.get('quality', 0):.2f}",
+                         result)
+
+
+@app.post("/api/extract-universal")
+async def api_extract_universal(payload: dict):
+    """Extrae texto de cualquier tipo de archivo (PDF, Word, Excel, PPT, email, audio...)."""
+    from maer_backend.maer_universal_extractor import extract_text
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"No existe: {path_str}")
+    ocr     = payload.get("ocr", True)
+    whisper = payload.get("whisper", False)
+    result  = extract_text(path, ocr=ocr, whisper=whisper)
+    if result.get("ok"):
+        return make_response(True, "EXTRACT_OK",
+                             f"Extraídos {result['chars']} chars con {result['method']}", result)
+    return make_response(False, "EXTRACT_ERROR", result.get("error", "Error extrayendo"))
+
+
+@app.post("/api/search-index-file")
+async def api_search_index_file(payload: dict):
+    """Indexa un archivo para búsqueda full-text (FTS5)."""
+    from maer_backend.maer_search_index import index_file
+    path_str = payload.get("path", "")
+    if not path_str:
+        return make_response(False, "MISSING_PATH", "Se requiere 'path'")
+    path = Path(path_str)
+    if not path.exists():
+        return make_response(False, "NOT_FOUND", f"No existe: {path_str}")
+    ocr = payload.get("ocr", True)
+    result = index_file(path, ocr=ocr)
+    if result.get("ok"):
+        return make_response(True, "INDEX_OK",
+                             f"Archivo {result['status']}: {result.get('chars',0)} chars", result)
+    return make_response(False, "INDEX_ERROR", result.get("error", "Error indexando"))
+
+
+@app.post("/api/search-index-dir")
+async def api_search_index_dir(payload: dict):
+    """Indexa un directorio completo para búsqueda full-text."""
+    from maer_backend.maer_search_index import index_directory
+    base_dir = payload.get("dir", payload.get("carpeta", "."))
+    ocr      = payload.get("ocr", False)
+    exts     = payload.get("extensions") or None
+    max_f    = int(payload.get("max_files", 2000))
+    result   = index_directory(Path(base_dir), ocr=ocr, extensions=exts, max_files=max_f)
+    if result.get("ok"):
+        msg = (f"Indexados: {result['indexed']} nuevos, "
+               f"{result['updated']} actualizados, {result['errors']} errores")
+        return make_response(True, "INDEX_DIR_OK", msg, result)
+    return make_response(False, "INDEX_DIR_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/search-fts")
+async def api_search_fts(payload: dict):
+    """Búsqueda full-text en todos los archivos indexados (FTS5 + fuzzy)."""
+    from maer_backend.maer_search_index import search
+    query    = payload.get("query", payload.get("termino", "")).strip()
+    if not query:
+        return make_response(False, "MISSING_QUERY", "Se requiere 'query'")
+    limit    = int(payload.get("limit", 30))
+    fuzzy    = payload.get("fuzzy", True)
+    doc_type = payload.get("doc_type") or None
+    ext_f    = payload.get("extensions") or None
+    result   = search(query, limit=limit, fuzzy=fuzzy, doc_type=doc_type, ext_filter=ext_f)
+    if result.get("ok"):
+        return make_response(True, "SEARCH_FTS_OK",
+                             f"{result['total']} resultado(s) para '{query}'", result)
+    return make_response(False, "SEARCH_FTS_ERROR", result.get("error", "Error"))
+
+
+@app.get("/api/search-index-stats")
+async def api_search_index_stats():
+    """Estadísticas del índice de búsqueda FTS5."""
+    from maer_backend.maer_search_index import index_stats
+    result = index_stats()
+    if result.get("ok"):
+        return make_response(True, "INDEX_STATS_OK",
+                             f"{result['total_files']} archivos indexados", result)
+    return make_response(False, "INDEX_STATS_ERROR", result.get("error"))
+
+
+# ══════════════════════════════════════════════════════════
+# Watcher — vigilancia de carpetas en tiempo real
+# ══════════════════════════════════════════════════════════
+
+@app.post("/api/watch-start")
+async def api_watch_start(payload: dict):
+    """Empieza a vigilar una carpeta y re-indexa archivos nuevos/modificados."""
+    from maer_backend.maer_watcher import start_watching
+    directory = payload.get("dir", payload.get("path", "")).strip()
+    if not directory:
+        return make_response(False, "MISSING_DIR", "Se requiere 'dir'")
+    result = start_watching(directory)
+    if result.get("ok"):
+        return make_response(True, "WATCH_STARTED",
+                             f"Vigilando: {directory}", result)
+    return make_response(False, "WATCH_ERROR", result.get("error", "Error"))
+
+
+@app.post("/api/watch-stop")
+async def api_watch_stop(payload: dict):
+    """Deja de vigilar una carpeta."""
+    from maer_backend.maer_watcher import stop_watching
+    directory = payload.get("dir", payload.get("path", "")).strip()
+    if not directory:
+        return make_response(False, "MISSING_DIR", "Se requiere 'dir'")
+    result = stop_watching(directory)
+    if result.get("ok"):
+        return make_response(True, "WATCH_STOPPED",
+                             f"Detenido: {directory}", result)
+    return make_response(False, "WATCH_ERROR", result.get("error", "Error"))
+
+
+@app.get("/api/watch-status")
+async def api_watch_status():
+    """Estado actual del watcher (carpetas vigiladas y contadores)."""
+    from maer_backend.maer_watcher import watcher_status
+    return make_response(True, "WATCH_STATUS_OK", "Estado del watcher", watcher_status())
 
 
 @app.post("/api/busqueda-masiva")
@@ -519,8 +1178,8 @@ async def api_busqueda_masiva(payload: dict):
                             doc = _docx.Document(str(f))
                             text_doc = " ".join(p.text for p in doc.paragraphs)
                             match_content = query in _normalizar(text_doc)
-                        except Exception: pass
-                except: pass
+                        except Exception as e: pass
+                except Exception as e: pass
             if match_name or match_content or not query:
                 stat = f.stat()
                 size_fmt = (f"{stat.st_size//1024} KB" if stat.st_size >= 1024 else f"{stat.st_size} B")
@@ -532,7 +1191,7 @@ async def api_busqueda_masiva(payload: dict):
                         idx = txt_norm.find(query)
                         if idx >= 0:
                             fragmento = txt[max(0,idx-40):idx+80].replace('\n',' ')
-                    except: pass
+                    except Exception as e: pass
                 results.append({
                     "ruta":      str(f),
                     "nombre":    f.name,
@@ -553,6 +1212,7 @@ async def api_busqueda_masiva(payload: dict):
 async def api_organizar_sugerir(payload: dict):
     """Sugiere cómo organizar archivos en una carpeta y devuelve grupos listos para /api/copy-files."""
     from collections import defaultdict
+
     # Acepta "carpeta" (JS 3.1) o "base_dir" (legacy)
     base_dir = payload.get("carpeta", payload.get("base_dir", ""))
     if not base_dir or not Path(base_dir).exists():
@@ -614,7 +1274,7 @@ def _sugerir_carpeta(ext):
 @app.get("/api/backup")
 async def api_backup():
     """Crea un respaldo de los archivos estáticos MAER en la carpeta respaldo_maer."""
-    import shutil, zipfile
+    import zipfile
     from datetime import datetime
     ts          = datetime.now().strftime("%Y%m%d_%H%M%S")
     respaldo_dir = BASE_DIR / "respaldo_maer"
@@ -648,7 +1308,7 @@ async def api_tasker_receive(payload: dict):
     mensaje   = payload.get("mensaje",   payload.get("message", ""))
     device    = payload.get("dispositivo", payload.get("device", "android"))
     fuente    = payload.get("fuente",    "tasker")
-    timestamp = payload.get("timestamp", "")
+    payload.get("timestamp", "")
     # Store message
     TASKER_LOG_FILE = UPLOAD_DIR.parent / "tasker_messages.json"
     try:
@@ -664,7 +1324,7 @@ async def api_tasker_receive(payload: dict):
         })
         existing = existing[-100:]  # keep last 100
         TASKER_LOG_FILE.write_text(json.dumps(existing, ensure_ascii=False, indent=2))
-    except Exception:
+    except Exception as e:
         pass
     # Process with LLM if possible
     reply = f"MAER recibido: {mensaje[:50]}"
@@ -672,7 +1332,7 @@ async def api_tasker_receive(payload: dict):
         from maer_backend.maer_files import action_llm_chat
         r = action_llm_chat({"prompt": mensaje})
         if r.get("ok"): reply = r["data"]["response"][:500]
-    except: pass
+    except Exception as e: pass
     return make_response(True, "TASKER_OK", "Mensaje recibido.", {"reply": reply})
 
 
@@ -716,10 +1376,10 @@ def _decodificar_curp(curp: str) -> dict:
         "ZS":"Zacatecas","NE":"Nacido en el Extranjero",
     }
     try:
-        letra1  = curp[0]
-        vocal1  = curp[1]
-        letra2  = curp[2]
-        letra3  = curp[3]
+        curp[0]
+        curp[1]
+        curp[2]
+        curp[3]
         anio    = curp[4:6]
         mes     = curp[6:8]
         dia     = curp[8:10]
@@ -736,7 +1396,7 @@ def _decodificar_curp(curp: str) -> dict:
             hoy = datetime.date.today()
             edad = hoy.year - fecha_nac.year - ((hoy.month, hoy.day) < (fecha_nac.month, fecha_nac.day))
             fecha_str = fecha_nac.strftime("%d/%m/%Y")
-        except Exception:
+        except Exception as e:
             fecha_str = f"{dia}/{mes}/{yr_full}"
             edad = None
 
@@ -763,11 +1423,11 @@ async def api_analizar_documento(file: UploadFile = File(...)):
     """
     import re
     import tempfile
-    from maer_backend.maer_files import (
-        curp_valida, rfc_valido, normalize_id,
-        CURP_REGEX_SEARCH, RFC_REGEX, NSS_REGEX, EMAIL_REGEX,
-        extract_text_generic,
-    )
+
+    from maer_backend.maer_files import (CURP_REGEX_SEARCH, EMAIL_REGEX,
+                                         NSS_REGEX, RFC_REGEX, curp_valida,
+                                         extract_text_generic, normalize_id,
+                                         rfc_valido)
 
     ext = Path(file.filename).suffix.lower()
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
@@ -784,16 +1444,16 @@ async def api_analizar_documento(file: UploadFile = File(...)):
                 import pdfplumber
                 with pdfplumber.open(str(tmp_path)) as pdf:
                     texto = "\n".join(p.extract_text() or "" for p in pdf.pages)
-            except Exception:
+            except Exception as e:
                 pass
             if not texto.strip():
                 texto = extract_text_generic(tmp_path, use_ocr_for_pdf=True)
 
         elif ext in {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp"}:
             try:
+                import cv2
                 import pytesseract
                 from PIL import Image as PILImage
-                import cv2, numpy as np
                 img = cv2.imread(str(tmp_path))
                 if img is not None:
                     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -930,7 +1590,7 @@ async def api_analizar_documento(file: UploadFile = File(...)):
         return make_response(False, "ANALISIS_ERROR", str(e))
     finally:
         try: os.unlink(str(tmp_path))
-        except: pass
+        except Exception as e: pass
 
 
 @app.post("/api/curp-decodificar")
@@ -1025,9 +1685,10 @@ async def api_imagenes_similares(payload: dict):
     img_exts = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".webp", ".gif"}
 
     try:
+        pass
+
         import imagehash
         from PIL import Image as PILImage
-        from collections import defaultdict
 
         hashes_img = []
         errores = []
@@ -1104,8 +1765,8 @@ async def api_ocr_imagen(file: UploadFile = File(...)):
     tmp_path = Path(tmp.name)
 
     try:
+        import cv2
         import pytesseract
-        import cv2, numpy as np
         from PIL import Image as PILImage
 
         # Preprocesamiento para mejorar OCR
@@ -1129,7 +1790,8 @@ async def api_ocr_imagen(file: UploadFile = File(...)):
                                             config="--psm 3 --oem 3")
 
         # También detectar IDs en el texto
-        from maer_backend.maer_files import CURP_REGEX_SEARCH, RFC_REGEX, NSS_REGEX
+        from maer_backend.maer_files import (CURP_REGEX_SEARCH, NSS_REGEX,
+                                             RFC_REGEX)
         texto_u = texto.upper()
         curps = list(set(CURP_REGEX_SEARCH.findall(texto_u)))
         rfcs  = list(set(RFC_REGEX.findall(texto_u)))
@@ -1143,7 +1805,7 @@ async def api_ocr_imagen(file: UploadFile = File(...)):
         return make_response(False, "OCR_ERR", str(e))
     finally:
         try: os.unlink(str(tmp_path))
-        except: pass
+        except Exception as e: pass
 
 
 @app.post("/api/expediente-imss")
@@ -1209,7 +1871,7 @@ async def api_expediente_imss(payload: dict):
 @app.post("/api/rfc-validar")
 async def api_rfc_validar(payload: dict):
     """Valida un RFC con verificación de dígito verificador."""
-    from maer_backend.maer_files import rfc_valido, normalize_id
+    from maer_backend.maer_files import normalize_id, rfc_valido
     rfc = normalize_id(payload.get("rfc", ""))
     if not rfc:
         return make_response(False, "EMPTY", "RFC vacío")
@@ -1291,7 +1953,7 @@ async def api_imss_consulta(payload: dict):
                 "año_alta_imss": año_alta_full,
                 "estructura": f"{nss[0:2]}-{nss[2:4]}-{nss[4:9]}-{nss[9:11] if len(nss)>=11 else nss[9:]}",
             }
-        except Exception:
+        except Exception as e:
             nss_info = {"nss": nss}
 
     # 3. Estimar NSS si no se proporcionó (solo los primeros 2 dígitos)
@@ -1402,7 +2064,7 @@ async def api_sinavid_consulta(payload: dict):
                     elif resp.status_code in (401, 403):
                         resultado["error"] = "SINAVID requiere autenticación. Visita el portal oficial."
                         break
-                except Exception:
+                except Exception as e:
                     continue
     except ImportError:
         resultado["error"] = "httpx no disponible"
@@ -1445,14 +2107,16 @@ async def api_exportar_pdf(payload: dict):
     notas    = payload.get("notas", "")
 
     try:
-        from reportlab.lib.pagesizes import letter
+        import io
+
         from reportlab.lib import colors
-        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.enums import TA_CENTER
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
         from reportlab.lib.units import cm
-        from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
-                                        Table, TableStyle, HRFlowable)
-        from reportlab.lib.enums import TA_CENTER, TA_LEFT
-        import tempfile, io
+        from reportlab.platypus import (HRFlowable, Paragraph,
+                                        SimpleDocTemplate, Spacer, Table,
+                                        TableStyle)
 
         buf = io.BytesIO()
         doc_pdf = SimpleDocTemplate(buf, pagesize=letter,
@@ -1567,7 +2231,7 @@ async def api_exportar_pdf(payload: dict):
                 color_fila = colors.HexColor("#fff0f0")
             else:
                 estado = "⬜ No verificado"
-                color_fila = colors.white
+                colors.white
             check_rows.append([estado, dnom, durge])
 
         tc = Table(check_rows, colWidths=[3*cm, 9*cm, 4.5*cm])
@@ -1641,14 +2305,15 @@ async def api_imss_selenium(payload: dict):
         return make_response(False, "EMPTY", "CURP y NSS requeridos para consulta Selenium")
 
     try:
+        import time
+
         from selenium import webdriver
         from selenium.webdriver.chrome.options import Options
         from selenium.webdriver.chrome.service import Service
         from selenium.webdriver.common.by import By
-        from selenium.webdriver.support.ui import WebDriverWait
         from selenium.webdriver.support import expected_conditions as EC
+        from selenium.webdriver.support.ui import WebDriverWait
         from webdriver_manager.chrome import ChromeDriverManager
-        import time
 
         opts = Options()
         opts.add_argument("--headless=new")
@@ -1697,7 +2362,7 @@ async def api_imss_selenium(payload: dict):
                     campo_curp.clear()
                     campo_curp.send_keys(curp)
                     time.sleep(0.5)
-                except Exception:
+                except Exception as e:
                     pass
 
                 # Intentar llenar NSS
@@ -1707,7 +2372,7 @@ async def api_imss_selenium(payload: dict):
                     campo_nss.clear()
                     campo_nss.send_keys(nss)
                     time.sleep(0.5)
-                except Exception:
+                except Exception as e:
                     pass
 
                 # Intentar click en botón consultar
@@ -1716,7 +2381,7 @@ async def api_imss_selenium(payload: dict):
                         "button[type='submit'], input[type='submit'], button:contains('Consultar')")
                     btn.click()
                     time.sleep(3)
-                except Exception:
+                except Exception as e:
                     pass
 
                 # Buscar semanas en resultado
@@ -1732,7 +2397,7 @@ async def api_imss_selenium(payload: dict):
                 try:
                     import base64
                     screenshot_b64 = base64.b64encode(driver.get_screenshot_as_png()).decode()
-                except Exception:
+                except Exception as e:
                     pass
 
         except Exception as e:
@@ -1740,7 +2405,7 @@ async def api_imss_selenium(payload: dict):
         finally:
             try:
                 driver.quit()
-            except Exception:
+            except Exception as e:
                 pass
 
         resultado = {
@@ -1773,7 +2438,8 @@ async def api_imss_selenium(payload: dict):
 @app.get("/api/verificar-dependencias")
 async def api_verificar_dependencias():
     """Verifica todas las dependencias críticas de MAER (Python, Java, Conda, etc.)."""
-    import shutil, subprocess
+    import shutil
+    import subprocess
     result = {}
 
     # Python packages
@@ -1802,7 +2468,7 @@ async def api_verificar_dependencias():
         r = subprocess.run(["java", "-version"], capture_output=True, text=True, timeout=5)
         java_ok  = r.returncode == 0
         java_ver = (r.stderr or r.stdout or "").split("\n")[0]
-    except Exception:
+    except Exception as e:
         pass
     result["java"] = java_ok
     result["java_version"] = java_ver
@@ -1818,7 +2484,7 @@ async def api_verificar_dependencias():
         import urllib.request
         urllib.request.urlopen("http://localhost:11434/api/tags", timeout=2)
         ollama_ok = True
-    except Exception:
+    except Exception as e:
         pass
     result["ollama"] = ollama_ok
 
@@ -1876,7 +2542,7 @@ async def api_verificar_dependencias():
                                capture_output=True, text=True, timeout=10)
             envs_data = json.loads(r.stdout)
             conda_envs = [Path(e).name for e in envs_data.get("envs", [])]
-        except Exception:
+        except Exception as e:
             pass
     result["conda"] = bool(conda_bin)
     result["conda_path"] = conda_bin
@@ -1892,7 +2558,7 @@ async def api_verificar_dependencias():
         result["ollama_version"] = oll["version"]
         result["ollama_modelos"] = oll["modelos"]
         result["ollama_modelo_activo"] = oll["modelo_elegido"]
-    except Exception:
+    except Exception as e:
         result["ollama"] = False
         result["ollama_modelos"] = []
 
@@ -1952,7 +2618,9 @@ async def api_ollama_pull(payload: dict):
 @app.get("/api/conda-envs")
 async def api_conda_envs():
     """Lista los entornos Conda disponibles con detección en rutas comunes."""
-    import shutil, subprocess, json as _json
+    import json as _json
+    import shutil
+    import subprocess
     rutas = [
         shutil.which("conda"),
         "/opt/homebrew/bin/conda",
@@ -1980,7 +2648,7 @@ async def api_conda_envs():
                     rv = subprocess.run([str(py_bin), "--version"],
                                         capture_output=True, text=True, timeout=5)
                     py_ver = (rv.stdout or rv.stderr).strip()
-                except Exception:
+                except Exception as e:
                     pass
             envs_info.append({
                 "name":    p.name,
@@ -2017,8 +2685,8 @@ async def api_analizar_datos(payload: dict):
         return make_response(False, "NOT_FOUND", f"Archivo no encontrado: {ruta}")
 
     try:
-        import pandas as pd
         import numpy as np
+        import pandas as pd
     except ImportError:
         return make_response(False, "PANDAS_NA",
                              "Pandas no instalado. Ejecuta: pip install pandas openpyxl")
@@ -2138,6 +2806,160 @@ async def api_test_run(suite: str = "basico"):
         )
     except Exception as e:
         return make_response(False, "TEST_ERR", str(e))
+
+
+# ════════════════════════════════════════════════════════════════
+# OCR Pro — Endpoints avanzados (ensemble + preprocesado adaptativo)
+# ════════════════════════════════════════════════════════════════
+
+@app.post("/api/ocr-pro")
+async def api_ocr_pro(file: UploadFile = File(...),
+                      mode: str = "auto",
+                      preprocess: bool = True):
+    """
+    OCR Pro con ensemble de motores y preprocesado adaptativo.
+    Ejecuta Tesseract + EasyOCR + RapidOCR y combina los mejores resultados.
+
+    Parámetros:
+      mode: auto | scan | photo | handwrite | fast | turbo
+      preprocess: true (default) — aplica CLAHE, Otsu, deskew, sombras
+    """
+    ext = Path(file.filename).suffix.lower()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    tmp_path = Path(tmp.name)
+    try:
+        from maer_backend.maer_ocr_pro import ocr_ensemble, ocr_pdf_pro
+        if ext == ".pdf":
+            result = ocr_pdf_pro(tmp_path, mode=mode)
+        else:
+            result = ocr_ensemble(tmp_path, mode=mode, preprocess=preprocess)
+
+        if result.get("ok"):
+            return make_response(True, "OCR_PRO_OK",
+                                 f"OCR Pro: {result.get('char_count', 0)} chars "
+                                 f"· motor: {result.get('engine_used', '?')} "
+                                 f"· calidad: {result.get('quality', 0):.2f}",
+                                 result)
+        return make_response(False, "OCR_PRO_ERROR", result.get("error", "Error OCR"))
+    except Exception as e:
+        return make_response(False, "OCR_PRO_EXC", str(e))
+    finally:
+        try: os.unlink(str(tmp_path))
+        except Exception as e: pass
+
+
+@app.post("/api/ocr-compare")
+async def api_ocr_compare(file: UploadFile = File(...),
+                          mode: str = "auto",
+                          preprocess: bool = True):
+    """
+    Compara TODOS los motores OCR disponibles en la misma imagen.
+    Útil para seleccionar el motor óptimo para cada tipo de documento.
+    Devuelve ranking y preview de texto de cada motor.
+    """
+    ext = Path(file.filename).suffix.lower()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    tmp_path = Path(tmp.name)
+    try:
+        from maer_backend.maer_ocr_pro import ocr_compare
+        result = ocr_compare(tmp_path, mode=mode, preprocess=preprocess)
+        if result.get("ok"):
+            return make_response(True, "OCR_COMPARE_OK",
+                                 f"Comparación completa · mejor motor: {result.get('best_engine', '?')}",
+                                 result)
+        return make_response(False, "OCR_COMPARE_ERROR", result.get("error", "Error"))
+    except Exception as e:
+        return make_response(False, "OCR_COMPARE_EXC", str(e))
+    finally:
+        try: os.unlink(str(tmp_path))
+        except Exception as e: pass
+
+
+@app.post("/api/ocr-preprocess")
+async def api_ocr_preprocess(file: UploadFile = File(...),
+                              mode: str = "auto"):
+    """
+    Aplica solo el pipeline de preprocesado avanzado y devuelve imagen procesada como base64.
+    Útil para diagnosticar problemas de preprocesado antes del OCR.
+    """
+    import base64
+    import io
+    ext = Path(file.filename).suffix.lower()
+    tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
+    shutil.copyfileobj(file.file, tmp)
+    tmp.close()
+    tmp_path = Path(tmp.name)
+    try:
+        from maer_backend.maer_ocr_pro import _load_image, preprocess_advanced
+        img_bgr = _load_image(tmp_path)
+        prep = preprocess_advanced(img_bgr, mode=mode)
+
+        # Convertir imagen procesada a base64 para preview en frontend
+        pil_img = Image.fromarray(prep["gray"])
+        buffer = io.BytesIO()
+        pil_img.save(buffer, format="PNG")
+        img_b64 = base64.b64encode(buffer.getvalue()).decode()
+
+        return make_response(True, "PREPROCESS_OK",
+                             f"Preprocesado ({mode}) · pasos: {', '.join(prep['steps'])}",
+                             {
+                                 "steps":      prep["steps"],
+                                 "mode_used":  prep["mode_used"],
+                                 "preview_b64": img_b64,
+                                 "size":       list(prep["gray"].shape),
+                             })
+    except Exception as e:
+        return make_response(False, "PREPROCESS_ERR", str(e))
+    finally:
+        try: os.unlink(str(tmp_path))
+        except Exception as e: pass
+
+
+@app.get("/api/ocr-pro-status")
+async def api_ocr_pro_status():
+    """Estado detallado de todos los motores OCR Pro (con instrucciones de instalación)."""
+    try:
+        from maer_backend.maer_ocr_pro import engines_status
+        status = engines_status()
+        return make_response(True, "OCR_PRO_STATUS_OK",
+                             f"{status['available_count']}/{status['total']} motores OCR Pro disponibles",
+                             status)
+    except Exception as e:
+        return make_response(False, "OCR_PRO_STATUS_ERR", str(e))
+
+
+@app.post("/api/ocr-install-engine")
+async def api_ocr_install_engine(payload: dict):
+    """
+    Instala un motor OCR faltante vía pip.
+    AVISO: ejecuta pip como subproceso — puede tardar varios minutos.
+    Respeta restricciones NumPy 1.26.4 / PyTorch 2.2.2 para Intel Mac.
+
+    Body: {"engine": "easyocr" | "rapidocr" | "paddleocr" | "doctr"}
+    """
+    engine = payload.get("engine", "").strip().lower()
+    if not engine:
+        return make_response(False, "MISSING_ENGINE", "Se requiere 'engine' en el body")
+    try:
+        from maer_backend.maer_ocr_pro import (get_install_commands,
+                                               install_engine)
+        cmds = get_install_commands(engine)
+        if not cmds or cmds[0].startswith("#"):
+            return make_response(False, "ENGINE_UNKNOWN",
+                                 f"Motor '{engine}' no soportado",
+                                 {"available": ["easyocr", "rapidocr", "paddleocr", "doctr"]})
+        result = install_engine(engine)
+        if result.get("ok"):
+            return make_response(True, "ENGINE_INSTALLED",
+                                 f"Motor '{engine}' instalado correctamente", result)
+        return make_response(False, "ENGINE_INSTALL_FAILED",
+                             f"Error instalando '{engine}': {result.get('error', '')}", result)
+    except Exception as e:
+        return make_response(False, "ENGINE_INSTALL_EXC", str(e))
 
 
 def main():

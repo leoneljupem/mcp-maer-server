@@ -7,11 +7,11 @@ Dashboard web para MAER MCP Server.
 Expone todas las herramientas como API REST + interfaz visual.
 """
 
-import os
-import sys
-import subprocess
 import json
+import os
 import shutil
+import subprocess
+import sys
 import tempfile
 from pathlib import Path
 
@@ -20,22 +20,27 @@ _project_root = str(Path(__file__).parent.parent.parent.resolve())
 if _project_root not in sys.path:
     sys.path.insert(0, _project_root)
 
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
-from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 # Importar acciones del backend
-from maer_backend.maer_files import (
-    action_search_files, action_analyze_file, action_fix_code_file,
-    action_extract_text, action_index_full, action_search_index,
-    action_detect_ids, action_detect_related, action_curp_renapo_check,
-    action_ocr_multimodal, action_extract_tables, action_nlp_entities,
-    action_image_duplicates, action_face_detect, action_cluster_files,
-    action_llm_summarize, action_llm_extract_json, action_renapo_verify_identity,
-    make_response,
-)
+from maer_backend.maer_files import (action_analyze_file, action_cluster_files,
+                                     action_curp_renapo_check,
+                                     action_detect_ids, action_detect_related,
+                                     action_extract_tables,
+                                     action_extract_text, action_face_detect,
+                                     action_fix_code_file,
+                                     action_image_duplicates,
+                                     action_index_full,
+                                     action_llm_extract_json,
+                                     action_llm_summarize, action_nlp_entities,
+                                     action_ocr_multimodal,
+                                     action_renapo_verify_identity,
+                                     action_search_files, action_search_index,
+                                     make_response)
 
 app = FastAPI(
     title="🦁 MAER Dashboard",
@@ -71,9 +76,16 @@ async def upload_file(file: UploadFile = File(...)):
     dest = UPLOAD_DIR / file.filename
     with open(dest, "wb") as f:
         shutil.copyfileobj(file.file, f)
-    return make_response(True, "UPLOAD_OK", f"Archivo subido: {file.filename}", {
-        "path": str(dest), "name": file.filename, "size": dest.stat().st_size,
-    })
+    return make_response(
+        True,
+        "UPLOAD_OK",
+        f"Archivo subido: {file.filename}",
+        {
+            "path": str(dest),
+            "name": file.filename,
+            "size": dest.stat().st_size,
+        },
+    )
 
 
 @app.post("/api/search")
@@ -168,15 +180,14 @@ async def api_open(payload: dict):
     if not path or not Path(path).exists():
         return make_response(False, "NOT_FOUND", "Archivo no encontrado para abrir.")
     try:
-        if os.name == 'nt':
+        if os.name == "nt":
             os.startfile(path)
         else:
-            subprocess.Popen(['open', path])
+            subprocess.Popen(["open", path])
         # Responder inmediatamente
         return make_response(True, "OPEN_OK", f"Archivo abierto: {path}")
     except Exception as e:
         return make_response(False, "OPEN_ERROR", str(e))
-
 
 
 @app.get("/api/select-file")
@@ -192,6 +203,7 @@ async def api_select_file():
     except Exception as e:
         return make_response(False, "ERROR", str(e))
 
+
 @app.get("/api/select-dir")
 async def api_select_dir():
     """Abre el Finder nativo de MacOS para escoger una carpeta."""
@@ -205,6 +217,7 @@ async def api_select_dir():
     except Exception as e:
         return make_response(False, "ERROR", str(e))
 
+
 @app.get("/api/status")
 async def api_status():
     """Estado del servidor y módulos disponibles."""
@@ -212,24 +225,28 @@ async def api_status():
 
     try:
         import pytesseract
+
         modules["tesseract"] = True
     except ImportError:
         modules["tesseract"] = False
 
     try:
         import easyocr
+
         modules["easyocr"] = True
     except ImportError:
         modules["easyocr"] = False
 
     try:
         from paddleocr import PaddleOCR
+
         modules["paddleocr"] = True
     except ImportError:
         modules["paddleocr"] = False
 
     try:
         import spacy
+
         spacy.load("es_core_news_md")
         modules["spacy"] = True
     except Exception:
@@ -237,37 +254,47 @@ async def api_status():
 
     try:
         from deepface import DeepFace
+
         modules["deepface"] = True
     except ImportError:
         modules["deepface"] = False
 
     try:
         import imagehash
+
         modules["imagehash"] = True
     except ImportError:
         modules["imagehash"] = False
 
     try:
         import cv2
+
         modules["opencv"] = True
     except ImportError:
         modules["opencv"] = False
 
     try:
         import pdfplumber
+
         modules["pdfplumber"] = True
     except ImportError:
         modules["pdfplumber"] = False
 
-    return make_response(True, "STATUS_OK", "Servidor MAER activo", {
-        "version": "2.0.0",
-        "modules": modules,
-    })
+    return make_response(
+        True,
+        "STATUS_OK",
+        "Servidor MAER activo",
+        {
+            "version": "2.0.0",
+            "modules": modules,
+        },
+    )
 
 
 @app.post("/api/llm-chat")
 async def api_llm_chat(payload: dict):
     from maer_backend.maer_files import action_llm_chat
+
     return action_llm_chat(payload)
 
 
@@ -275,8 +302,9 @@ async def api_llm_chat(payload: dict):
 async def favicon():
     """Favicon para evitar errores 404."""
     from fastapi.responses import Response
+
     # SVG favicon incrustado como ICO simulado (PNG base64 1x1 amarillo-azul)
-    ico = b'\x00\x00\x01\x00\x01\x00\x10\x10\x00\x00\x01\x00\x18\x00h\x03\x00\x006\x00\x00\x00'
+    ico = b"\x00\x00\x01\x00\x01\x00\x10\x10\x00\x00\x01\x00\x18\x00h\x03\x00\x006\x00\x00\x00"
     return Response(content=ico, media_type="image/x-icon")
 
 
@@ -284,6 +312,7 @@ async def favicon():
 async def api_move_files(payload: dict):
     """Mueve archivos a una carpeta destino."""
     import shutil
+
     files = payload.get("files", [])
     destination = payload.get("destination", "").strip()
     create_dest = payload.get("create_dest", True)
@@ -303,13 +332,19 @@ async def api_move_files(payload: dict):
             moved.append(str(dest_path / src.name))
         except Exception as e:
             errors.append(f"{src.name}: {e}")
-    return make_response(len(errors) == 0, "MOVE_OK", f"{len(moved)} archivos movidos.", {"moved": moved, "errors": errors})
+    return make_response(
+        len(errors) == 0,
+        "MOVE_OK",
+        f"{len(moved)} archivos movidos.",
+        {"moved": moved, "errors": errors},
+    )
 
 
 @app.post("/api/copy-files")
 async def api_copy_files(payload: dict):
     """Copia archivos a una carpeta destino (para organización segura)."""
     import shutil
+
     files = payload.get("files", [])
     destination = payload.get("destination", "").strip()
     copied, errors = [], []
@@ -327,13 +362,19 @@ async def api_copy_files(payload: dict):
             copied.append(str(dest_path / src.name))
         except Exception as e:
             errors.append(f"{src.name}: {e}")
-    return make_response(len(errors) == 0, "COPY_OK", f"{len(copied)} archivos copiados.", {"copied": copied, "errors": errors})
+    return make_response(
+        len(errors) == 0,
+        "COPY_OK",
+        f"{len(copied)} archivos copiados.",
+        {"copied": copied, "errors": errors},
+    )
 
 
 @app.post("/api/learn-file")
 async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
     """Extrae texto de un archivo para que MAER lo aprenda."""
     import tempfile
+
     ext = Path(file.filename).suffix.lower()
     tmp = tempfile.NamedTemporaryFile(delete=False, suffix=ext)
     shutil.copyfileobj(file.file, tmp)
@@ -343,6 +384,7 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
     try:
         if ext == ".pdf":
             import pdfplumber
+
             with pdfplumber.open(tmp_path) as pdf:
                 text = "\n".join(p.extract_text() or "" for p in pdf.pages)
         elif ext in [".txt", ".md", ".csv", ".json", ".js", ".py", ".html"]:
@@ -350,6 +392,7 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
         elif ext in [".docx"]:
             try:
                 import docx
+
                 doc = docx.Document(tmp_path)
                 text = "\n".join(p.text for p in doc.paragraphs)
             except Exception:
@@ -357,6 +400,7 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
         else:
             # Try OCR
             from maer_backend.maer_files import action_ocr_multimodal
+
             r = action_ocr_multimodal({"path": tmp_path})
             text = r.get("data", {}).get("text", "No se pudo extraer texto.")
         if not text.strip():
@@ -364,28 +408,43 @@ async def api_learn_file(file: UploadFile = File(...), label: str = Form("")):
     except Exception as e:
         text = f"Error al procesar: {e}"
     finally:
-        try: os.unlink(tmp_path)
-        except: pass
+        try:
+            os.unlink(tmp_path)
+        except:
+            pass
     summary = text[:8000]  # max chars to store
-    return make_response(True, "LEARN_OK", f"Texto extraído: {len(text)} caracteres", {
-        "filename": file.filename, "label": label or file.filename,
-        "text": summary, "chars": len(text),
-    })
+    return make_response(
+        True,
+        "LEARN_OK",
+        f"Texto extraído: {len(text)} caracteres",
+        {
+            "filename": file.filename,
+            "label": label or file.filename,
+            "text": summary,
+            "chars": len(text),
+        },
+    )
 
 
 @app.post("/api/busqueda-masiva")
 async def api_busqueda_masiva(payload: dict):
     """Búsqueda masiva por contenido en directorio, filtrando por tipo."""
     import fnmatch
+
     base_dir = payload.get("base_dir", ".")
     query = payload.get("query", "").lower()
     tipos = payload.get("tipos", [])  # ["pdf","txt","jpg","docx","xlsx"]
     max_results = payload.get("max_results", 200)
     results = []
     ext_map = {
-        "pdf": [".pdf"], "txt": [".txt", ".md", ".csv"], "imagen": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"],
-        "word": [".docx", ".doc"], "excel": [".xlsx", ".xls"], "json": [".json"],
-        "zip": [".zip", ".rar", ".7z"], "codigo": [".py", ".js", ".html", ".css"],
+        "pdf": [".pdf"],
+        "txt": [".txt", ".md", ".csv"],
+        "imagen": [".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp"],
+        "word": [".docx", ".doc"],
+        "excel": [".xlsx", ".xls"],
+        "json": [".json"],
+        "zip": [".zip", ".rar", ".7z"],
+        "codigo": [".py", ".js", ".html", ".css"],
     }
     allowed_exts = set()
     for t in tipos:
@@ -393,35 +452,63 @@ async def api_busqueda_masiva(payload: dict):
     try:
         base = Path(base_dir)
         if not base.exists():
-            return make_response(False, "DIR_NOT_FOUND", f"Directorio no encontrado: {base_dir}")
+            return make_response(
+                False, "DIR_NOT_FOUND", f"Directorio no encontrado: {base_dir}"
+            )
         for f in base.rglob("*"):
-            if not f.is_file(): continue
-            if allowed_exts and f.suffix.lower() not in allowed_exts: continue
+            if not f.is_file():
+                continue
+            if allowed_exts and f.suffix.lower() not in allowed_exts:
+                continue
             match_name = query in f.name.lower() if query else True
             match_content = False
             if query and not match_name:
                 try:
-                    if f.suffix.lower() in [".txt",".md",".csv",".json",".js",".py",".html",".css"]:
+                    if f.suffix.lower() in [
+                        ".txt",
+                        ".md",
+                        ".csv",
+                        ".json",
+                        ".js",
+                        ".py",
+                        ".html",
+                        ".css",
+                    ]:
                         content = f.read_text("utf-8", errors="replace")
                         match_content = query in content.lower()
                     elif f.suffix.lower() == ".pdf":
                         import pdfplumber
+
                         with pdfplumber.open(str(f)) as pdf:
                             for page in pdf.pages[:5]:
                                 t = page.extract_text() or ""
-                                if query in t.lower(): match_content = True; break
-                except: pass
+                                if query in t.lower():
+                                    match_content = True
+                                    break
+                except:
+                    pass
             if match_name or match_content or not query:
                 stat = f.stat()
-                results.append({
-                    "path": str(f), "name": f.name, "ext": f.suffix.lower(),
-                    "size": stat.st_size, "tipo": f.suffix.lstrip(".").upper(),
-                    "match": "nombre" if match_name else "contenido",
-                })
-            if len(results) >= max_results: break
+                results.append(
+                    {
+                        "path": str(f),
+                        "name": f.name,
+                        "ext": f.suffix.lower(),
+                        "size": stat.st_size,
+                        "tipo": f.suffix.lstrip(".").upper(),
+                        "match": "nombre" if match_name else "contenido",
+                    }
+                )
+            if len(results) >= max_results:
+                break
     except Exception as e:
         return make_response(False, "SEARCH_ERR", str(e))
-    return make_response(True, "SEARCH_OK", f"{len(results)} resultados encontrados.", {"results": results, "total": len(results)})
+    return make_response(
+        True,
+        "SEARCH_OK",
+        f"{len(results)} resultados encontrados.",
+        {"results": results, "total": len(results)},
+    )
 
 
 @app.post("/api/organizar-sugerir")
@@ -433,23 +520,53 @@ async def api_organizar_sugerir(payload: dict):
     files = []
     for f in Path(base_dir).rglob("*"):
         if f.is_file():
-            files.append({"name": f.name, "ext": f.suffix.lower(), "size": f.stat().st_size})
+            files.append(
+                {"name": f.name, "ext": f.suffix.lower(), "size": f.stat().st_size}
+            )
     if not files:
         return make_response(False, "EMPTY", "Carpeta vacía.")
     # Group by extension
     from collections import defaultdict
+
     grupos = defaultdict(list)
     for f in files:
         grupos[f["ext"] or ".sin_ext"].append(f["name"])
-    sugerencia = {k: {"cantidad": len(v), "archivos": v[:5], "carpeta_sugerida": _sugerir_carpeta(k)} for k, v in grupos.items()}
-    return make_response(True, "ORG_OK", f"Sugerencia para {len(files)} archivos.", {"grupos": sugerencia, "total_archivos": len(files)})
+    sugerencia = {
+        k: {
+            "cantidad": len(v),
+            "archivos": v[:5],
+            "carpeta_sugerida": _sugerir_carpeta(k),
+        }
+        for k, v in grupos.items()
+    }
+    return make_response(
+        True,
+        "ORG_OK",
+        f"Sugerencia para {len(files)} archivos.",
+        {"grupos": sugerencia, "total_archivos": len(files)},
+    )
+
 
 def _sugerir_carpeta(ext):
-    m = {".pdf":"Documentos/PDF",".docx":"Documentos/Word",".doc":"Documentos/Word",
-         ".xlsx":"Documentos/Excel",".xls":"Documentos/Excel",".jpg":"Imagenes",
-         ".jpeg":"Imagenes",".png":"Imagenes",".gif":"Imagenes",".mp4":"Videos",
-         ".mp3":"Audio",".zip":"Archivos_Comprimidos",".py":"Codigo/Python",
-         ".js":"Codigo/JavaScript",".txt":"Texto",".csv":"Datos",".json":"Datos/JSON"}
+    m = {
+        ".pdf": "Documentos/PDF",
+        ".docx": "Documentos/Word",
+        ".doc": "Documentos/Word",
+        ".xlsx": "Documentos/Excel",
+        ".xls": "Documentos/Excel",
+        ".jpg": "Imagenes",
+        ".jpeg": "Imagenes",
+        ".png": "Imagenes",
+        ".gif": "Imagenes",
+        ".mp4": "Videos",
+        ".mp3": "Audio",
+        ".zip": "Archivos_Comprimidos",
+        ".py": "Codigo/Python",
+        ".js": "Codigo/JavaScript",
+        ".txt": "Texto",
+        ".csv": "Datos",
+        ".json": "Datos/JSON",
+    }
     return m.get(ext, f"Otros/{ext.lstrip('.').upper() or 'Sin_Extension'}")
 
 
@@ -462,8 +579,17 @@ async def api_tasker_receive(payload: dict):
     # Store message
     TASKER_LOG_FILE = UPLOAD_DIR.parent / "tasker_messages.json"
     try:
-        log = json.loads(TASKER_LOG_FILE.read_text()) if TASKER_LOG_FILE.exists() else []
-        log.append({"mensaje": mensaje, "device": device, "timestamp": timestamp, "received": __import__("datetime").datetime.now().isoformat()})
+        log = (
+            json.loads(TASKER_LOG_FILE.read_text()) if TASKER_LOG_FILE.exists() else []
+        )
+        log.append(
+            {
+                "mensaje": mensaje,
+                "device": device,
+                "timestamp": timestamp,
+                "received": __import__("datetime").datetime.now().isoformat(),
+            }
+        )
         log = log[-100:]  # keep last 100
         TASKER_LOG_FILE.write_text(json.dumps(log, ensure_ascii=False, indent=2))
     except Exception as e:
@@ -472,9 +598,12 @@ async def api_tasker_receive(payload: dict):
     reply = f"MAER recibido: {mensaje[:50]}"
     try:
         from maer_backend.maer_files import action_llm_chat
+
         r = action_llm_chat({"prompt": mensaje})
-        if r.get("ok"): reply = r["data"]["response"][:500]
-    except: pass
+        if r.get("ok"):
+            reply = r["data"]["response"][:500]
+    except:
+        pass
     return {"ok": True, "reply": reply}
 
 
@@ -483,7 +612,9 @@ async def api_tasker_messages():
     """Obtiene mensajes recibidos de Tasker."""
     TASKER_LOG_FILE = UPLOAD_DIR.parent / "tasker_messages.json"
     try:
-        log = json.loads(TASKER_LOG_FILE.read_text()) if TASKER_LOG_FILE.exists() else []
+        log = (
+            json.loads(TASKER_LOG_FILE.read_text()) if TASKER_LOG_FILE.exists() else []
+        )
         return make_response(True, "OK", "", {"messages": log[-20:]})
     except Exception as e:
         return make_response(False, "ERR", str(e))

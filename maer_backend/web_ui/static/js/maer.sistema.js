@@ -14,6 +14,7 @@ MAER.sistema = {
       this._checkServer(),
       this._renderPerf(),
       this._renderNet(),
+      this._renderLLM(),
     ]);
   },
 
@@ -44,7 +45,7 @@ MAER.sistema = {
     // Actualizar indicador de header
     const hdrStatus = document.getElementById('hdr-status');
     if (hdrStatus) {
-      hdrStatus.textContent  = MAER.config.backendOK ? '🟢 En línea' : '🔴 Offline';
+      hdrStatus.textContent  = MAER.config.backendOK ? '🟢 En línea' : '🔴 Sin conexión';
     }
   },
 
@@ -54,6 +55,84 @@ MAER.sistema = {
     if (label)     label.textContent   = 'Servidor desconectado';
     if (modelEl)   modelEl.textContent = 'LLM no disponible';
     MAER._log('⚠️ Servidor no disponible. Modo offline activado.');
+  },
+
+  /* ── RENDERIZAR ESTADO LLM ── */
+  async _renderLLM() {
+    const el = document.getElementById('sys-llm');
+    if (!el) return;
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:10px">🔍 Consultando motores LLM…</div>';
+    try {
+      const res = await MAER._call('/api/llm-status', null, { timeout: 8000 });
+      const d = res.data || {};
+      const ollama = d.ollama || {};
+      const groq   = d.groq   || {};
+      const openai = d.openai || {};
+
+      const motorTag = (nombre, ok) =>
+        `<span style="display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;background:${ok ? 'rgba(52,211,153,0.15)' : 'rgba(248,113,113,0.12)'};color:${ok ? '#34d399' : '#f87171'};border:1px solid ${ok ? 'rgba(52,211,153,0.35)' : 'rgba(248,113,113,0.3)'}">${ok ? '🟢' : '🔴'} ${nombre}</span>`;
+
+      el.innerHTML = `
+        <div style="margin-bottom:14px;display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          ${motorTag('Ollama', ollama.disponible)}
+          ${motorTag('Groq', groq.disponible)}
+          ${motorTag('OpenAI', openai.disponible)}
+          <span style="margin-left:auto;font-size:11px;color:var(--muted)">Motor activo: <strong style="color:var(--accent)">${d.motor_recomendado || '—'}</strong></span>
+        </div>
+
+        <div class="sys-info-grid">
+          <div class="sys-info-row"><span class="sys-info-label">🦙 Ollama estado</span><span class="sys-info-val">${ollama.disponible ? '✅ Activo' : '❌ No disponible'}</span></div>
+          ${ollama.modelo_activo ? `<div class="sys-info-row"><span class="sys-info-label">Modelo activo</span><span class="sys-info-val" style="color:var(--accent)">${ollama.modelo_activo}</span></div>` : ''}
+          ${ollama.total_modelos ? `<div class="sys-info-row"><span class="sys-info-label">Modelos instalados</span><span class="sys-info-val">${ollama.total_modelos}</span></div>` : ''}
+          ${(ollama.modelos || []).length > 0 ? `
+          <div class="sys-info-row"><span class="sys-info-label">Lista modelos</span><span class="sys-info-val" style="font-size:11px">${ollama.modelos.slice(0,6).join(' · ')}</span></div>` : ''}
+
+          <div class="sys-info-row" style="margin-top:6px"><span class="sys-info-label">⚡ Groq estado</span><span class="sys-info-val">${groq.disponible ? '✅ Listo' : groq.clave_configurada ? '⚠️ SDK faltante' : '🔑 Sin clave API'}</span></div>
+          <div class="sys-info-row"><span class="sys-info-label">Modelo Groq</span><span class="sys-info-val">${groq.modelo || '—'}</span></div>
+          ${!groq.clave_configurada ? `<div class="sys-info-row"><span class="sys-info-label" style="color:#fb923c">Cómo activar Groq</span><span class="sys-info-val" style="font-size:11px">Regístrate gratis en console.groq.com → copia tu API key → pégala en .env como GROQ_API_KEY=sk-...</span></div>` : ''}
+
+          <div class="sys-info-row" style="margin-top:6px"><span class="sys-info-label">🤖 OpenAI estado</span><span class="sys-info-val">${openai.disponible ? '✅ Configurado' : '⚪ No configurado'}</span></div>
+          <div class="sys-info-row"><span class="sys-info-label">Modelo OpenAI</span><span class="sys-info-val">${openai.modelo || '—'}</span></div>
+        </div>
+
+        <div style="margin-top:10px;padding:8px 12px;background:var(--bg);border-radius:8px;font-size:11px;color:var(--muted)">
+          ℹ️ Prioridad: Ollama (local, gratis) → Groq (nube gratuita) → OpenAI → Diccionario IMSS
+        </div>`;
+    } catch(e) {
+      el.innerHTML = `<div class="alert alert-warning">⚠️ No se pudo obtener estado LLM — el servidor debe estar activo (python -m maer_backend.web_ui.server)</div>`;
+    }
+  },
+
+  /* ── PROBAR OLLAMA ── */
+  async _probarOllama() {
+    const el = document.getElementById('sys-llm-test');
+    if (el) el.textContent = '🦙 Probando Ollama con pregunta de prueba…';
+    try {
+      const res = await MAER._call('/api/llm-chat', {
+        prompt: '¿Qué es el IMSS en una sola oración?',
+        motor: 'ollama',
+      }, { timeout: 60000 });
+      const txt = res.data?.respuesta || res.text || JSON.stringify(res).substring(0, 200);
+      if (el) el.innerHTML = `<strong style="color:#34d399">✅ Ollama respondió:</strong><br>${txt.substring(0,300)}`;
+    } catch(e) {
+      if (el) el.innerHTML = `<span style="color:#f87171">❌ Ollama no disponible: ${e.message}</span>`;
+    }
+  },
+
+  /* ── PROBAR GROQ ── */
+  async _probarGroq() {
+    const el = document.getElementById('sys-llm-test');
+    if (el) el.textContent = '⚡ Probando Groq con pregunta de prueba…';
+    try {
+      const res = await MAER._call('/api/llm-chat', {
+        prompt: '¿Qué es el IMSS en una sola oración?',
+        motor: 'groq',
+      }, { timeout: 30000 });
+      const txt = res.data?.respuesta || res.text || JSON.stringify(res).substring(0, 200);
+      if (el) el.innerHTML = `<strong style="color:#34d399">✅ Groq respondió:</strong><br>${txt.substring(0,300)}`;
+    } catch(e) {
+      if (el) el.innerHTML = `<span style="color:#f87171">❌ Groq no disponible: ${e.message}</span>`;
+    }
   },
 
   /* ── RENDERIZAR NAVEGADOR (INFO) ── */
@@ -144,6 +223,29 @@ MAER.sistema = {
   limpiarConsola() {
     const c = document.getElementById('sys-console');
     if (c) c.innerHTML = '<span style="color:var(--muted)">Consola limpiada.</span><br>';
+  },
+
+  /* ── TASKER: CARGAR URL DEL SERVIDOR ── */
+  async _cargarUrlTasker() {
+    const input = document.getElementById('tasker-url-display');
+    if (!input) return;
+    try {
+      const res = await MAER._call('/api/server-info', null, { timeout: 5000 });
+      if (res.ok && res.data) {
+        const d = res.data;
+        // Preferir URL ngrok si existe
+        input.value = d.tasker_url || `http://${d.ip_local}:${d.puerto}/api/tasker-receive`;
+        // Mostrar badge ngrok si está activo
+        const badge = document.getElementById('tasker-ngrok-badge');
+        if (badge) {
+          badge.style.display = d.url_ngrok ? 'inline' : 'none';
+          badge.textContent = d.url_ngrok ? `🌐 ngrok activo: ${d.url_ngrok}` : '';
+        }
+        MAER._log(`📱 URL Tasker detectada: ${input.value}`);
+      }
+    } catch(e) {
+      // Mantener localhost como fallback si el servidor no responde
+    }
   },
 
   /* ── TASKER: VER MENSAJES ── */

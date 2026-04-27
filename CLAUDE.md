@@ -76,8 +76,13 @@ mcp-maer-server/
 ├── .env.example                 ← Plantilla de variables (SÍ en git)
 │
 ├── maer_backend/
-│   ├── maer_files.py            ← Validación CURP, NSS, RFC, análisis IMSS
-│   ├── ocr_engine.py            ← OCR multi-motor con caché
+│   ├── maer_files.py            ← Validación CURP, NSS, RFC, análisis IMSS + cascade LLM (Claude primero)
+│   ├── ocr_engine.py            ← OCR multi-motor con caché (llama a maer_ocr_advanced primero)
+│   ├── maer_ocr_advanced.py     ← ★ Orquestador OCR avanzado: surya/docTR/TrOCR/PyMuPDF/EasyOCR/Tesseract
+│   ├── maer_ocr_pro.py          ← ★ OCR Pro: ensemble Tesseract+EasyOCR+RapidOCR+PaddleOCR, preprocesado CLAHE/Otsu/perspectiva
+│   ├── maer_pdf_analyzer.py     ← ★ Análisis profundo PDF: layout, tablas, metadatos, clasificación tipo doc
+│   ├── maer_semantic.py         ← ★ Búsqueda semántica: sentence-transformers + TF-IDF fallback
+│   ├── maer_vision.py           ← ★ Claude Vision: analizar/OCR/clasificar imágenes con IA
 │   ├── nlp_engine.py            ← Procesamiento de texto / spaCy
 │   ├── table_extractor.py       ← Extracción de tablas PDF/Excel
 │   ├── image_analyzer.py        ← Análisis de imágenes / DeepFace
@@ -183,11 +188,80 @@ O desde consola F12: `MAER_runTests()`
 
 | Variable | Dónde obtener | Obligatoria |
 |----------|--------------|-------------|
-| `ANTHROPIC_API_KEY` | console.anthropic.com/settings/keys | **SÍ** — sin esto el chat no funciona |
+| `ANTHROPIC_API_KEY` | console.anthropic.com/settings/keys | **SÍ** — LLM principal + Vision |
 | `OLLAMA_MODEL` | `ollama list` | No — se auto-detecta |
 | `GROQ_API_KEY` | console.groq.com (gratuito) | No — fallback LLM |
 | `OPENAI_API_KEY` | platform.openai.com | No — fallback LLM |
 | `NGROK_AUTHTOKEN` | dashboard.ngrok.com | No — solo para acceso remoto |
+| `ANTHROPIC_VISION_MODEL` | — | No — default: `claude-haiku-4-5-20251001` |
+| `MAER_OCR_DPI` | — | No — default 300 dpi para OCR de imágenes |
+| `MAER_OCR_MAX_PAGES` | — | No — default 50 páginas por PDF |
+
+---
+
+## Módulos MAER 4.0 — Nuevas capacidades (2026-04-22)
+
+### Cascada LLM (maer_files.py)
+Claude API → Ollama → Groq → OpenAI → Diccionario local. Claude es PRIMER motor. Sistema prompt cubre cualquier tema (no solo IMSS).
+
+### OCR Avanzado (maer_ocr_advanced.py) — 13 motores
+Orquestador automático que selecciona el mejor motor según tipo de imagen:
+- **scan** → surya → docTR → paddleocr → kraken → rapidocr → easyocr → tesseract
+- **photo** → docTR → paddleocr → surya → rapidocr → trocr_pr → easyocr → tesseract
+- **handwritten** → trocr_hw → kraken → doctr → surya → rapidocr → easyocr → tesseract
+- **form** → docTR → paddleocr → rapidocr → surya → trocr_pr → easyocr → tesseract
+- **fast** → rapidocr → easyocr → tesseract
+- **dense** → manga_ocr → trocr_pr → rapidocr → doctr → paddleocr → easyocr → tesseract
+- **turbo** → Wand+albumentations preprocess → cascada completa
+
+Motores disponibles (2026-04-22): pymupdf 1.27.2, surya, doctr, trocr, deskew, easyocr 1.7.2, tesseract 5.5.2, kraken 5.2.9, ocrmypdf 16.13.0, rapidocr 1.4.4, manga_ocr 0.1.14, paddleocr 3.4.0, whisper 20250625
+
+tessdata-best: `~/tessdata_best/spa.traineddata` + `eng.traineddata` (14-15MB c/u, LSTM oem=1)
+
+Preprocesamiento avanzado: deskew (Radon), CLAHE, filtro bilateral. Quality scoring: ratio_validos×0.7 + bonus_longitud×0.3 − penalidad_basura.
+
+### Análisis de tablas en imágenes (maer_ocr_advanced.py)
+`extract_tables_from_image()` — OpenCV morfológico (líneas horiz+vert), agrupa celdas por coordenada Y, Tesseract por celda. Sin dependencias externas frágiles.
+
+### Análisis PDF profundo (maer_pdf_analyzer.py)
+`analyze_pdf_deep()` — pdfplumber para layout, tablas, metadatos. Clasifica tipo de documento (curp, nss_imss, recibo_nomina, etc.) con 10 patrones regex.
+
+### Búsqueda semántica (maer_semantic.py)
+`SemanticIndex` con `paraphrase-multilingual-MiniLM-L12-v2`. Búsqueda híbrida 60% semántica + 40% keyword. Persiste en `data/semantic_index/`. Toggle "🧠 Búsqueda inteligente" en UI.
+
+### Claude Vision (maer_vision.py)
+5 funciones: `analyze_image`, `extract_text_vision`, `classify_document_image`, `extract_fields_from_image`, `analyze_pdf_pages_vision`. Fallback automático en `ocr_image()` cuando OCR clásico < 30 chars.
+
+### Nuevos endpoints FastAPI
+| Endpoint | Función |
+|----------|---------|
+| `POST /api/pdf-analyze-deep` | Análisis profundo con pdfplumber |
+| `POST /api/semantic-index` | Construir índice semántico |
+| `POST /api/semantic-search` | Búsqueda semántica/híbrida |
+| `GET /api/semantic-status` | Estado del índice |
+| `POST /api/vision-analyze` | Análisis visual con Claude |
+| `POST /api/vision-ocr` | OCR con Claude Vision |
+| `POST /api/vision-classify` | Clasificar tipo de documento |
+| `POST /api/vision-extract-fields` | Extraer campos específicos |
+| `POST /api/vision-pdf` | Analizar páginas PDF con visión |
+| `POST /api/ocr-advanced` | OCR con orquestador avanzado |
+| `POST /api/ocr-full-analyze` | OCR + metadata + tablas + clasificación |
+| `GET /api/ocr-engines-status` | Estado de los 13 motores OCR |
+| `POST /api/ocr-pro` | **OCR Pro**: ensemble Tesseract+EasyOCR+RapidOCR, preprocesado adaptativo |
+| `POST /api/ocr-compare` | Comparación side-by-side de todos los motores |
+| `POST /api/ocr-preprocess` | Solo preprocesado (devuelve imagen procesada como base64) |
+| `GET /api/ocr-pro-status` | Estado detallado de motores OCR Pro con instrucciones install |
+| `POST /api/ocr-install-engine` | Instala motor OCR faltante vía pip (easyocr/rapidocr/paddleocr) |
+| `POST /api/tables-from-image` | Extraer tablas de imagen |
+| `POST /api/image-intelligence` | Análisis completo de imagen (EXIF+barcode+OCR+layout) |
+| `POST /api/barcode-scan` | Escanear QR/códigos de barras (pyzbar) |
+| `POST /api/exif-extract` | Extraer metadatos EXIF de imagen |
+| `POST /api/preprocess-turbo` | Preprocesado Wand+albumentations para OCR |
+| `POST /api/extract-universal` | Extraer texto de cualquier tipo de archivo |
+| `POST /api/search-index-file` | Indexar un archivo en FTS5 |
+| `POST /api/search-index-dir` | Indexar directorio completo en FTS5 |
+| `POST /api/search-fts` | Búsqueda full-text (FTS5+BM25+fuzzy) |
+| `GET /api/search-index-stats` | Estadísticas del índice FTS |
 
 ---
 
@@ -200,9 +274,9 @@ O desde consola F12: `MAER_runTests()`
 | 9 | `maer.recordatorios.js` | ✅ Completo — alertas, badge, integración notificaciones |
 | 10 | `maer.cartas-historial.js` | ✅ Completo — guardar, comparar, reimprimir (max 50) |
 | 12 | `maer.atajos.js` | ✅ Completo — 19 hotkeys, panel ayuda (Shift+?) |
-| 17 | `maer.sistema.js` | 🔶 Parcial — UI Tasker lista, sin integración AutoRemote real |
-| 18 | WhatsApp API | ❌ Pendiente — solo importa TXT exportado, no API Business |
-| 20 | `maer.poder.js` | 🔶 Parcial — base implementada, análisis profundo en desarrollo |
+| 17 | `maer.sistema.js` | ✅ Completo — guía Tasker paso a paso + plantilla JSON + variables + casos de uso IMSS |
+| 18 | WhatsApp | ✅ Mejorado — filtro IMSS con 30+ keywords, resaltado, estadísticas (API Business no aplica) |
+| 20 | `maer.poder.js` | ✅ Completo — 6 subpestañas: Analizar/CURP/Duplicados/Similares/Expediente + Análisis IA |
 
 ---
 
@@ -215,6 +289,16 @@ O desde consola F12: `MAER_runTests()`
 | Node.js v25 (inestable) | Funciona pero se recomienda `nvm use 20`. Instalar: `nvm install 20 && nvm alias default 20` |
 | `spaCy` sin modelo español | Ejecutar: `python -m spacy download es_core_news_sm` |
 | `transformers` desactiva PyTorch | Es aviso informativo — PyTorch 2.2.2 funciona para EasyOCR y DeepFace |
+| `img2table` — NO instalar | Causa conflictos de numpy (2.x) y falla build de numba en Intel. Reemplazado por solución OpenCV nativa en `extract_tables_from_image()`. |
+| `engine_status()` retorna `Version` no serializable | Usar `str(v)` al serializar; JSON.dumps falla con objetos Version de paquetes. |
+| NumPy nunca subir a 2.x | `opencv-python-headless`, `TensorFlow 2.16.2` y `PyTorch 2.2.2` requieren numpy 1.26.4. |
+| `numba` via pip falla en Intel Mac | Instalar **siempre via conda**: `~/miniforge3_x86/bin/conda install -n maer_env numba`. pip/llvmlite no compila en x86_64 macOS sin LLVM instalado. |
+| `openai-whisper` requiere numba | Instalar numba primero via conda, luego `pip install openai-whisper --no-deps && pip install tiktoken`. |
+| `python-bidi` conflicto (Kraken/Calamari) | Siempre restaurar con `pip install "python-bidi>=0.6.0"` después de instalar esos paquetes. |
+| `unstructured[pdf,image]` instala numba/llvmlite | Usar `pip install unstructured --no-deps` para base. No instalar extras. |
+| RapidOCR primera llamada tarda ~20s | Carga modelos ONNX en `_rapidocr_engine` singleton. Llamadas subsecuentes son instantáneas. Normal. |
+| EasyOCR descarga modelo en primera llamada | Descarga ~200MB a `~/.EasyOCR/model/`. Requiere internet. Siguiente llamada usa caché. |
+| `wand.version` retorna objeto no serializable en `engines_status()` | Ya corregido: se usa `getattr(wand, "version", "?")` — retorna string. |
 
 ---
 

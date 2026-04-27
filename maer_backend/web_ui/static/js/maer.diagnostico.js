@@ -38,12 +38,12 @@ MAER.diagnostico = {
     // Buscar badge de estado en el DOM
     const badges = document.querySelectorAll('.server-badge, #server-status-badge');
     badges.forEach(b => {
-      b.textContent = ok ? '🟢 Servidor' : '🔴 Offline';
+      b.textContent = ok ? '🟢 Servidor' : '🔴 Sin conexión';
       b.style.color = ok ? 'var(--green)' : 'var(--red)';
     });
     // Actualizar sidebar si existe
     const sbStatus = document.getElementById('sb-server-status');
-    if (sbStatus) sbStatus.textContent = ok ? '🟢 Online' : '🔴 Offline';
+    if (sbStatus) sbStatus.textContent = ok ? '🟢 En línea' : '🔴 Sin conexión';
   },
 
   /* ── DIAGNÓSTICO COMPLETO ── */
@@ -171,22 +171,65 @@ MAER.diagnostico = {
 
     // ── 7. APIs del backend (si conectado) ──
     if (MAER.config.backendOK) {
-      const endpoints = [
-        ['/api/analizar-documento', 'Análisis de documentos'],
-        ['/api/curp-decodificar',   'Decodificador CURP'],
-        ['/api/buscar-duplicados',  'Detector de duplicados'],
-        ['/api/imagenes-similares', 'Imágenes similares'],
-        ['/api/rfc-validar',        'Validador RFC'],
-      ];
-
-      // Test rápido: verificar status general (no llamamos cada endpoint)
       checks.push({
         icono:   '✅',
-        nombre:  'APIs reales (7 endpoints activos)',
+        nombre:  'APIs REST (endpoints activos)',
         estado:  'ok',
-        detalle: 'analizar-doc, CURP, RFC, duplicados, imágenes similares, OCR, expediente IMSS'
+        detalle: 'analizar-doc, CURP, RFC, duplicados, OCR, visión, FTS, watcher y más'
       });
       ok++;
+    }
+
+    // ── 7b. Motores OCR (si conectado) ──
+    if (MAER.config.backendOK) {
+      try {
+        const ocr = await MAER._call('/api/ocr-engines-status', null, { timeout: 10000 });
+        const engines = ocr?.data?.engines || ocr?.engines || {};
+        const names = Object.keys(engines);
+        const activos   = names.filter(n => engines[n] && engines[n] !== 'no disponible' && engines[n] !== false && engines[n] !== null);
+        const inactivos = names.filter(n => !activos.includes(n));
+
+        const pills = activos.map(n =>
+          `<span style="background:rgba(52,211,153,0.15);border:1px solid rgba(52,211,153,0.3);
+           border-radius:6px;padding:1px 6px;font-size:10px;margin:1px 2px 1px 0;display:inline-block">
+           ${n}</span>`
+        ).join('') + inactivos.map(n =>
+          `<span style="background:rgba(100,116,139,0.12);border:1px solid var(--border);
+           border-radius:6px;padding:1px 6px;font-size:10px;margin:1px 2px 1px 0;display:inline-block;
+           color:var(--muted)">${n}</span>`
+        ).join('');
+
+        checks.push({
+          icono:   activos.length >= 8 ? '✅' : activos.length >= 4 ? '⚠️' : '❌',
+          nombre:  `Motores OCR (${activos.length}/${names.length} activos)`,
+          estado:  activos.length >= 8 ? 'ok' : activos.length >= 4 ? 'warn' : 'err',
+          detalle: `<div style="margin-top:4px">${pills}</div>`,
+          _html:   true,
+        });
+        activos.length >= 8 ? ok++ : activos.length >= 4 ? warn++ : err++;
+      } catch(e) {
+        checks.push({ icono:'⚠️', nombre:'Motores OCR', estado:'warn',
+          detalle:'No se pudo obtener estado de motores' });
+        warn++;
+      }
+    }
+
+    // ── 7c. Índice FTS ──
+    if (MAER.config.backendOK) {
+      try {
+        const fts = await MAER._call('/api/search-index-stats', null, { timeout: 5000 });
+        const d = fts?.data || fts || {};
+        const n = d.total_files || 0;
+        checks.push({
+          icono:   n > 0 ? '✅' : '⚠️',
+          nombre:  `Índice FTS5 (${n.toLocaleString()} archivos)`,
+          estado:  n > 0 ? 'ok' : 'warn',
+          detalle: n > 0
+            ? `${((d.total_chars||0)/1000).toFixed(0)}k caracteres indexados`
+            : 'Vacío — indexa una carpeta desde la pestaña Búsqueda'
+        });
+        n > 0 ? ok++ : warn++;
+      } catch(e) {}
     }
 
     // ── 8. Memoria usada ──
@@ -259,11 +302,14 @@ MAER.diagnostico = {
       const color = c.estado === 'ok' ? 'var(--green)' : c.estado === 'warn' ? 'var(--yellow)' : 'var(--red)';
       const fixBtn = c.fix ? `<button class="btn btn-secondary btn-sm" style="font-size:10px;padding:2px 8px"
         onclick="MAER.diagnostico._autoFix('${c.fix}')">🔧 Fix</button>` : '';
-      html += `<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;
+      const detalleStyle = c._html
+        ? `style="font-size:11px;color:${color};flex-shrink:0;max-width:60%"`
+        : `style="font-size:11px;color:${color};text-align:right;flex-shrink:0;max-width:55%"`;
+      html += `<div style="display:flex;align-items:${c._html?'flex-start':'center'};gap:8px;padding:7px 10px;
                            background:var(--surface);border:1px solid var(--border);border-radius:6px">
         <span style="font-size:14px;flex-shrink:0">${c.icono}</span>
         <span style="font-size:12px;color:var(--text);flex:1">${c.nombre}</span>
-        <span style="font-size:11px;color:${color};text-align:right;flex-shrink:0;max-width:55%">${c.detalle}</span>
+        <span ${detalleStyle}>${c.detalle}</span>
         ${fixBtn}
       </div>`;
     });

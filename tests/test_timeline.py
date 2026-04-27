@@ -2,8 +2,7 @@
 Tests — MAER Bloque 7: Timeline Visual del Proceso de Pensión IMSS
 Leonel Houssen Mojica — Ecatepec MX — 2026
 """
-import json
-import re
+
 from pathlib import Path
 
 import pytest
@@ -23,28 +22,32 @@ class TestTimelineArchivos:
 
     def test_timeline_cargado_en_index_html(self):
         contenido = INDEX_HTML.read_text()
-        assert 'maer.timeline.js' in contenido, "maer.timeline.js debe estar en index.html"
+        assert (
+            "maer.timeline.js" in contenido
+        ), "maer.timeline.js debe estar en index.html"
 
     def test_timeline_panel_div_en_html(self):
         contenido = INDEX_HTML.read_text()
-        assert 'id="timeline-panel"' in contenido, "#timeline-panel debe existir en index.html"
+        assert (
+            'id="timeline-panel"' in contenido
+        ), "#timeline-panel debe existir en index.html"
 
 
 class TestTimelineCSS:
     """Bloque 7 — T2: Las clases CSS del timeline están definidas."""
 
     CLASES_REQUERIDAS = [
-        '.timeline-track',
-        '.timeline-etapa',
-        '.timeline-completada',
-        '.timeline-actual',
-        '.timeline-pendiente',
-        '.timeline-icon',
-        '.timeline-info',
-        '.timeline-label',
-        '.timeline-fecha',
-        '.timeline-dias',
-        '.timeline-line',
+        ".timeline-track",
+        ".timeline-etapa",
+        ".timeline-completada",
+        ".timeline-actual",
+        ".timeline-pendiente",
+        ".timeline-icon",
+        ".timeline-info",
+        ".timeline-label",
+        ".timeline-fecha",
+        ".timeline-dias",
+        ".timeline-line",
     ]
 
     def test_clases_css_existen(self):
@@ -54,7 +57,7 @@ class TestTimelineCSS:
 
     def test_animacion_timeline_pulse_existe(self):
         css = CSS_MAER.read_text()
-        assert 'timeline-pulse' in css, "Animación timeline-pulse debe estar definida"
+        assert "timeline-pulse" in css, "Animación timeline-pulse debe estar definida"
 
 
 class TestTimelineJS:
@@ -67,27 +70,44 @@ class TestTimelineJS:
     def test_ocho_etapas_definidas(self):
         # Verificar que las 8 etapas del proceso estén declaradas
         etapas = [
-            'documentos', 'pre-revision', 'solicitud', 'revision',
-            'resolucion', 'recurso', 'amparo', 'otorgada'
+            "documentos",
+            "pre-revision",
+            "solicitud",
+            "revision",
+            "resolucion",
+            "recurso",
+            "amparo",
+            "otorgada",
         ]
         for etapa in etapas:
-            assert f"'{etapa}'" in self.js or f'"{etapa}"' in self.js, \
-                f"Etapa '{etapa}' debe estar definida en maer.timeline.js"
+            assert (
+                f"'{etapa}'" in self.js or f'"{etapa}"' in self.js
+            ), f"Etapa '{etapa}' debe estar definida en maer.timeline.js"
 
     def test_storage_key_definido(self):
-        assert 'maer_timeline' in self.js, "STORAGE_KEY 'maer_timeline' debe estar en maer.timeline.js"
+        assert (
+            "maer_timeline" in self.js
+        ), "STORAGE_KEY 'maer_timeline' debe estar en maer.timeline.js"
 
     def test_metodos_publicos_existen(self):
-        for metodo in ['init()', 'marcar(', 'obtenerActual()', 'render()']:
-            assert metodo in self.js, f"Método '{metodo}' debe estar en maer.timeline.js"
+        for metodo in ["init()", "marcar(", "obtenerActual()", "render()"]:
+            assert (
+                metodo in self.js
+            ), f"Método '{metodo}' debe estar en maer.timeline.js"
 
     def test_persistencia_localstorage(self):
-        assert 'localStorage.setItem' in self.js, "Debe guardar en localStorage"
-        assert 'localStorage.getItem' in self.js, "Debe leer de localStorage"
+        assert "localStorage.setItem" in self.js, "Debe guardar en localStorage"
+        assert "localStorage.getItem" in self.js, "Debe leer de localStorage"
 
     def test_guardian_registra_timeline(self):
-        guardian_js = RAIZ / "maer_backend" / "web_ui" / "static" / "js" / "maer.guardian.js"
+        guardian_js = (
+            RAIZ / "maer_backend" / "web_ui" / "static" / "js" / "maer.guardian.js"
+        )
         assert guardian_js.exists(), "maer.guardian.js debe existir"
         contenido = guardian_js.read_text()
-        assert 'maer.timeline' in contenido, "maer.guardian.js debe registrar el módulo timeline"
-        assert 'MAER.timeline' in contenido, "maer.guardian.js debe verificar MAER.timeline"
+        assert (
+            "maer.timeline" in contenido
+        ), "maer.guardian.js debe registrar el módulo timeline"
+        assert (
+            "MAER.timeline" in contenido
+        ), "maer.guardian.js debe verificar MAER.timeline"

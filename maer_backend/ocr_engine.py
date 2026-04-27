@@ -14,15 +14,15 @@ Incluye:
   - Selección automática de motor
 """
 
-import os
-import json
 import hashlib
+import json
 import logging
+import os
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
 import cv2
+import numpy as np
 from PIL import Image
 
 logger = logging.getLogger("maer.ocr")
@@ -48,7 +48,7 @@ def _load_cache(cache_path: str = None):
         try:
             with open(cp, "r", encoding="utf-8") as f:
                 _ocr_cache = json.load(f)
-        except Exception:
+        except Exception as e:
             _ocr_cache = {}
     _cache_loaded = True
 
@@ -101,6 +101,7 @@ def set_cached_ocr(path: Path, text: str, engine: str, cache_path: str = None):
 # Preprocesamiento con OpenCV
 # ═══════════════════════════════════════════════
 
+
 def preprocess_image(img_array: np.ndarray) -> np.ndarray:
     """
     Pipeline de preprocesamiento para mejorar OCR:
@@ -120,8 +121,7 @@ def preprocess_image(img_array: np.ndarray) -> np.ndarray:
 
     # Binarización adaptativa (mejor para documentos escaneados)
     binary = cv2.adaptiveThreshold(
-        denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, 11, 2
+        denoised, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
     )
 
     # Corrección de skew
@@ -149,17 +149,15 @@ def correct_skew(image: np.ndarray, max_angle: float = 5.0) -> np.ndarray:
         if abs(angle) > max_angle or abs(angle) < 0.1:
             return image
 
-        (h, w) = image.shape[:2]
+        h, w = image.shape[:2]
         center = (w // 2, h // 2)
         M = cv2.getRotationMatrix2D(center, angle, 1.0)
         rotated = cv2.warpAffine(
-            image, M, (w, h),
-            flags=cv2.INTER_CUBIC,
-            borderMode=cv2.BORDER_REPLICATE
+            image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
         )
         logger.info(f"Skew corregido: {angle:.2f}°")
         return rotated
-    except Exception:
+    except Exception as e:
         return image
 
 
@@ -177,26 +175,43 @@ def cv2_to_pil(cv2_img: np.ndarray) -> Image.Image:
 # Motores OCR
 # ═══════════════════════════════════════════════
 
+
 def ocr_tesseract(image: Image.Image, lang: str = None) -> str:
-    """OCR con Tesseract."""
+    """OCR con Tesseract, usando tessdata-best si está disponible."""
+    import os
+
     import pytesseract
-    lang = lang or OCR_LANGS.replace("+", "+")
+
+    lang = lang or OCR_LANGS
+
+    # Preprocesar
+    cv2_img = pil_to_cv2(image)
+    processed = preprocess_image(cv2_img)
+    processed_pil = cv2_to_pil(processed)
+
+    tessdata_best = os.path.expanduser("~/tessdata_best")
     try:
-        # Preprocesar
-        cv2_img = pil_to_cv2(image)
-        processed = preprocess_image(cv2_img)
-        processed_pil = cv2_to_pil(processed)
-        text = pytesseract.image_to_string(processed_pil, lang=lang)
+        if os.path.isdir(tessdata_best) and any(Path(tessdata_best).iterdir()):
+            config = f"--tessdata-dir {tessdata_best} --oem 1 --psm 3"
+            text = pytesseract.image_to_string(processed_pil, lang=lang, config=config)
+        else:
+            text = pytesseract.image_to_string(
+                processed_pil, lang=lang, config="--oem 1 --psm 3"
+            )
         return text.strip()
     except Exception as e:
         logger.error(f"Error Tesseract: {e}")
-        return ""
+        try:
+            return pytesseract.image_to_string(processed_pil, lang="spa+eng").strip()
+        except Exception as e:
+            return ""
 
 
 def ocr_easyocr(image: Image.Image, langs: list = None) -> str:
     """OCR con EasyOCR (mejor para layouts complejos)."""
     try:
         import easyocr
+
         lang_list = langs or ["es", "en"]
         reader = easyocr.Reader(lang_list, gpu=False)
         cv2_img = pil_to_cv2(image)
@@ -216,6 +231,7 @@ def ocr_paddleocr(image: Image.Image, lang: str = None) -> str:
     """OCR con PaddleOCR (máxima precisión)."""
     try:
         from paddleocr import PaddleOCR
+
         ocr = PaddleOCR(use_angle_cls=True, lang=lang or "es", show_log=False)
         cv2_img = pil_to_cv2(image)
         processed = preprocess_image(cv2_img)
@@ -238,35 +254,60 @@ def ocr_paddleocr(image: Image.Image, lang: str = None) -> str:
 # Motor selector automático
 # ═══════════════════════════════════════════════
 
+
 def ocr_auto(image: Image.Image, lang: str = None) -> dict:
     """
-    Ejecuta OCR con múltiples motores y selecciona el mejor resultado.
-    Retorna: {engine, text, confidence, all_results}
+    Ejecuta OCR con el motor avanzado (surya/docTR/TrOCR) cuando está disponible,
+    o cae al stack clásico (EasyOCR/Tesseract/PaddleOCR) si no lo está.
+    Retorna: {engine, text, quality, all_results}
     """
+    # Intentar primero con el orquestador avanzado
+    try:
+        from maer_backend.maer_ocr_advanced import ocr_advanced
+
+        result = ocr_advanced(image, hint="auto")
+        if result.get("ok") and result.get("quality", 0) >= 0.35:
+            return {
+                "engine": result.get("engine", "advanced"),
+                "text": result.get("text", ""),
+                "all_results": {"advanced": len(result.get("text", ""))},
+            }
+    except Exception as e:
+        logger.debug(f"Motor avanzado no disponible, usando clásico: {e}")
+
+    # Stack clásico como fallback
     results = {}
 
-    # Tesseract (siempre disponible)
     text_tess = ocr_tesseract(image, lang)
     results["tesseract"] = text_tess
 
-    # EasyOCR (si disponible)
     text_easy = ocr_easyocr(image)
     if text_easy:
         results["easyocr"] = text_easy
 
-    # PaddleOCR (si disponible)
     text_paddle = ocr_paddleocr(image, lang)
     if text_paddle:
         results["paddleocr"] = text_paddle
 
-    # Seleccionar el mejor resultado por longitud y calidad
+    def _quality_score(text: str) -> float:
+        if not text:
+            return 0.0
+        valid = sum(
+            1 for c in text if c.isalnum() or c.isspace() or c in ".,;:áéíóúñüÁÉÍÓÚÑÜ"
+        )
+        ratio = valid / len(text) if text else 0
+        return len(text) * ratio
+
     best_engine = "tesseract"
     best_text = text_tess
+    best_score = _quality_score(text_tess)
 
     for engine, text in results.items():
-        if len(text) > len(best_text) * 1.2:  # 20% más texto = probablemente mejor
+        score = _quality_score(text)
+        if score > best_score * 1.15:
             best_engine = engine
             best_text = text
+            best_score = score
 
     return {
         "engine": best_engine,
@@ -275,7 +316,9 @@ def ocr_auto(image: Image.Image, lang: str = None) -> dict:
     }
 
 
-def ocr_single_engine(image: Image.Image, engine: str = "tesseract", lang: str = None) -> str:
+def ocr_single_engine(
+    image: Image.Image, engine: str = "tesseract", lang: str = None
+) -> str:
     """OCR con un motor específico."""
     if engine == "easyocr":
         return ocr_easyocr(image)
@@ -292,14 +335,20 @@ def ocr_single_engine(image: Image.Image, engine: str = "tesseract", lang: str =
 # OCR de PDF completo
 # ═══════════════════════════════════════════════
 
-def ocr_pdf(path: Path, engine: str = "auto", max_pages: int = None,
-            use_cache: bool = True, cache_path: str = None) -> dict:
+
+def ocr_pdf(
+    path: Path,
+    engine: str = "auto",
+    max_pages: int = None,
+    use_cache: bool = True,
+    cache_path: str = None,
+) -> dict:
     """
     OCR completo de un PDF con motor seleccionable.
     Retorna: {ok, text, engine, pages_processed, cached}
     """
-    from pypdf import PdfReader
     from pdf2image import convert_from_path
+    from pypdf import PdfReader
 
     max_pages = max_pages or OCR_MAX_PAGES
 
@@ -308,39 +357,60 @@ def ocr_pdf(path: Path, engine: str = "auto", max_pages: int = None,
         cached = get_cached_ocr(path, cache_path)
         if cached is not None:
             return {
-                "ok": True, "text": cached, "engine": "cache",
-                "pages_processed": 0, "cached": True
+                "ok": True,
+                "text": cached,
+                "engine": "cache",
+                "pages_processed": 0,
+                "cached": True,
             }
 
-    # Intentar texto directo primero
+    # Intentar extracción directa con pdfplumber (mejor layout) primero
     text_direct = ""
+    num_pages = 0
     try:
-        reader = PdfReader(str(path))
-        num_pages = min(len(reader.pages), max_pages)
-        for i in range(num_pages):
-            text_direct += reader.pages[i].extract_text() or ""
-    except Exception:
-        pass
+        from maer_backend.maer_pdf_analyzer import extract_pdf_text_enhanced
+
+        text_direct = extract_pdf_text_enhanced(path, max_pages=max_pages)
+        # Contar páginas aproximadas
+        try:
+            reader = PdfReader(str(path))
+            num_pages = min(len(reader.pages), max_pages)
+        except Exception as e:
+            num_pages = text_direct.count("[Página") or 1
+    except Exception as e:
+        # Fallback a pypdf puro
+        try:
+            reader = PdfReader(str(path))
+            num_pages = min(len(reader.pages), max_pages)
+            for i in range(num_pages):
+                text_direct += reader.pages[i].extract_text() or ""
+        except Exception as e:
+            pass
 
     if text_direct and len(text_direct.strip()) > 100:
         if use_cache:
-            set_cached_ocr(path, text_direct, "direct", cache_path)
+            set_cached_ocr(path, text_direct, "pdfplumber", cache_path)
         return {
-            "ok": True, "text": text_direct, "engine": "direct",
-            "pages_processed": num_pages, "cached": False
+            "ok": True,
+            "text": text_direct,
+            "engine": "pdfplumber",
+            "pages_processed": num_pages,
+            "cached": False,
         }
 
     # OCR con motor seleccionado
     try:
         pages = convert_from_path(
-            str(path), dpi=OCR_DPI,
-            first_page=1, last_page=max_pages
+            str(path), dpi=OCR_DPI, first_page=1, last_page=max_pages
         )
     except Exception as e:
         return {
-            "ok": False, "text": text_direct,
+            "ok": False,
+            "text": text_direct,
             "error": f"Error convirtiendo PDF: {e}",
-            "engine": "none", "pages_processed": 0, "cached": False
+            "engine": "none",
+            "pages_processed": 0,
+            "cached": False,
         }
 
     all_text = []
@@ -361,13 +431,17 @@ def ocr_pdf(path: Path, engine: str = "auto", max_pages: int = None,
         set_cached_ocr(path, final_text, used_engine, cache_path)
 
     return {
-        "ok": True, "text": final_text, "engine": used_engine,
-        "pages_processed": len(pages), "cached": False
+        "ok": True,
+        "text": final_text,
+        "engine": used_engine,
+        "pages_processed": len(pages),
+        "cached": False,
     }
 
 
-def ocr_image(path: Path, engine: str = "auto",
-              use_cache: bool = True, cache_path: str = None) -> dict:
+def ocr_image(
+    path: Path, engine: str = "auto", use_cache: bool = True, cache_path: str = None
+) -> dict:
     """
     OCR de una imagen (JPG, PNG, etc.).
     Retorna: {ok, text, engine, cached}
@@ -380,8 +454,13 @@ def ocr_image(path: Path, engine: str = "auto",
     try:
         img = Image.open(str(path))
     except Exception as e:
-        return {"ok": False, "text": "", "error": f"Error abriendo imagen: {e}",
-                "engine": "none", "cached": False}
+        return {
+            "ok": False,
+            "text": "",
+            "error": f"Error abriendo imagen: {e}",
+            "engine": "none",
+            "cached": False,
+        }
 
     if engine == "auto":
         result = ocr_auto(img)
@@ -390,6 +469,23 @@ def ocr_image(path: Path, engine: str = "auto",
     else:
         text = ocr_single_engine(img, engine)
         used_engine = engine
+
+    # Fallback a Claude Vision si el texto extraído es pobre (<30 chars)
+    if len(text.strip()) < 30 and os.environ.get("ANTHROPIC_API_KEY"):
+        logger.info(
+            f"OCR clásico insuficiente ({len(text.strip())} chars) — usando Claude Vision"
+        )
+        try:
+            from maer_backend.maer_vision import ocr_vision_fallback
+
+            vision_result = ocr_vision_fallback(path)
+            if vision_result.get("ok") and len(vision_result.get("text", "")) > len(
+                text
+            ):
+                text = vision_result["text"]
+                used_engine = "claude-vision"
+        except Exception as e:
+            logger.debug(f"Claude Vision fallback falló: {e}")
 
     if use_cache:
         set_cached_ocr(path, text, used_engine, cache_path)

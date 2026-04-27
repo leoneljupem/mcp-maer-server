@@ -2,14 +2,14 @@
 # 🦁 MAER FILES BACKEND v2.0 — Motor de análisis documental multimodal
 # Leonel Mojica — Ecatepec MX — 2026
 
-import os
-import sys
-import json
-import re
-import logging
 import hashlib
-from pathlib import Path
+import json
+import logging
+import os
+import re
+import sys
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Asegurar que el directorio padre está en sys.path para imports de maer_backend.*
 _THIS_DIR = Path(__file__).parent.resolve()
@@ -29,6 +29,7 @@ logger = logging.getLogger("maer")
 # ── Cargar .env si existe ──
 try:
     from dotenv import load_dotenv
+
     env_path = Path(__file__).parent.parent / ".env"
     if env_path.exists():
         load_dotenv(env_path)
@@ -36,26 +37,52 @@ try:
 except ImportError:
     pass
 
-# ── Imports base ──
-from pypdf import PdfReader
+import requests
 from docx import Document
 from PIL import Image
-import requests
+# ── Imports base ──
+from pypdf import PdfReader
 
 # ── Config ──
-API_CURP_URL = os.environ.get("API_CURP_URL", "https://api-curp-renapo.ejemplo.com/curp")
+API_CURP_URL = os.environ.get(
+    "API_CURP_URL", "https://api-curp-renapo.ejemplo.com/curp"
+)
 API_CURP_TOKEN = os.environ.get("API_CURP_TOKEN", "")
 MAER_OCR_ENGINE = os.environ.get("MAER_OCR_ENGINE", "auto")
 
 TEXT_EXTS = {
-    ".txt", ".md", ".log",
-    ".py", ".js", ".mjs", ".ts", ".mts", ".jsx", ".tsx",
-    ".html", ".htm", ".css",
-    ".json", ".yml", ".yaml", ".xml",
-    ".c", ".cpp", ".h", ".hpp",
-    ".java", ".php", ".rb", ".go", ".rs",
-    ".sh", ".bash", ".zsh",
-    ".sql", ".csv", ".tsv",
+    ".txt",
+    ".md",
+    ".log",
+    ".py",
+    ".js",
+    ".mjs",
+    ".ts",
+    ".mts",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".htm",
+    ".css",
+    ".json",
+    ".yml",
+    ".yaml",
+    ".xml",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".java",
+    ".php",
+    ".rb",
+    ".go",
+    ".rs",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".sql",
+    ".csv",
+    ".tsv",
 }
 
 DOC_EXTS = {".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx"}
@@ -64,8 +91,10 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"}
 
 # ── Directorios excluidos de indexación ──
 EXCLUDED_DIRS = set(
-    os.environ.get("MAER_EXCLUDED_DIRS",
-                   ".git,.svn,.hg,node_modules,__pycache__,.venv,venv,.ssh,.gnupg,.aws,.config,.Trash,Library").split(",")
+    os.environ.get(
+        "MAER_EXCLUDED_DIRS",
+        ".git,.svn,.hg,node_modules,__pycache__,.venv,venv,.ssh,.gnupg,.aws,.config,.Trash,Library",
+    ).split(",")
 )
 
 EXCLUDED_EXTS = {".key", ".pem", ".p12", ".pfx", ".keystore", ".DS_Store"}
@@ -74,6 +103,7 @@ EXCLUDED_EXTS = {".key", ".pem", ".p12", ".pfx", ".keystore", ".DS_Store"}
 # ═══════════════════════════════════════════════════════════
 # Respuesta uniforme
 # ═══════════════════════════════════════════════════════════
+
 
 def make_response(ok: bool, code: str, message: str, data: dict = None) -> dict:
     """Esquema de respuesta uniforme para TODAS las acciones."""
@@ -143,6 +173,7 @@ NSS_REGEX = re.compile(r"\b\d{11}\b")
 
 RFC_DIC = "0123456789ABCDEFGHIJKLMN&OPQRSTUVWXYZ Ñ"
 
+
 def normalize_id(s: str) -> str:
     return s.strip().upper().replace("-", "").replace(" ", "")
 
@@ -182,6 +213,7 @@ def rfc_valido(rfc: str, aceptar_generico: bool = True):
 
 CURP_DIC = "0123456789ABCDEFGHIJKLMNÑOPQRSTUVWXYZ"
 
+
 def curp_valida(curp: str):
     curp = normalize_id(curp)
     m = CURP_REGEX_COMPLETA.match(curp)
@@ -213,6 +245,7 @@ def curp_tronco(curp: str):
 # ═══════════════════════════════════════════════════════════
 # Utilidades
 # ═══════════════════════════════════════════════════════════
+
 
 def is_text_like(path: Path) -> bool:
     return path.suffix.lower() in TEXT_EXTS
@@ -255,7 +288,10 @@ def file_hash_sha256(path: Path) -> str:
 # Extracción de texto
 # ═══════════════════════════════════════════════════════════
 
-def extract_text_from_pdf(path: Path, ocr_if_needed: bool = True, max_pages: int = 50) -> str:
+
+def extract_text_from_pdf(
+    path: Path, ocr_if_needed: bool = True, max_pages: int = 50
+) -> str:
     text_direct = ""
     try:
         reader = PdfReader(str(path))
@@ -275,6 +311,7 @@ def extract_text_from_pdf(path: Path, ocr_if_needed: bool = True, max_pages: int
     # Usar motor OCR multimodal
     try:
         from maer_backend.ocr_engine import ocr_pdf
+
         result = ocr_pdf(path, engine=MAER_OCR_ENGINE, max_pages=max_pages)
         if result.get("ok"):
             return result["text"]
@@ -320,6 +357,7 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
     if ext in IMAGE_EXTS:
         try:
             from maer_backend.ocr_engine import ocr_image
+
             result = ocr_image(path, engine=MAER_OCR_ENGINE)
             if result.get("ok"):
                 return result["text"]
@@ -328,6 +366,7 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
         # Fallback Tesseract directo
         try:
             import pytesseract
+
             img = Image.open(str(path)).convert("L")
             return pytesseract.image_to_string(img, lang="spa+eng")
         except Exception as e:
@@ -340,6 +379,7 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
 # ═══════════════════════════════════════════════════════════
 # Detección de IDs
 # ═══════════════════════════════════════════════════════════
+
 
 def detect_ids_in_text(text: str):
     curp_candidates = set(m.group(0).upper() for m in CURP_REGEX_SEARCH.finditer(text))
@@ -390,6 +430,7 @@ def extract_related_info(text: str):
 # Acciones (todas con respuesta uniforme)
 # ═══════════════════════════════════════════════════════════
 
+
 def action_search_files(payload: dict):
     base_dir = Path(payload.get("base_dir") or str(Path.home()))
     query = str(payload.get("query") or "").strip()
@@ -419,14 +460,23 @@ def action_search_files(payload: dict):
         elif mode == "content" and content_match:
             results.append({"path": str(path), "match": "content"})
         elif mode == "both" and (name_match or content_match):
-            results.append({
-                "path": str(path),
-                "match": "name+content" if (name_match and content_match) else ("name" if name_match else "content"),
-            })
+            results.append(
+                {
+                    "path": str(path),
+                    "match": (
+                        "name+content"
+                        if (name_match and content_match)
+                        else ("name" if name_match else "content")
+                    ),
+                }
+            )
 
-    return make_response(True, "SEARCH_OK", f"{len(results)} resultados encontrados", {
-        "query": query, "base_dir": str(base_dir), "mode": mode, "results": results
-    })
+    return make_response(
+        True,
+        "SEARCH_OK",
+        f"{len(results)} resultados encontrados",
+        {"query": query, "base_dir": str(base_dir), "mode": mode, "results": results},
+    )
 
 
 def action_analyze_file(payload: dict):
@@ -460,7 +510,9 @@ def action_analyze_file(payload: dict):
         info["preview"] = "[ARCHIVO NO TEXTO]"
         info["line_count"] = None
 
-    return make_response(True, "ANALYZE_OK", f"Análisis completo: {path.name}", {"info": info})
+    return make_response(
+        True, "ANALYZE_OK", f"Análisis completo: {path.name}", {"info": info}
+    )
 
 
 def action_fix_code_file(payload: dict):
@@ -470,7 +522,9 @@ def action_fix_code_file(payload: dict):
     if not path.exists():
         return make_response(False, "FILE_NOT_FOUND", f"Archivo no existe: {path}")
     if not is_text_like(path):
-        return make_response(False, "NOT_TEXT_FILE", "Solo se corrigen archivos de texto/código")
+        return make_response(
+            False, "NOT_TEXT_FILE", "Solo se corrigen archivos de texto/código"
+        )
 
     text = safe_read_text(path)
     original = text
@@ -482,9 +536,12 @@ def action_fix_code_file(payload: dict):
         return make_response(False, "UNSUPPORTED_MODE", f"Modo no soportado: {mode}")
 
     if fixed_text == original:
-        return make_response(True, "FIX_NO_CHANGE", "No hubo cambios", {
-            "changed": False, "path": str(path)
-        })
+        return make_response(
+            True,
+            "FIX_NO_CHANGE",
+            "No hubo cambios",
+            {"changed": False, "path": str(path)},
+        )
 
     backup_path = path.with_suffix(path.suffix + ".maer.bak")
     try:
@@ -493,10 +550,17 @@ def action_fix_code_file(payload: dict):
     except Exception as e:
         return make_response(False, "FIX_ERROR", f"Error escribiendo archivo: {e}")
 
-    return make_response(True, "FIX_OK", "Archivo corregido correctamente", {
-        "changed": True, "path": str(path), "backup": str(backup_path),
-        "details": f"Se quitaron espacios finales de cada línea. Backup en {backup_path}",
-    })
+    return make_response(
+        True,
+        "FIX_OK",
+        "Archivo corregido correctamente",
+        {
+            "changed": True,
+            "path": str(path),
+            "backup": str(backup_path),
+            "details": f"Se quitaron espacios finales de cada línea. Backup en {backup_path}",
+        },
+    )
 
 
 def action_extract_text(payload: dict):
@@ -513,10 +577,18 @@ def action_extract_text(payload: dict):
         text = text[:max_chars]
         truncated = True
 
-    return make_response(True, "EXTRACT_OK", f"Texto extraído: {len(text)} caracteres", {
-        "path": str(path), "ext": path.suffix.lower(), "length": len(text),
-        "truncated": truncated, "text": text
-    })
+    return make_response(
+        True,
+        "EXTRACT_OK",
+        f"Texto extraído: {len(text)} caracteres",
+        {
+            "path": str(path),
+            "ext": path.suffix.lower(),
+            "length": len(text),
+            "truncated": truncated,
+            "text": text,
+        },
+    )
 
 
 def action_index_full(payload: dict):
@@ -563,12 +635,21 @@ def action_index_full(payload: dict):
         with open(out_file, "w", encoding="utf-8") as f:
             json.dump(index_entries, f, ensure_ascii=False, indent=2)
     except Exception as e:
-        return make_response(False, "INDEX_WRITE_ERROR", f"Error escribiendo índice: {e}")
+        return make_response(
+            False, "INDEX_WRITE_ERROR", f"Error escribiendo índice: {e}"
+        )
 
-    return make_response(True, "INDEX_OK", f"Indexación completa: {processed} archivos", {
-        "base_dir": str(base_dir), "out_file": str(out_file),
-        "processed": processed, "errors": errors,
-    })
+    return make_response(
+        True,
+        "INDEX_OK",
+        f"Indexación completa: {processed} archivos",
+        {
+            "base_dir": str(base_dir),
+            "out_file": str(out_file),
+            "processed": processed,
+            "errors": errors,
+        },
+    )
 
 
 def action_search_index(payload: dict):
@@ -579,12 +660,16 @@ def action_search_index(payload: dict):
 
     if not index_file:
         if not base_dir:
-            return make_response(False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'")
+            return make_response(
+                False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'"
+            )
         index_file = str(Path(base_dir) / "maer_index.json")
 
     idx_path = Path(index_file)
     if not idx_path.exists():
-        return make_response(False, "INDEX_NOT_FOUND", f"Índice JSON no existe: {idx_path}")
+        return make_response(
+            False, "INDEX_NOT_FOUND", f"Índice JSON no existe: {idx_path}"
+        )
     if not query:
         return make_response(False, "SEARCH_EMPTY", "Query vacío")
 
@@ -601,16 +686,25 @@ def action_search_index(payload: dict):
             break
         snippet = str(entry.get("snippet") or "")
         if q_lower in snippet.lower() or q_lower in str(entry.get("path", "")).lower():
-            results.append({
-                "path": entry.get("path"),
-                "ext": entry.get("ext"),
-                "size_bytes": entry.get("size_bytes"),
-                "snippet_preview": snippet[:300],
-            })
+            results.append(
+                {
+                    "path": entry.get("path"),
+                    "ext": entry.get("ext"),
+                    "size_bytes": entry.get("size_bytes"),
+                    "snippet_preview": snippet[:300],
+                }
+            )
 
-    return make_response(True, "SEARCH_INDEX_OK", f"{len(results)} resultados en índice", {
-        "query": query, "index_file": str(idx_path), "results": results,
-    })
+    return make_response(
+        True,
+        "SEARCH_INDEX_OK",
+        f"{len(results)} resultados en índice",
+        {
+            "query": query,
+            "index_file": str(idx_path),
+            "results": results,
+        },
+    )
 
 
 def action_detect_ids(payload: dict):
@@ -624,9 +718,17 @@ def action_detect_ids(payload: dict):
         text = extract_text_generic(path, use_ocr_for_pdf=ocr_for_pdf)
         ids = detect_ids_in_text(text)
         related = extract_related_info(text)
-        return make_response(True, "DETECT_IDS_OK", "IDs detectados en archivo", {
-            "mode": "file", "path": str(path), "ids": ids, "related": related,
-        })
+        return make_response(
+            True,
+            "DETECT_IDS_OK",
+            "IDs detectados en archivo",
+            {
+                "mode": "file",
+                "path": str(path),
+                "ids": ids,
+                "related": related,
+            },
+        )
 
     elif mode == "index":
         index_file = payload.get("index_file")
@@ -635,37 +737,58 @@ def action_detect_ids(payload: dict):
 
         if not index_file:
             if not base_dir:
-                return make_response(False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir' en modo index")
+                return make_response(
+                    False,
+                    "MISSING_PARAMS",
+                    "Debe proporcionar 'index_file' o 'base_dir' en modo index",
+                )
             index_file = str(Path(base_dir) / "maer_index.json")
 
         idx_path = Path(index_file)
         if not idx_path.exists():
-            return make_response(False, "INDEX_NOT_FOUND", f"Índice no existe: {idx_path}")
+            return make_response(
+                False, "INDEX_NOT_FOUND", f"Índice no existe: {idx_path}"
+            )
 
         try:
             with open(idx_path, "r", encoding="utf-8") as f:
                 entries = json.load(f)
         except Exception as e:
-            return make_response(False, "INDEX_READ_ERROR", f"Error leyendo índice: {e}")
+            return make_response(
+                False, "INDEX_READ_ERROR", f"Error leyendo índice: {e}"
+            )
 
         found = []
         for entry in entries[:max_entries]:
             snippet = str(entry.get("snippet") or "")
             ids = detect_ids_in_text(snippet)
-            if ids["curp_validas"] or ids["curp_invalidas"] or ids["rfc_validos"] or ids["ine_clave"]:
+            if (
+                ids["curp_validas"]
+                or ids["curp_invalidas"]
+                or ids["rfc_validos"]
+                or ids["ine_clave"]
+            ):
                 related = extract_related_info(snippet)
-                found.append({
-                    "path": entry.get("path"),
-                    "ext": entry.get("ext"),
-                    "ids": ids,
-                    "related": related,
-                })
+                found.append(
+                    {
+                        "path": entry.get("path"),
+                        "ext": entry.get("ext"),
+                        "ids": ids,
+                        "related": related,
+                    }
+                )
 
-        return make_response(True, "DETECT_IDS_INDEX_OK",
-                           f"{len(found)} archivos con IDs detectados", {
-            "mode": "index", "index_file": str(idx_path),
-            "checked_entries": min(len(entries), max_entries), "matches": found,
-        })
+        return make_response(
+            True,
+            "DETECT_IDS_INDEX_OK",
+            f"{len(found)} archivos con IDs detectados",
+            {
+                "mode": "index",
+                "index_file": str(idx_path),
+                "checked_entries": min(len(entries), max_entries),
+                "matches": found,
+            },
+        )
     else:
         return make_response(False, "UNSUPPORTED_MODE", f"Modo no soportado: {mode}")
 
@@ -693,7 +816,9 @@ def action_detect_related(payload: dict):
 
     if not index_file:
         if not base_dir:
-            return make_response(False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'")
+            return make_response(
+                False, "MISSING_PARAMS", "Debe proporcionar 'index_file' o 'base_dir'"
+            )
         index_file = str(Path(base_dir) / "maer_index.json")
 
     idx_path = Path(index_file)
@@ -711,20 +836,27 @@ def action_detect_related(payload: dict):
         snippet = str(entry.get("snippet") or "")
         if id_value in snippet.replace(" ", "").upper() or id_value in snippet.upper():
             related = extract_related_info(snippet)
-            matches.append({
-                "path": entry.get("path"),
-                "ext": entry.get("ext"),
-                "snippet_preview": snippet[:300],
-                "related": related,
-            })
+            matches.append(
+                {
+                    "path": entry.get("path"),
+                    "ext": entry.get("ext"),
+                    "snippet_preview": snippet[:300],
+                    "related": related,
+                }
+            )
 
-    return make_response(True, "DETECT_RELATED_OK",
-                       f"{len(matches)} archivos con {id_type}", {
-        "id_value": id_value, "id_type": id_type,
-        "index_file": str(idx_path),
-        "checked_entries": min(len(entries), max_entries),
-        "matches": matches,
-    })
+    return make_response(
+        True,
+        "DETECT_RELATED_OK",
+        f"{len(matches)} archivos con {id_type}",
+        {
+            "id_value": id_value,
+            "id_type": id_type,
+            "index_file": str(idx_path),
+            "checked_entries": min(len(entries), max_entries),
+            "matches": matches,
+        },
+    )
 
 
 def action_curp_renapo_check(payload: dict):
@@ -734,9 +866,16 @@ def action_curp_renapo_check(payload: dict):
 
     curp = normalize_id(curp)
     if not curp_valida(curp):
-        return make_response(False, "INVALID_CURP", "La CURP no pasa validación local", {
-            "curp": curp, "source": "local", "status": "INVALID_LOCAL",
-        })
+        return make_response(
+            False,
+            "INVALID_CURP",
+            "La CURP no pasa validación local",
+            {
+                "curp": curp,
+                "source": "local",
+                "status": "INVALID_LOCAL",
+            },
+        )
 
     headers = {"Accept": "application/json"}
     if API_CURP_TOKEN:
@@ -744,31 +883,55 @@ def action_curp_renapo_check(payload: dict):
 
     try:
         resp = requests.get(
-            API_CURP_URL, params={"curp": curp},
-            headers=headers, timeout=10,
+            API_CURP_URL,
+            params={"curp": curp},
+            headers=headers,
+            timeout=10,
         )
     except Exception as e:
-        return make_response(False, "API_ERROR", f"Error al llamar API CURP: {e}", {
-            "curp": curp, "source": "remote", "status": "ERROR",
-        })
+        return make_response(
+            False,
+            "API_ERROR",
+            f"Error al llamar API CURP: {e}",
+            {
+                "curp": curp,
+                "source": "remote",
+                "status": "ERROR",
+            },
+        )
 
     try:
         data = resp.json()
     except Exception:
-        return make_response(False, "API_PARSE_ERROR", "Respuesta no JSON", {
-            "curp": curp, "source": "remote", "raw": resp.text[:500],
-        })
+        return make_response(
+            False,
+            "API_PARSE_ERROR",
+            "Respuesta no JSON",
+            {
+                "curp": curp,
+                "source": "remote",
+                "raw": resp.text[:500],
+            },
+        )
 
     status = data.get("status") or ("VALID" if data.get("success") else "INVALID")
-    return make_response(bool(data.get("success", False)), "RENAPO_CHECK_OK",
-                       f"CURP verificada: {status}", {
-        "curp": curp, "source": "remote", "status": status, "raw": data,
-    })
+    return make_response(
+        bool(data.get("success", False)),
+        "RENAPO_CHECK_OK",
+        f"CURP verificada: {status}",
+        {
+            "curp": curp,
+            "source": "remote",
+            "status": status,
+            "raw": data,
+        },
+    )
 
 
 # ═══════════════════════════════════════════════════════════
 # Nuevas acciones multimodales
 # ═══════════════════════════════════════════════════════════
+
 
 def action_ocr_multimodal(payload: dict):
     """OCR con selección de motor."""
@@ -781,19 +944,26 @@ def action_ocr_multimodal(payload: dict):
 
     ext = path.suffix.lower()
     try:
-        from maer_backend.ocr_engine import ocr_pdf, ocr_image
+        from maer_backend.ocr_engine import ocr_image, ocr_pdf
+
         if ext == ".pdf":
             result = ocr_pdf(path, engine=engine, use_cache=use_cache)
         elif ext in IMAGE_EXTS:
             result = ocr_image(path, engine=engine, use_cache=use_cache)
         else:
-            return make_response(False, "UNSUPPORTED_TYPE",
-                               f"OCR no soportado para: {ext}")
+            return make_response(
+                False, "UNSUPPORTED_TYPE", f"OCR no soportado para: {ext}"
+            )
 
-        return make_response(result.get("ok", False), "OCR_OK", "OCR completado", result)
+        return make_response(
+            result.get("ok", False), "OCR_OK", "OCR completado", result
+        )
     except ImportError:
-        return make_response(False, "OCR_ENGINE_MISSING",
-                           "Motor OCR no disponible. Verifica instalación.")
+        return make_response(
+            False,
+            "OCR_ENGINE_MISSING",
+            "Motor OCR no disponible. Verifica instalación.",
+        )
 
 
 def action_extract_tables(payload: dict):
@@ -804,9 +974,16 @@ def action_extract_tables(payload: dict):
 
     try:
         from maer_backend.table_extractor import extract_tables_from_pdf
-        result = extract_tables_from_pdf(path, max_pages=int(payload.get("max_pages") or 50))
-        return make_response(result.get("ok", False), "TABLES_OK",
-                           f"{result.get('total_tables', 0)} tablas encontradas", result)
+
+        result = extract_tables_from_pdf(
+            path, max_pages=int(payload.get("max_pages") or 50)
+        )
+        return make_response(
+            result.get("ok", False),
+            "TABLES_OK",
+            f"{result.get('total_tables', 0)} tablas encontradas",
+            result,
+        )
     except ImportError:
         return make_response(False, "PDFPLUMBER_MISSING", "pdfplumber no instalado")
 
@@ -825,12 +1002,19 @@ def action_nlp_entities(payload: dict):
         return make_response(False, "EMPTY_TEXT", "Texto vacío para NLP")
 
     try:
-        from maer_backend.nlp_engine import extract_entities, classify_document
+        from maer_backend.nlp_engine import classify_document, extract_entities
+
         entities = extract_entities(text)
         classification = classify_document(text)
-        return make_response(True, "NLP_OK", "Entidades extraídas", {
-            "entities": entities, "classification": classification,
-        })
+        return make_response(
+            True,
+            "NLP_OK",
+            "Entidades extraídas",
+            {
+                "entities": entities,
+                "classification": classification,
+            },
+        )
     except ImportError:
         return make_response(False, "SPACY_MISSING", "spaCy no instalado")
 
@@ -842,13 +1026,20 @@ def action_image_duplicates(payload: dict):
     max_files = int(payload.get("max_files") or 1000)
 
     if not base_dir.exists():
-        return make_response(False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}")
+        return make_response(
+            False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}"
+        )
 
     try:
         from maer_backend.image_analyzer import find_duplicates
+
         result = find_duplicates(base_dir, threshold=threshold, max_files=max_files)
-        return make_response(result.get("ok", False), "DUPLICATES_OK",
-                           f"{result.get('total_groups', 0)} grupos de duplicados", result)
+        return make_response(
+            result.get("ok", False),
+            "DUPLICATES_OK",
+            f"{result.get('total_groups', 0)} grupos de duplicados",
+            result,
+        )
     except ImportError:
         return make_response(False, "IMAGEHASH_MISSING", "imagehash no instalado")
 
@@ -864,9 +1055,14 @@ def action_face_detect(payload: dict):
             return make_response(False, "FILE_NOT_FOUND", f"Archivo no existe: {p}")
         try:
             from maer_backend.image_analyzer import detect_faces
+
             result = detect_faces(p)
-            return make_response(result.get("ok", False), "FACES_OK",
-                               f"{result.get('total_faces', 0)} rostros detectados", result)
+            return make_response(
+                result.get("ok", False),
+                "FACES_OK",
+                f"{result.get('total_faces', 0)} rostros detectados",
+                result,
+            )
         except ImportError:
             return make_response(False, "DEEPFACE_MISSING", "DeepFace no instalado")
 
@@ -876,9 +1072,16 @@ def action_face_detect(payload: dict):
             return make_response(False, "DIR_NOT_FOUND", f"Directorio no existe: {bd}")
         try:
             from maer_backend.image_analyzer import find_and_group_faces
-            result = find_and_group_faces(bd, max_files=int(payload.get("max_files") or 200))
-            return make_response(result.get("ok", False), "FACES_GROUP_OK",
-                               f"{result.get('total_groups', 0)} grupos de rostros", result)
+
+            result = find_and_group_faces(
+                bd, max_files=int(payload.get("max_files") or 200)
+            )
+            return make_response(
+                result.get("ok", False),
+                "FACES_GROUP_OK",
+                f"{result.get('total_groups', 0)} grupos de rostros",
+                result,
+            )
         except ImportError:
             return make_response(False, "DEEPFACE_MISSING", "DeepFace no instalado")
 
@@ -891,18 +1094,29 @@ def action_cluster_files(payload: dict):
     cluster_type = payload.get("type") or "images"  # images, text, all
 
     if not base_dir.exists():
-        return make_response(False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}")
+        return make_response(
+            False, "DIR_NOT_FOUND", f"Directorio no existe: {base_dir}"
+        )
 
     if cluster_type == "images":
         try:
             from maer_backend.image_analyzer import cluster_images
-            result = cluster_images(base_dir, max_files=int(payload.get("max_files") or 500))
-            return make_response(result.get("ok", False), "CLUSTER_OK",
-                               f"{result.get('total_clusters', 0)} clusters de imágenes", result)
+
+            result = cluster_images(
+                base_dir, max_files=int(payload.get("max_files") or 500)
+            )
+            return make_response(
+                result.get("ok", False),
+                "CLUSTER_OK",
+                f"{result.get('total_clusters', 0)} clusters de imágenes",
+                result,
+            )
         except ImportError:
             return make_response(False, "SKLEARN_MISSING", "scikit-learn no instalado")
 
-    return make_response(False, "UNSUPPORTED_TYPE", f"Tipo de clustering no soportado: {cluster_type}")
+    return make_response(
+        False, "UNSUPPORTED_TYPE", f"Tipo de clustering no soportado: {cluster_type}"
+    )
 
 
 def action_llm_summarize(payload: dict):
@@ -914,17 +1128,23 @@ def action_llm_summarize(payload: dict):
             text = extract_text_generic(p)
     if not text:
         return make_response(False, "EMPTY_TEXT", "Proporciona text o un path válido")
-        
+
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         res = engine.summarize_text(text)
-        return make_response(res.get("ok", False), "LLM_SUMMARIZE_OK" if res.get("ok") else "LLM_ERROR", 
-                             "Resumen generado" if res.get("ok") else res.get("error", ""), res)
+        return make_response(
+            res.get("ok", False),
+            "LLM_SUMMARIZE_OK" if res.get("ok") else "LLM_ERROR",
+            "Resumen generado" if res.get("ok") else res.get("error", ""),
+            res,
+        )
     except ImportError as e:
         return make_response(False, "LLM_MISSING", f"Librerías LLM no instaladas: {e}")
     except Exception as e:
         return make_response(False, "LLM_FAIL", str(e))
+
 
 def action_llm_extract_json(payload: dict):
     path = payload.get("path")
@@ -936,68 +1156,95 @@ def action_llm_extract_json(payload: dict):
             text = extract_text_generic(p)
     if not text:
         return make_response(False, "EMPTY_TEXT", "Proporciona text o un path válido")
-        
+
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         res = engine.extract_structured_data(text, schema_desc)
-        return make_response(res.get("ok", False), "LLM_EXTRACT_OK" if res.get("ok") else "LLM_ERROR", 
-                             "Datos extraídos" if res.get("ok") else res.get("error", ""), res)
+        return make_response(
+            res.get("ok", False),
+            "LLM_EXTRACT_OK" if res.get("ok") else "LLM_ERROR",
+            "Datos extraídos" if res.get("ok") else res.get("error", ""),
+            res,
+        )
     except ImportError as e:
         return make_response(False, "LLM_MISSING", f"Librerías LLM no instaladas: {e}")
     except Exception as e:
         return make_response(False, "LLM_FAIL", str(e))
 
+
 def action_renapo_verify_identity(payload: dict):
     """Acción compuesta: OCR -> Detect IDs -> Verificación LLM"""
     path = payload.get("path")
     if not path or not Path(path).exists():
-        return make_response(False, "FILE_NOT_FOUND", "Archivo no proporcionado o no existe")
-        
+        return make_response(
+            False, "FILE_NOT_FOUND", "Archivo no proporcionado o no existe"
+        )
+
     # 1. Extraer texto
     p = Path(path)
     text = extract_text_generic(p)
     if not text.strip():
-        return make_response(False, "EMPTY_TEXT", "No se pudo extraer texto del archivo")
-        
+        return make_response(
+            False, "EMPTY_TEXT", "No se pudo extraer texto del archivo"
+        )
+
     # 2. Detectar IDs
     ids_info = detect_ids_in_text(text)
     curps = ids_info.get("curp_validas", [])
-    
+
     if not curps:
-        return make_response(False, "NO_CURP_FOUND", "No se encontraron CURPs válidas en el documento", {"text_preview": text[:200]})
-        
+        return make_response(
+            False,
+            "NO_CURP_FOUND",
+            "No se encontraron CURPs válidas en el documento",
+            {"text_preview": text[:200]},
+        )
+
     # 3. Validar la primera CURP con "Renapo"
     target_curp = curps[0]
     renapo_res = action_curp_renapo_check({"curp": target_curp})
     status = renapo_res.get("data", {}).get("status", "UNKNOWN")
-    
+
     # 4. Usar LLM para verificar correspondencia
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         schema = "Crea un JSON con: {'nombre_completo': '...', 'fecha_nacimiento': '...', 'es_curp_coherente_con_nombre': true o false}"
         llm_res = engine.extract_structured_data(text, schema)
-        
-        return make_response(True, "RENAPO_VERIFY_OK", "Verificación de identidad completada", {
-            "curp_analizada": target_curp,
-            "renapo_status": status,
-            "llm_analysis": llm_res.get("json", {}),
-            "otras_curps_encontradas": curps[1:]
-        })
+
+        return make_response(
+            True,
+            "RENAPO_VERIFY_OK",
+            "Verificación de identidad completada",
+            {
+                "curp_analizada": target_curp,
+                "renapo_status": status,
+                "llm_analysis": llm_res.get("json", {}),
+                "otras_curps_encontradas": curps[1:],
+            },
+        )
     except ImportError:
-        return make_response(True, "RENAPO_VERIFY_PARTIAL", "Verificación básica completada (sin LLM cruzado)", {
-            "curp_analizada": target_curp,
-            "renapo_status": status,
-            "llm_analysis": "Librería LLM no instalada"
-        })
+        return make_response(
+            True,
+            "RENAPO_VERIFY_PARTIAL",
+            "Verificación básica completada (sin LLM cruzado)",
+            {
+                "curp_analizada": target_curp,
+                "renapo_status": status,
+                "llm_analysis": "Librería LLM no instalada",
+            },
+        )
     except Exception as e:
-         return make_response(False, "RENAPO_VERIFY_FAIL", str(e))
+        return make_response(False, "RENAPO_VERIFY_FAIL", str(e))
 
 
 # ═══════════════════════════════════════════════════════════
 # Dispatcher
 # ═══════════════════════════════════════════════════════════
+
 
 def action_llm_chat(args):
     """
@@ -1011,9 +1258,12 @@ def action_llm_chat(args):
         file_path = Path(path)
         if file_path.suffix.lower() == ".pdf":
             import pdfplumber
+
             try:
                 with pdfplumber.open(file_path) as pdf:
-                    context = "\n".join([p.extract_text() for p in pdf.pages if p.extract_text()])
+                    context = "\n".join(
+                        [p.extract_text() for p in pdf.pages if p.extract_text()]
+                    )
             except Exception as e:
                 return make_response(False, "PDF_ERROR", f"Error leyendo PDF: {e}")
         else:
@@ -1021,26 +1271,34 @@ def action_llm_chat(args):
                 context = file_path.read_text("utf-8")
             except Exception as e:
                 return make_response(False, "READ_ERROR", f"Error leyendo txt: {e}")
-    
+
     final_prompt = prompt
     if context:
-        final_prompt = f"Contexto del documento:\n{context[:4000]}\n\nInstrucción: {prompt}"
+        final_prompt = (
+            f"Contexto del documento:\n{context[:4000]}\n\nInstrucción: {prompt}"
+        )
 
     try:
         from maer_backend.llm_engine import get_llm_engine
+
         engine = get_llm_engine()
         result = engine.generate_response(
             prompt=final_prompt,
             system_prompt="Eres un asistente experto de MAER para JUPEM. Responde usando el contexto si se provee, o tu conocimiento general.",
             max_tokens=2048,
-            temperature=0.6
+            temperature=0.6,
         )
         if result.get("ok"):
-            return make_response(True, "CHAT_OK", "Chat procesado", {"response": result["text"]})
+            return make_response(
+                True, "CHAT_OK", "Chat procesado", {"response": result["text"]}
+            )
         else:
-            return make_response(False, "CHAT_ERR", result.get("error", "Error desconocido"))
+            return make_response(
+                False, "CHAT_ERR", result.get("error", "Error desconocido")
+            )
     except Exception as e:
         return make_response(False, "LLM_FAIL", str(e))
+
 
 ACTIONS = {
     "search_files": action_search_files,
@@ -1069,8 +1327,13 @@ ACTIONS = {
 
 def main():
     if len(sys.argv) < 2:
-        print(json.dumps(make_response(False, "USAGE_ERROR",
-              "Uso: maer_files.py <accion> [json_payload]")))
+        print(
+            json.dumps(
+                make_response(
+                    False, "USAGE_ERROR", "Uso: maer_files.py <accion> [json_payload]"
+                )
+            )
+        )
         return
 
     action = sys.argv[1]
@@ -1083,8 +1346,11 @@ def main():
 
     func = ACTIONS.get(action)
     if not func:
-        print(json.dumps(make_response(False, "UNKNOWN_ACTION",
-              f"Acción desconocida: {action}")))
+        print(
+            json.dumps(
+                make_response(False, "UNKNOWN_ACTION", f"Acción desconocida: {action}")
+            )
+        )
         return
 
     try:

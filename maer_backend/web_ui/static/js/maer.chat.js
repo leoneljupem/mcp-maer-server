@@ -83,14 +83,17 @@ MAER.chat = {
       return;
     }
 
-    // 2. Backend LLM con contexto enriquecido
+    // 2. Backend LLM con contexto enriquecido + historial de conversación
     if (MAER.config.backendOK) {
       this._showTyping();
       const payload = { prompt: this._construirPrompt(userMsg, modo) };
       if (this.ctxPath)  payload.path  = this.ctxPath;
-      if (this.ctxTexto) payload.texto = this.ctxTexto.substring(0, 4000);
+      if (this.ctxTexto) payload.texto = this.ctxTexto.substring(0, 8000);
 
-      const res = await MAER._call('/api/llm-chat', payload, { timeout: 30000 });
+      // Pasar últimas 6 rondas del historial para contexto de conversación
+      payload.history = this._getHistorial(6);
+
+      const res = await MAER._call('/api/llm-chat', payload, { timeout: 45000 });
       this._hideTyping();
 
       if (res.ok && res.data?.response) {
@@ -195,6 +198,27 @@ MAER.chat = {
     }
 
     return null;
+  },
+
+  /* ── OBTENER HISTORIAL DE CONVERSACIÓN ── */
+  _getHistorial(maxRondas = 6) {
+    const msgs = document.querySelectorAll('#chat-msgs .msg');
+    const history = [];
+    for (const el of msgs) {
+      if (el.classList.contains('user')) {
+        history.push({ role: 'user', content: el.textContent.trim() });
+      } else if (el.classList.contains('maer')) {
+        // Obtener solo el texto, sin el "🦁 MAER" del sender
+        const sender = el.querySelector('.sender');
+        const text = sender
+          ? el.textContent.replace(sender.textContent, '').trim()
+          : el.textContent.trim();
+        if (text) history.push({ role: 'assistant', content: text });
+      }
+    }
+    // Devolver las últimas maxRondas rondas (cada ronda = user + assistant)
+    const limit = maxRondas * 2;
+    return history.slice(-limit);
   },
 
   /* ── CONSTRUIR PROMPT CON CONTEXTO ── */

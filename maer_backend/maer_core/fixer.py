@@ -8,12 +8,36 @@ Corrige archivos de texto: trailing spaces, encoding, etc.
 
 from pathlib import Path
 
-
 TEXT_EXTS = {
-    ".txt", ".md", ".log", ".py", ".js", ".ts", ".jsx", ".tsx",
-    ".html", ".htm", ".css", ".json", ".yml", ".yaml", ".xml",
-    ".c", ".cpp", ".h", ".hpp", ".java", ".php", ".rb", ".go", ".rs",
-    ".sh", ".bash", ".zsh", ".sql", ".csv",
+    ".txt",
+    ".md",
+    ".log",
+    ".py",
+    ".js",
+    ".ts",
+    ".jsx",
+    ".tsx",
+    ".html",
+    ".htm",
+    ".css",
+    ".json",
+    ".yml",
+    ".yaml",
+    ".xml",
+    ".c",
+    ".cpp",
+    ".h",
+    ".hpp",
+    ".java",
+    ".php",
+    ".rb",
+    ".go",
+    ".rs",
+    ".sh",
+    ".bash",
+    ".zsh",
+    ".sql",
+    ".csv",
 }
 
 
@@ -58,4 +82,6 @@ def run_fix(input_dir: Path, report_dir: Path):
         except Exception as e:
             print(f"  ❌ Error en {p.name}: {e}")
 
-    print(f"✅ Corrección completa: {fixed_count} archivos corregidos, {skipped_count} omitidos")
+    print(
+        f"✅ Corrección completa: {fixed_count} archivos corregidos, {skipped_count} omitidos"
+    )

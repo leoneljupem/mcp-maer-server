@@ -3,22 +3,22 @@ Tests — MAER Bloques 8, 9, 10, 12: Sugerencias, Recordatorios,
         Historial de Cartas y Atajos de Teclado
 Leonel Houssen Mojica — Ecatepec MX — 2026
 """
-import json
-import re
+
 from pathlib import Path
 
 import pytest
 
-RAIZ      = Path(__file__).parent.parent
-JS_DIR    = RAIZ / "maer_backend" / "web_ui" / "static" / "js"
-CSS_MAER  = RAIZ / "maer_backend" / "web_ui" / "static" / "css" / "maer.css"
-INDEX     = RAIZ / "maer_backend" / "web_ui" / "static" / "index.html"
-CORE_JS   = JS_DIR / "maer.core.js"
-GUARDIAN  = JS_DIR / "maer.guardian.js"
+RAIZ = Path(__file__).parent.parent
+JS_DIR = RAIZ / "maer_backend" / "web_ui" / "static" / "js"
+CSS_MAER = RAIZ / "maer_backend" / "web_ui" / "static" / "css" / "maer.css"
+INDEX = RAIZ / "maer_backend" / "web_ui" / "static" / "index.html"
+CORE_JS = JS_DIR / "maer.core.js"
+GUARDIAN = JS_DIR / "maer.guardian.js"
 
 # ════════════════════════════════════════════════
 # BLOQUE 8 — Sugerencias en Chat (maer.sugerencias.js)
 # ════════════════════════════════════════════════
+
 
 class TestBloque8Sugerencias:
     """Bloque 8 — Autocompletado en tiempo real."""
@@ -46,8 +46,9 @@ class TestBloque8Sugerencias:
         assert count >= 15, f"Catálogo con {count} items, esperado >= 15"
 
     def test_busqueda_normaliza_acentos(self):
-        assert "NFD" in self.contenido or "normalize" in self.contenido, \
-            "Debe normalizar caracteres con acento"
+        assert (
+            "NFD" in self.contenido or "normalize" in self.contenido
+        ), "Debe normalizar caracteres con acento"
 
     def test_constantes_min_chars_y_max(self):
         assert "MIN_CHARS" in self.contenido
@@ -55,8 +56,13 @@ class TestBloque8Sugerencias:
 
     def test_css_dropdown_existe(self):
         css = CSS_MAER.read_text()
-        for clase in [".sugerencias-dropdown", ".sugerencia-item", ".sugerencia-texto",
-                      ".sugerencia-cat", ".sugerencia-activa"]:
+        for clase in [
+            ".sugerencias-dropdown",
+            ".sugerencia-item",
+            ".sugerencia-texto",
+            ".sugerencia-cat",
+            ".sugerencia-activa",
+        ]:
             assert clase in css, f"Clase CSS '{clase}' faltante"
 
     def test_css_mark_resaltado(self):
@@ -84,6 +90,7 @@ class TestBloque8Sugerencias:
 # BLOQUE 9 — Recordatorios con Fecha Límite (maer.recordatorios.js)
 # ════════════════════════════════════════════════
 
+
 class TestBloque9Recordatorios:
     """Bloque 9 — Alertas automáticas para eventos de pensión."""
 
@@ -101,8 +108,15 @@ class TestBloque9Recordatorios:
         assert "maer.recordatorios.js" in INDEX.read_text()
 
     def test_metodos_publicos(self):
-        for metodo in ["init()", "agregar(", "verificar()", "listar()",
-                       "eliminar(", "completar(", "render()"]:
+        for metodo in [
+            "init()",
+            "agregar(",
+            "verificar()",
+            "listar()",
+            "eliminar(",
+            "completar(",
+            "render()",
+        ]:
             assert metodo in self.contenido, f"Método '{metodo}' faltante"
 
     def test_storage_key(self):
@@ -153,6 +167,7 @@ class TestBloque9Recordatorios:
 # BLOQUE 10 — Historial de Versiones de Cartas (maer.cartas-historial.js)
 # ════════════════════════════════════════════════
 
+
 class TestBloque10CartasHistorial:
     """Bloque 10 — Guardar, listar, comparar y re-imprimir cartas."""
 
@@ -170,8 +185,16 @@ class TestBloque10CartasHistorial:
         assert "maer.cartas-historial.js" in INDEX.read_text()
 
     def test_metodos_publicos(self):
-        for metodo in ["init()", "guardar(", "listar()", "obtener(",
-                       "eliminar(", "comparar(", "reimprimir(", "render()"]:
+        for metodo in [
+            "init()",
+            "guardar(",
+            "listar()",
+            "obtener(",
+            "eliminar(",
+            "comparar(",
+            "reimprimir(",
+            "render()",
+        ]:
             assert metodo in self.contenido, f"Método '{metodo}' faltante"
 
     def test_storage_key(self):
@@ -223,6 +246,7 @@ class TestBloque10CartasHistorial:
 # BLOQUE 12 — Atajos de Teclado (maer.atajos.js)
 # ════════════════════════════════════════════════
 
+
 class TestBloque12Atajos:
     """Bloque 12 — Hotkeys globales para navegación rápida."""
 
@@ -240,8 +264,14 @@ class TestBloque12Atajos:
         assert "maer.atajos.js" in INDEX.read_text()
 
     def test_metodos_publicos(self):
-        for metodo in ["init()", "registrar(", "listar()",
-                       "mostrarAyuda()", "ocultarAyuda()", "toggleAyuda()"]:
+        for metodo in [
+            "init()",
+            "registrar(",
+            "listar()",
+            "mostrarAyuda()",
+            "ocultarAyuda()",
+            "toggleAyuda()",
+        ]:
             assert metodo in self.contenido, f"Método '{metodo}' faltante"
 
     def test_atajos_de_navegacion_alt(self):
@@ -264,8 +294,14 @@ class TestBloque12Atajos:
 
     def test_css_overlay_existe(self):
         css = CSS_MAER.read_text()
-        for clase in [".atajos-overlay", ".atajos-modal", ".atajos-header",
-                      ".atajos-body", ".atajos-fila", ".atajos-combo"]:
+        for clase in [
+            ".atajos-overlay",
+            ".atajos-modal",
+            ".atajos-header",
+            ".atajos-body",
+            ".atajos-fila",
+            ".atajos-combo",
+        ]:
             assert clase in css, f"Clase CSS '{clase}' faltante"
 
     def test_css_kbd_tag(self):
@@ -297,6 +333,7 @@ class TestBloque12Atajos:
 # TESTS DE INTEGRACIÓN: suite completa maer.test.js
 # ════════════════════════════════════════════════
 
+
 class TestSuiteTestJS:
     """Verifica que maer.test.js está correctamente configurado."""
 
@@ -316,21 +353,33 @@ class TestSuiteTestJS:
     def test_no_auto_ejecuta(self):
         # No debe terminar con })(); — debe exponer como función
         texto = self.contenido.strip()
-        assert not texto.endswith("})();"), \
-            "maer.test.js no debe auto-ejecutarse — debe exponer MAER_runTests()"
+        assert not texto.endswith(
+            "})();"
+        ), "maer.test.js no debe auto-ejecutarse — debe exponer MAER_runTests()"
 
     def test_expone_funcion_global(self):
-        assert "MAER_runTests" in self.contenido or "window.MAER_runTests" in self.contenido
+        assert (
+            "MAER_runTests" in self.contenido
+            or "window.MAER_runTests" in self.contenido
+        )
 
     def test_cubre_todos_los_bloques(self):
         # Debe probar los módulos principales
-        for modulo in ["MAER.timeline", "MAER.recordatorios", "MAER.cartasHistorial",
-                       "MAER.sugerencias", "MAER.atajos", "MAER.guardian"]:
+        for modulo in [
+            "MAER.timeline",
+            "MAER.recordatorios",
+            "MAER.cartasHistorial",
+            "MAER.sugerencias",
+            "MAER.atajos",
+            "MAER.guardian",
+        ]:
             assert modulo in self.contenido, f"Suite no cubre '{modulo}'"
 
     def test_boton_en_diagnostico_html(self):
         html = INDEX.read_text()
-        assert "MAER_runTests" in html, "Debe haber botón para ejecutar la suite en el HTML"
+        assert (
+            "MAER_runTests" in html
+        ), "Debe haber botón para ejecutar la suite en el HTML"
 
     def test_panel_diagnostico_tiene_contenido(self):
         html = INDEX.read_text()

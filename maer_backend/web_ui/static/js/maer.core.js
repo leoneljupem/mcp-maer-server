@@ -207,8 +207,37 @@ const MAER = {
   },
 
   /* ══ API ══ */
+  /* Mapeo endpoint → acción de progreso */
+  _progresoAccion(endpoint) {
+    const map = {
+      '/api/ocr':                'ocr-auto',
+      '/api/ocr-advanced':       'ocr-avanzado',
+      '/api/ocr-full-analyze':   'ocr-avanzado',
+      '/api/vision-ocr':         'vision-ocr',
+      '/api/vision-analyze':     'vision-analizar',
+      '/api/vision-classify':    'vision-classify',
+      '/api/vision-extract-fields': 'vision-analizar',
+      '/api/vision-pdf':         'vision-analizar',
+      '/api/pdf-analyze-deep':   'pdf-analizar',
+      '/api/semantic-index':     'semantic-index',
+      '/api/semantic-search':    'semantic-search',
+      '/api/llm-chat':           'llm-chat',
+      '/api/tables':             'tablas',
+      '/api/tables-from-image':  'tablas',
+      '/api/ocr-engines-status':  null,
+      '/api/semantic-status':     null,
+      '/api/image-intelligence':  'ocr-avanzado',
+      '/api/barcode-scan':        'vision-classify',
+      '/api/exif-extract':        'generico',
+      '/api/preprocess-turbo':    'ocr-avanzado',
+    };
+    return map[endpoint] ?? 'generico';
+  },
+
   async _call(endpoint, payload, opts = {}) {
     const serverUrl = document.getElementById('cfg-server')?.value?.trim() || this.API;
+    const accion = this._progresoAccion(endpoint);
+    if (accion) MAER.progreso?.show(accion);
     try {
       const url = serverUrl + endpoint;
       const options = payload
@@ -218,8 +247,11 @@ const MAER = {
       const timeout = setTimeout(() => controller.abort(), opts.timeout || 15000);
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeout);
-      return await res.json();
+      const data = await res.json();
+      if (accion) MAER.progreso?.hide();
+      return data;
     } catch(e) {
+      if (accion) MAER.progreso?.hide();
       if (e.name === 'AbortError') return { ok: false, msg: 'Tiempo de espera agotado.' };
       return { ok: false, msg: `Sin conexión: ${e.message}` };
     }
@@ -227,10 +259,14 @@ const MAER = {
 
   async _upload(endpoint, formData) {
     const serverUrl = document.getElementById('cfg-server')?.value?.trim() || this.API;
+    MAER.progreso?.show('upload');
     try {
       const res = await fetch(serverUrl + endpoint, { method: 'POST', body: formData });
-      return await res.json();
+      const data = await res.json();
+      MAER.progreso?.hide();
+      return data;
     } catch(e) {
+      MAER.progreso?.hide();
       return { ok: false, msg: `Error de subida: ${e.message}` };
     }
   },
@@ -295,6 +331,9 @@ const MAER = {
     }
   },
 };
+
+// Exponer en window para que window.MAER.xxx sea accesible desde diagnóstico
+window.MAER = MAER;
 
 /* ── ARRANCAR AL CARGAR ── */
 window.addEventListener('load', () => MAER.init());

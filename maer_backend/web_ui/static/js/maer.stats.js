@@ -177,7 +177,7 @@ MAER.stats = {
           🏛️ <strong>Etapa pensión:</strong> ${s.etapaActual} ·
           🛡️ <strong>${s.modulosActivos}</strong> módulos activos ·
           📖 <strong>${s.diccionarioPatrones}</strong> patrones diccionario ·
-          🔌 ${s.servidorOnline ? '<span style="color:#34d399">Online</span>' : '<span style="color:#f87171">Offline</span>'}
+          🔌 ${s.servidorOnline ? '<span style="color:#34d399">En línea</span>' : '<span style="color:#f87171">Sin conexión</span>'}
         </div>
       </div>`;
 

@@ -1,0 +1,220 @@
+#!/usr/bin/env python3
+# 🦁 MAER PDF Analyzer — Análisis profundo de documentos PDF
+# Leonel Mojica — Ecatepec MX — 2026
+
+"""
+Análisis estructurado de PDFs con pdfplumber:
+- Texto preservando layout de columnas y espaciado
+- Tablas con estructura completa (cabeceras + filas)
+- Metadatos del documento (autor, fecha, título)
+- Imágenes embebidas detectadas
+- Clasificación automática del tipo de documento
+"""
+
+import logging
+from pathlib import Path
+
+logger = logging.getLogger("maer.pdf_analyzer")
+
+DOCUMENT_PATTERNS = {
+    "acta_nacimiento": ["acta de nacimiento", "registro civil", "nacido", "nació"],
+    "curp": ["clave única de registro de población", "curp"],
+    "nss_imss": ["número de seguridad social", "nss", "afiliación imss"],
+    "credencial_ine": [
+        "instituto nacional electoral",
+        "ine",
+        "ife",
+        "credencial para votar",
+    ],
+    "recibo_nomina": [
+        "recibo de nómina",
+        "percepciones",
+        "deducciones",
+        "salario neto",
+        "cuota imss",
+    ],
+    "estado_cuenta_afore": ["afore", "subcuenta", "retiro", "fondo de ahorro"],
+    "resolucion_imss": ["resolución", "pensión", "incapacidad", "invalidez", "imss"],
+    "contrato_trabajo": ["contrato", "patrón", "trabajador", "prestaciones de ley"],
+    "comprobante_domicilio": ["comprobante de domicilio", "cfe", "telmex", "servicio"],
+    "estado_cuenta_banco": ["estado de cuenta", "banco", "saldo", "movimientos"],
+}
+
+
+def classify_document(text: str) -> str:
+    try:
+        from maer_backend.maer_clasificador import clasificar_texto
+
+        return clasificar_texto(text)["tipo"]
+    except Exception:
+        pass
+    text_lower = text.lower()
+    scores = {}
+    for doc_type, patterns in DOCUMENT_PATTERNS.items():
+        score = sum(1 for p in patterns if p in text_lower)
+        if score > 0:
+            scores[doc_type] = score
+    return max(scores, key=scores.get) if scores else "documento_general"
+
+
+def analyze_pdf_deep(path: Path, max_pages: int = 50) -> dict:
+    """
+    Análisis profundo de un PDF. Retorna estructura completa:
+    metadata, texto por página, tablas, imágenes embebidas, tipo de doc.
+    """
+    try:
+        import pdfplumber
+    except ImportError:
+        return {"ok": False, "error": "pdfplumber no instalado"}
+
+    if not path.exists():
+        return {"ok": False, "error": f"Archivo no existe: {path}"}
+
+    result = {
+        "ok": True,
+        "path": str(path),
+        "file_name": path.name,
+        "metadata": {},
+        "pages": [],
+        "full_text": "",
+        "tables": [],
+        "embedded_images": [],
+        "doc_type": "documento_general",
+        "total_pages": 0,
+        "char_count": 0,
+        "has_tables": False,
+        "has_images": False,
+    }
+
+    all_text_parts = []
+
+    try:
+        with pdfplumber.open(str(path)) as pdf:
+            result["total_pages"] = len(pdf.pages)
+
+            if pdf.metadata:
+                meta = {}
+                for k, v in pdf.metadata.items():
+                    if v and isinstance(v, (str, int, float)):
+                        meta[k.lstrip("/")] = str(v)[:200]
+                result["metadata"] = meta
+
+            pages_to_process = min(len(pdf.pages), max_pages)
+
+            for page_num in range(pages_to_process):
+                page = pdf.pages[page_num]
+                page_data = {
+                    "page": page_num + 1,
+                    "text": "",
+                    "tables": [],
+                    "image_count": 0,
+                    "char_count": 0,
+                }
+
+                # Texto con layout preservado (columnas, sangría)
+                try:
+                    text = page.extract_text(layout=True) or ""
+                    if not text.strip():
+                        text = page.extract_text() or ""
+                    page_data["text"] = text
+                    page_data["char_count"] = len(text)
+                    if text.strip():
+                        all_text_parts.append(f"[Página {page_num + 1}]\n{text}")
+                except Exception as e:
+                    logger.debug(f"Error extrayendo texto pág {page_num + 1}: {e}")
+
+                # Tablas
+                try:
+                    page_tables = page.extract_tables() or []
+                    for t_idx, table in enumerate(page_tables):
+                        if not table or len(table) < 2:
+                            continue
+                        cleaned = [
+                            [
+                                (cell.strip() if isinstance(cell, str) else "")
+                                for cell in row
+                            ]
+                            for row in table
+                        ]
+                        headers = cleaned[0]
+                        rows = cleaned[1:]
+                        entry = {
+                            "page": page_num + 1,
+                            "table_index": t_idx,
+                            "headers": headers,
+                            "rows": rows,
+                            "row_count": len(rows),
+                            "col_count": len(headers),
+                        }
+                        page_data["tables"].append(entry)
+                        result["tables"].append(entry)
+                except Exception as e:
+                    logger.debug(f"Error extrayendo tablas pág {page_num + 1}: {e}")
+
+                # Imágenes embebidas
+                try:
+                    images = page.images or []
+                    if images:
+                        page_data["image_count"] = len(images)
+                        result["has_images"] = True
+                        for img in images:
+                            result["embedded_images"].append(
+                                {
+                                    "page": page_num + 1,
+                                    "width": img.get("width"),
+                                    "height": img.get("height"),
+                                }
+                            )
+                except Exception:
+                    pass
+
+                result["pages"].append(page_data)
+
+    except Exception as e:
+        logger.error(f"Error analizando PDF {path.name}: {e}")
+        return {"ok": False, "error": str(e), "path": str(path)}
+
+    result["full_text"] = "\n\n".join(all_text_parts)
+    result["has_tables"] = len(result["tables"]) > 0
+    result["doc_type"] = classify_document(result["full_text"])
+    result["char_count"] = len(result["full_text"])
+
+    return result
+
+
+def extract_pdf_text_enhanced(path: Path, max_pages: int = 50) -> str:
+    """
+    Extrae texto de PDF usando pdfplumber con layout.
+    Fallback a pypdf si pdfplumber falla.
+    """
+    try:
+        import pdfplumber
+
+        parts = []
+        with pdfplumber.open(str(path)) as pdf:
+            for i, page in enumerate(pdf.pages):
+                if i >= max_pages:
+                    break
+                text = page.extract_text(layout=True) or page.extract_text() or ""
+                if text.strip():
+                    parts.append(text)
+        if parts:
+            return "\n\n".join(parts)
+    except Exception as e:
+        logger.debug(f"pdfplumber falló: {e}, usando pypdf")
+
+    try:
+        from pypdf import PdfReader
+
+        reader = PdfReader(str(path))
+        parts = []
+        for i, page in enumerate(reader.pages):
+            if i >= max_pages:
+                break
+            t = page.extract_text() or ""
+            if t.strip():
+                parts.append(t)
+        return "\n\n".join(parts)
+    except Exception as e:
+        logger.error(f"pypdf también falló: {e}")
+        return ""

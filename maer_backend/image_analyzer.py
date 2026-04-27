@@ -10,11 +10,9 @@ Análisis avanzado de imágenes:
   - OCR en imágenes + regex para patrones
 """
 
-import os
-import json
 import logging
+import os
 from pathlib import Path
-from typing import Optional
 
 import numpy as np
 from PIL import Image
@@ -28,6 +26,7 @@ IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tiff", ".tif", ".webp", ".gif"}
 # Hash perceptual para detección de duplicados
 # ═══════════════════════════════════════════════
 
+
 def compute_image_hashes(path: Path) -> dict:
     """
     Calcula hashes perceptuales de una imagen.
@@ -35,6 +34,7 @@ def compute_image_hashes(path: Path) -> dict:
     """
     try:
         import imagehash
+
         img = Image.open(str(path))
         return {
             "phash": str(imagehash.phash(img)),
@@ -46,8 +46,7 @@ def compute_image_hashes(path: Path) -> dict:
         return {"phash": "", "ahash": "", "dhash": ""}
 
 
-def find_duplicates(base_dir: Path, threshold: int = 10,
-                    max_files: int = 1000) -> dict:
+def find_duplicates(base_dir: Path, threshold: int = 10, max_files: int = 1000) -> dict:
     """
     Busca imágenes duplicadas en una carpeta usando pHash.
     threshold: distancia máxima de Hamming para considerar duplicados.
@@ -70,9 +69,12 @@ def find_duplicates(base_dir: Path, threshold: int = 10,
 
     for root, dirs, files in os.walk(base_dir):
         # Exclusiones de seguridad
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {
-            "node_modules", "__pycache__", ".venv", "venv"
-        }]
+        dirs[:] = [
+            d
+            for d in dirs
+            if not d.startswith(".")
+            and d not in {"node_modules", "__pycache__", ".venv", "venv"}
+        ]
         for name in files:
             if count >= max_files:
                 break
@@ -85,7 +87,7 @@ def find_duplicates(base_dir: Path, threshold: int = 10,
                 images.append(str(p))
                 hashes.append(h)
                 count += 1
-            except Exception:
+            except Exception as e:
                 continue
 
     # Encontrar grupos de duplicados
@@ -107,11 +109,13 @@ def find_duplicates(base_dir: Path, threshold: int = 10,
                 used.add(j)
         if len(group) > 1:
             used.add(i)
-            groups.append({
-                "group": group,
-                "count": len(group),
-                "max_distance": int(max(distances)) if distances else 0,
-            })
+            groups.append(
+                {
+                    "group": group,
+                    "count": len(group),
+                    "max_distance": int(max(distances)) if distances else 0,
+                }
+            )
 
     return {
         "ok": True,
@@ -125,8 +129,10 @@ def find_duplicates(base_dir: Path, threshold: int = 10,
 # Clustering de imágenes con DBSCAN
 # ═══════════════════════════════════════════════
 
-def cluster_images(base_dir: Path, eps: float = 15.0,
-                   min_samples: int = 2, max_files: int = 500) -> dict:
+
+def cluster_images(
+    base_dir: Path, eps: float = 15.0, min_samples: int = 2, max_files: int = 500
+) -> dict:
     """
     Agrupa imágenes similares usando DBSCAN sobre hashes perceptuales.
     """
@@ -141,9 +147,12 @@ def cluster_images(base_dir: Path, eps: float = 15.0,
     count = 0
 
     for root, dirs, files in os.walk(base_dir):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {
-            "node_modules", "__pycache__", ".venv"
-        }]
+        dirs[:] = [
+            d
+            for d in dirs
+            if not d.startswith(".")
+            and d not in {"node_modules", "__pycache__", ".venv"}
+        ]
         for name in files:
             if count >= max_files:
                 break
@@ -154,16 +163,22 @@ def cluster_images(base_dir: Path, eps: float = 15.0,
                 img = Image.open(str(p))
                 h = imagehash.phash(img)
                 # Convertir hash a array numérico
-                hash_array = np.array([int(b) for b in bin(int(str(h), 16))[2:].zfill(64)])
+                hash_array = np.array(
+                    [int(b) for b in bin(int(str(h), 16))[2:].zfill(64)]
+                )
                 images.append(str(p))
                 hash_arrays.append(hash_array)
                 count += 1
-            except Exception:
+            except Exception as e:
                 continue
 
     if len(hash_arrays) < 2:
-        return {"ok": True, "clusters": [], "total_images": len(images),
-                "message": "Insuficientes imágenes para clustering"}
+        return {
+            "ok": True,
+            "clusters": [],
+            "total_images": len(images),
+            "message": "Insuficientes imágenes para clustering",
+        }
 
     X = np.array(hash_arrays)
 
@@ -201,6 +216,7 @@ def cluster_images(base_dir: Path, eps: float = 15.0,
 # Reconocimiento facial con DeepFace
 # ═══════════════════════════════════════════════
 
+
 def detect_faces(path: Path) -> dict:
     """
     Detecta rostros en una imagen usando DeepFace.
@@ -225,13 +241,15 @@ def detect_faces(path: Path) -> dict:
         for face in faces:
             if face.get("confidence", 0) > 0.5:
                 region = face.get("facial_area", {})
-                face_list.append({
-                    "x": region.get("x", 0),
-                    "y": region.get("y", 0),
-                    "w": region.get("w", 0),
-                    "h": region.get("h", 0),
-                    "confidence": round(face.get("confidence", 0), 4),
-                })
+                face_list.append(
+                    {
+                        "x": region.get("x", 0),
+                        "y": region.get("y", 0),
+                        "w": region.get("w", 0),
+                        "h": region.get("h", 0),
+                        "confidence": round(face.get("confidence", 0), 4),
+                    }
+                )
 
         return {
             "ok": True,
@@ -244,8 +262,9 @@ def detect_faces(path: Path) -> dict:
         return {"ok": False, "error": str(e), "faces": []}
 
 
-def find_and_group_faces(base_dir: Path, max_files: int = 200,
-                         distance_threshold: float = 0.6) -> dict:
+def find_and_group_faces(
+    base_dir: Path, max_files: int = 200, distance_threshold: float = 0.6
+) -> dict:
     """
     Busca rostros en todas las imágenes de una carpeta y los agrupa
     por similitud usando embeddings faciales.
@@ -260,9 +279,12 @@ def find_and_group_faces(base_dir: Path, max_files: int = 200,
     count = 0
 
     for root, dirs, files in os.walk(base_dir):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {
-            "node_modules", "__pycache__", ".venv"
-        }]
+        dirs[:] = [
+            d
+            for d in dirs
+            if not d.startswith(".")
+            and d not in {"node_modules", "__pycache__", ".venv"}
+        ]
         for name in files:
             if count >= max_files:
                 break
@@ -282,24 +304,29 @@ def find_and_group_faces(base_dir: Path, max_files: int = 200,
                     if emb:
                         embeddings.append(emb)
                         region = face.get("facial_area", {})
-                        face_meta.append({
-                            "path": str(p),
-                            "region": region,
-                        })
+                        face_meta.append(
+                            {
+                                "path": str(p),
+                                "region": region,
+                            }
+                        )
                 count += 1
-            except Exception:
+            except Exception as e:
                 count += 1
                 continue
 
     if len(embeddings) < 2:
         return {
-            "ok": True, "groups": [], "total_faces": len(embeddings),
-            "message": "Insuficientes rostros para agrupar"
+            "ok": True,
+            "groups": [],
+            "total_faces": len(embeddings),
+            "message": "Insuficientes rostros para agrupar",
         }
 
     # Clustering de embeddings faciales
     try:
         from sklearn.cluster import DBSCAN
+
         X = np.array(embeddings)
         clustering = DBSCAN(eps=distance_threshold, min_samples=2, metric="cosine")
         labels = clustering.fit_predict(X)
@@ -314,8 +341,7 @@ def find_and_group_faces(base_dir: Path, max_files: int = 200,
             groups[label_str].append(face_meta[idx])
 
         group_list = [
-            {"group_id": int(k), "faces": v, "count": len(v)}
-            for k, v in groups.items()
+            {"group_id": int(k), "faces": v, "count": len(v)} for k, v in groups.items()
         ]
 
         return {
@@ -332,8 +358,10 @@ def find_and_group_faces(base_dir: Path, max_files: int = 200,
 # Indexación de imágenes
 # ═══════════════════════════════════════════════
 
-def index_images(base_dir: Path, max_files: int = 500,
-                 compute_faces: bool = False) -> dict:
+
+def index_images(
+    base_dir: Path, max_files: int = 500, compute_faces: bool = False
+) -> dict:
     """
     Crea un índice completo de imágenes con metadatos.
     """
@@ -341,9 +369,12 @@ def index_images(base_dir: Path, max_files: int = 500,
     count = 0
 
     for root, dirs, files in os.walk(base_dir):
-        dirs[:] = [d for d in dirs if not d.startswith(".") and d not in {
-            "node_modules", "__pycache__", ".venv"
-        }]
+        dirs[:] = [
+            d
+            for d in dirs
+            if not d.startswith(".")
+            and d not in {"node_modules", "__pycache__", ".venv"}
+        ]
         for name in files:
             if count >= max_files:
                 break
@@ -364,7 +395,7 @@ def index_images(base_dir: Path, max_files: int = 500,
                 entry["width"] = img.width
                 entry["height"] = img.height
                 entry["mode"] = img.mode
-            except Exception:
+            except Exception as e:
                 entry["width"] = 0
                 entry["height"] = 0
 
