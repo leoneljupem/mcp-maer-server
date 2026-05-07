@@ -38,6 +38,7 @@ DOCUMENT_PATTERNS = {
     "contrato_trabajo": ["contrato", "patrón", "trabajador", "prestaciones de ley"],
     "comprobante_domicilio": ["comprobante de domicilio", "cfe", "telmex", "servicio"],
     "estado_cuenta_banco": ["estado de cuenta", "banco", "saldo", "movimientos"],
+    "acta_defuncion": ["acta de defunción", "certificado de defunción", "fallecimiento", "finado"],
 }
 
 

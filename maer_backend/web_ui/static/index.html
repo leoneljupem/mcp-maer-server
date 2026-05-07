@@ -20,11 +20,69 @@
   <meta property="og:type" content="website">
 
   <link rel="stylesheet" href="/static/css/maer.css">
+  <style>
+        /* ── EFECTOS HOLOGRÁFICOS MAER ── */
+        .hologram-hud {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            pointer-events: none;
+            background: 
+                linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), 
+                linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+            background-size: 100% 2px, 3px 100%;
+            z-index: 1000;
+            opacity: 0.15;
+        }
+        
+        .scanner-line {
+            position: absolute;
+            top: 0; left: 0;
+            width: 100%; height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 15px var(--accent);
+            animation: scan 4s linear infinite;
+            z-index: 1001;
+            opacity: 0.5;
+        }
+        
+        @keyframes scan {
+            0% { top: 0; }
+            50% { top: 100%; }
+            100% { top: 0; }
+        }
+
+        .data-grid-futuristic {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 10px;
+            font-family: 'Courier New', monospace;
+            font-size: 10px;
+            color: var(--accent);
+            opacity: 0.7;
+        }
+    </style>
 </head>
 <body>
+    <div class="hologram-hud"></div>
+    <div class="scanner-line"></div>
 
 <!-- ══════════════════ HEADER ══════════════════ -->
 <header class="header">
+  <div class="header-main">
+      <div class="header-brand">
+        <span class="logo">🦁</span>
+        <div class="brand-text">
+          <h1>MAER <span class="version">4.0 Quantum</span></h1>
+          <p>Inteligencia Forense & Defensa Legal</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button id="btn-voice" class="btn btn-secondary btn-sm" onclick="MAER.voz.escucharComando()">🎤 Comando de Voz</button>
+        <div id="voice-indicator" style="display:none;color:var(--accent);font-size:12px;animation:pulse 1s infinite">🟢 Escuchando...</div>
+        <div class="server-badge" id="server-status">CONECTADO</div>
+      </div>
+    </div>
   <div class="header-left">
     <span class="logo">🦁 MAER</span>
     <span class="version-tag">v4.0</span>
@@ -54,10 +112,14 @@
   <button class="tab-btn"        data-tab="imagenes"    onclick="MAER.tabs.show('imagenes')">🖼️ Imágenes</button>
   <button class="tab-btn"        data-tab="busqueda"    onclick="MAER.tabs.show('busqueda')">🔍 Búsqueda</button>
   <button class="tab-btn"        data-tab="organizar"   onclick="MAER.tabs.show('organizar')">🗂️ Organizar</button>
+  <button class="tab-btn"        data-tab="legal"       onclick="MAER.tabs.show('legal')">⚖️ Defensa Legal</button>
+  <button class="tab-btn"        data-tab="terminal"    onclick="MAER.tabs.show('terminal')">💻 Terminal</button>
+  <button class="tab-btn"        data-tab="evolucion"   onclick="MAER.tabs.show('evolucion')">🧩 Evolución</button>
   <button class="tab-btn"        data-tab="aprendizaje" onclick="MAER.tabs.show('aprendizaje')">📚 Aprendizaje</button>
   <button class="tab-btn"        data-tab="pension"     onclick="MAER.tabs.show('pension')">🏛️ Pensión</button>
   <button class="tab-btn"        data-tab="tareas"      onclick="MAER.tabs.show('tareas')">🤖 Tareas IA</button>
   <button class="tab-btn"        data-tab="memoria"     onclick="MAER.tabs.show('memoria')">🧠 Memoria</button>
+  <button class="tab-btn"        data-tab="terminal"    onclick="MAER.tabs.show('terminal')" style="color:#60a5fa;font-weight:700">💻 Terminal</button>
   <button class="tab-btn"        data-tab="sistema"     onclick="MAER.tabs.show('sistema')">⚙️ Sistema</button>
   <button class="tab-btn"        data-tab="whatsapp"    onclick="MAER.tabs.show('whatsapp')">📱 WhatsApp</button>
   <button class="tab-btn"        data-tab="poder"       onclick="MAER.tabs.show('poder')" style="color:#fbbf24;font-weight:700">🔬 Analizar</button>
@@ -104,6 +166,28 @@
       <input id="chat-input" name="chat-input" type="text" class="input-field" placeholder="Escribe o habla con MAER..."
         aria-label="Mensaje para MAER" onkeydown="if(event.key==='Enter')MAER.chat.send()">
       <button class="btn btn-primary" onclick="MAER.chat.send()">Enviar ↵</button>
+    </div>
+  </section>
+
+  <!-- ── TERMINAL ── -->
+  <section id="panel-terminal" class="panel">
+    <div class="panel-header">
+      <h2>💻 Terminal Inteligente
+        <button class="help-btn" onclick="MAER.tooltip.show('terminal-principal', event)">?</button>
+      </h2>
+      <div style="font-size:12px;color:var(--muted);">Empieza el comando con "maer" para usar NLP. Ej: maer lista los archivos</div>
+    </div>
+    
+    <div id="term-output" style="background:#1e1e1e; color:#a3be8c; font-family:monospace; font-size:13px; padding:10px; border-radius:8px; height:400px; overflow-y:auto; margin-bottom:10px; white-space:pre-wrap; border:1px solid #333">
+<span style="color:#81a1c1">MAER Zsh Emulator v1.0</span>
+Bienvenido. Ejecuta comandos de bash normales o pídemelo en lenguaje natural.
+<br></div>
+
+    <div style="display:flex;gap:8px;align-items:center;">
+      <span id="term-cwd" style="color:#ebcb8b; font-family:monospace; font-size:12px">~</span>
+      <span style="color:#a3be8c; font-family:monospace; font-size:14px">❯</span>
+      <input id="term-input" type="text" class="input-field" style="flex:1; font-family:monospace; background:#2b2b2b; color:#fff; border-color:#444" placeholder="ls -la o 'maer muestra la IP'" onkeydown="if(event.key==='Enter')MAER.terminal.send()">
+      <button class="btn btn-primary" onclick="MAER.terminal.send()">Ejecutar</button>
     </div>
   </section>
 
@@ -244,6 +328,8 @@
     <div id="busq-resultados"></div>
   </section>
 
+  </section>
+
   <!-- ── ORGANIZAR ── -->
   <section id="panel-organizar" class="panel">
     <div class="panel-header">
@@ -269,7 +355,68 @@
     </div>
   </section>
 
-  <!-- ── APRENDIZAJE ── -->
+    <!-- SECCIÓN: DEFENSA LEGAL -->
+    <section id="panel-legal" class="panel">
+      <div class="header-main">
+        <h1>⚖️ Suite de Defensa Legal y Auditoría</h1>
+        <p>Protección contra malas prácticas burocráticas y errores de identidad.</p>
+      </div>
+
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">🔍 Auditor de Identidad y Conflictos</div>
+          <p style="font-size:12px;color:var(--muted)">Busca NSS duplicados, CURPs inconsistentes y homónimos en tus documentos.</p>
+          <button class="btn btn-primary" style="width:100%;margin-top:10px" onclick="MAER.legal.auditarIdentidad()">🕵️ EJECUTAR AUDITORÍA DE IDENTIDAD</button>
+        </div>
+
+        <div class="card">
+          <div class="card-title">📈 Calculadora de Pensión Ley 73 Pro</div>
+          <p style="font-size:12px;color:var(--muted)">Basada en la lógica de Excel (Salario Promedio, Semanas y Factor Fox).</p>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px;margin-top:10px">
+            <input type="number" id="calc-semanas" placeholder="Semanas" class="form-control">
+            <input type="number" id="calc-salario" placeholder="Salario Prom." class="form-control">
+            <input type="number" id="calc-edad" placeholder="Edad" class="form-control" value="60">
+          </div>
+          <button class="btn btn-accent" style="width:100%;margin-top:10px" onclick="MAER.legal.calcularPensionPro()">📈 CALCULAR PENSIÓN PRO</button>
+        </div>
+      </div>
+
+        <div class="card">
+          <div class="card-title">⚖️ Generador de Recursos de Inconformidad</div>
+          <p style="font-size:12px;color:var(--muted)">Redacta cartas legales automáticas citando la Ley del Seguro Social.</p>
+          <input type="text" id="legal-nombre" placeholder="Nombre del afectado" class="form-control" style="margin-top:10px">
+          <select id="legal-motivo" class="form-control" style="margin-top:10px">
+            <option value="Negativa de pensión">Negativa de pensión</option>
+            <option value="Error en semanas cotizadas">Error en semanas cotizadas</option>
+            <option value="Mala práctica de servidor público">Mala práctica de servidor público</option>
+            <option value="Falta de documentos no imputable">Falta de documentos no imputable</option>
+          </select>
+          <button class="btn btn-accent" style="width:100%;margin-top:10px" onclick="MAER.legal.generarCarta()">⚖️ GENERAR CARTA DE DEFENSA</button>
+        </div>
+      </div>
+
+      <div class="card" id="legal-output-card" style="display:none;margin-top:20px">
+        <div class="card-title">📄 Resultado de la Suite de Defensa</div>
+        <div id="legal-output" style="white-space:pre-wrap;font-family:monospace;font-size:13px;padding:15px;background:rgba(0,0,0,0.2);border-radius:8px;max-height:400px;overflow-y:auto"></div>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="MAER.legal.copiarResultado()">📋 Copiar Texto</button>
+      </div>
+    </div>
+
+    <!-- SECCIÓN: EVOLUCIÓN (PLUGINS) -->
+    <section id="panel-evolucion" class="panel">
+      <div class="header-main">
+        <h1>🧩 Sistema de Evolución Dinámica</h1>
+        <p>Carga nuevos módulos Python o JS para expandir las capacidades de MAER.</p>
+      </div>
+      <div class="card">
+        <div class="card-title">📦 Cargar Nuevo Módulo (.py / .js)</div>
+        <input type="file" id="plugin-input" class="form-control">
+        <button class="btn btn-accent" style="width:100%;margin-top:10px" onclick="MAER.sistema.loadPlugin()">🚀 EVOLUCIONAR MAER</button>
+        <div id="plugin-status" style="margin-top:10px;font-size:12px;color:var(--muted)"></div>
+      </div>
+    </section>
+
+    <!-- SECCIÓN: APRENDIZAJE -->── -->
   <section id="panel-aprendizaje" class="panel">
     <div class="panel-header">
       <h2>📚 Aprendizaje Permanente
@@ -805,8 +952,15 @@
       </div>
 
       <!-- Temas -->
-      <div class="card">
-        <div class="card-title">🎨 Tema de Color</div>
+      <div class="card" style="border: 2px solid #ef4444; background: #450a0a">
+      <div class="card-title" style="color: #f87171">⚙️ Zona de Emergencia: Reparación Maestra</div>
+      <p style="font-size:12px; color:#fca5a5">Si MAER no indexa, no aprende o da errores 503, usa este botón para forzar una reconstrucción total del sistema y dependencias.</p>
+      <button class="btn btn-danger" style="width:100%; margin-top:10px; font-weight:bold" onclick="MAER.diagnostico.repararMaestro()">🚀 INICIAR AUTO-REPARACIÓN TOTAL</button>
+      <div id="repair-status" style="margin-top:10px; font-family:monospace; font-size:11px; max-height:100px; overflow-y:auto"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔄 Herramientas de Diagnóstico</div>
         <div id="temas-lista" style="display:flex;flex-direction:column;gap:6px;margin:10px 0"></div>
         <div class="card-title" style="margin-top:14px">Colores personalizados:</div>
         <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center">
@@ -853,6 +1007,14 @@
           </div>
         </div>
       </div>
+
+      <!-- Seguridad -->
+      <div class="card" style="border-top: 2px solid #3b82f6">
+        <div class="card-title">🛡️ Seguridad de Acceso</div>
+        <p style="font-size:12px;color:var(--muted);margin:8px 0">MAER está protegido con contraseña maestra activa.</p>
+        <button class="btn btn-primary" style="width:100%;font-weight:bold" onclick="MAER.sistema.logout()">🚪 CERRAR SESIÓN SEGURA</button>
+      </div>
+    </div>
 
       <!-- Modo Compacto -->
       <div class="card">
@@ -964,7 +1126,9 @@
 <script src="/static/js/maer.whatsapp.js"></script>
 <script src="/static/js/maer.notificaciones.js"></script>
 <script src="/static/js/maer.exportar.js"></script>
-<script src="/static/js/maer.ajustes.js"></script>
+  <script src="js/maer.terminal.js"></script>
+  <script src="js/maer.legal.js"></script>
+  <script src="js/maer.core.js"></script>
 <script src="/static/js/maer.progreso.js"></script>
 <script src="/static/js/maer.test.js"></script>
 
@@ -1019,6 +1183,7 @@ window.addEventListener('beforeinstallprompt', e => {
   e.preventDefault();
   _pwaPrompt = e;
   // Mostrar botones de instalación
+  ['btn-instalar-pwa', 'btn-instalar-pwa-hdr'].forEach(id => {
   ['btn-instalar-pwa', 'btn-instalar-pwa-hdr'].forEach(id => {
     const btn = document.getElementById(id);
     if (btn) btn.style.display = 'inline-block';

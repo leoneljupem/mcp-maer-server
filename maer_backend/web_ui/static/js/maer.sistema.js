@@ -351,4 +351,48 @@ MAER.sistema = {
     }
     return total;
   },
+
+  /* ── SISTEMA DE EVOLUCIÓN (PLUGINS) ── */
+  async loadPlugin() {
+    const input = document.getElementById('plugin-input');
+    const status = document.getElementById('plugin-status');
+    if (!input.files.length) return alert('Selecciona un archivo .py o .js');
+    
+    const file = input.files[0];
+    status.textContent = `⏳ Cargando evolución: ${file.name}...`;
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await MAER._upload('/api/load-plugin', formData);
+      if (res.ok) {
+        status.innerHTML = `<span style="color:#34d399">✅ MAER Evolucionó: ${file.name} integrado.</span>`;
+        MAER._log(`🧬 Evolución: Módulo ${file.name} cargado.`);
+        MAER.voz?.hablar('Sistema evolucionado correctamente.');
+      } else {
+        status.innerHTML = `<span style="color:#f87171">❌ Falló: ${res.msg}</span>`;
+      }
+    } catch(e) {
+      status.textContent = '❌ Error de conexión.';
+    }
+  },
+
+  /* ── AUTO-REPARACIÓN MAESTRA ── */
+  async repararMaestro() {
+    MAER._log('🔧 Iniciando Auto-Reparación Maestra...');
+    try {
+      const res = await MAER._call('/api/force-repair');
+      if (res.ok) {
+        MAER._log('✅ Reparación exitosa. Reiniciando UI...');
+        alert('Reparación completada. Se recargará la página.');
+        location.reload();
+      } else {
+        MAER._log('❌ Error en reparación: ' + res.msg);
+      }
+    } catch(e) {
+      MAER._log('❌ No se pudo contactar al motor de reparación.');
+    }
+  }
 };
+

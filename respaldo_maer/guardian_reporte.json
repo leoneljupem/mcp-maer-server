@@ -1,5 +1,5 @@
 {
-  "ts": "2026-04-27 05:17:45",
+  "ts": "2026-04-27 11:28:57",
   "version": "3.1",
   "criticos_ok": true,
   "faltantes_criticos": [],
@@ -12,8 +12,8 @@
         {
           "archivo": "index.html",
           "sha_anterior": "11bb3ce5f59b...",
-          "sha_actual": "cc2d58693322...",
-          "bytes_actual": 59399
+          "sha_actual": "aeabf993966f...",
+          "bytes_actual": 61003
         }
       ],
       "nuevos": [
@@ -102,8 +102,8 @@
         {
           "archivo": "maer.imagenes.js",
           "sha_anterior": "2fb8b367f38a...",
-          "sha_actual": "ec3dda7f8ec7...",
-          "bytes_actual": 22387
+          "sha_actual": "09bbcda196aa...",
+          "bytes_actual": 33018
         },
         {
           "archivo": "maer.archivos.js",
@@ -172,29 +172,74 @@
       "faltantes": [],
       "modificados": [
         {
+          "archivo": "image_analyzer.py",
+          "sha_anterior": "e3cfaf5883fc...",
+          "sha_actual": "74e4f051e61d...",
+          "bytes_actual": 12765
+        },
+        {
           "archivo": "ocr_engine.py",
           "sha_anterior": "c2cb2224c4f9...",
-          "sha_actual": "6a650ebc437a...",
-          "bytes_actual": 15347
+          "sha_actual": "9fb02a4c28f8...",
+          "bytes_actual": 15569
+        },
+        {
+          "archivo": "maer.py",
+          "sha_anterior": "b2e2f7012b1a...",
+          "sha_actual": "36d0b58ab786...",
+          "bytes_actual": 7387
+        },
+        {
+          "archivo": "nlp_engine.py",
+          "sha_anterior": "2e2742faa867...",
+          "sha_actual": "6ca6ad3480aa...",
+          "bytes_actual": 6149
+        },
+        {
+          "archivo": "llm_engine.py",
+          "sha_anterior": "c46b06cc242f...",
+          "sha_actual": "33424b2d0024...",
+          "bytes_actual": 5960
         },
         {
           "archivo": "maer_files.py",
           "sha_anterior": "5cd134e53f4e...",
-          "sha_actual": "f21e2d001ff1...",
-          "bytes_actual": 102641
+          "sha_actual": "620ee383beb6...",
+          "bytes_actual": 112847
+        },
+        {
+          "archivo": "table_extractor.py",
+          "sha_anterior": "c26767391271...",
+          "sha_actual": "f6b2ae665638...",
+          "bytes_actual": 4550
         }
       ],
       "nuevos": [
         "maer_vision.py",
+        "ocr_engine.py.bak",
         "maer_semantic.py",
+        "image_analyzer.py.bak",
+        "maer_image_intelligence.py.bak",
         "maer_universal_extractor.py",
         "maer_ocr_advanced.py",
+        "maer_files.py.bak",
         "maer_search_index.py",
         "maer_watcher.py",
+        "maer_ocr_pro.py",
+        "maer_search_index.py.bak",
+        "maer_pdf_analyzer.py.bak",
+        "maer_ollama.py.bak",
+        "maer_ocr_pro.py.bak",
+        "nlp_engine.py.bak",
         "maer_image_intelligence.py",
+        "maer_universal_extractor.py.bak",
         "maer_pdf_analyzer.py",
+        "maer_semantic.py.bak",
         "maer_clasificador.py",
-        "maer_ollama.py"
+        "maer_ollama.py",
+        "maer_clasificador.py.bak",
+        "maer_vision.py.bak",
+        "maer_ocr_advanced.py.bak"
       ],
       "errores": []
     },
@@ -225,20 +270,38 @@
           "bytes_actual": 1791
         },
         {
+          "archivo": "patch_html.py",
+          "sha_anterior": "1aaddbec313b...",
+          "sha_actual": "a37692d94844...",
+          "bytes_actual": 2356
+        },
+        {
           "archivo": "package.json",
           "sha_anterior": "32916355b450...",
           "sha_actual": "6ae8207c1451...",
           "bytes_actual": 2584
+        },
+        {
+          "archivo": "maer_guardian.py",
+          "sha_anterior": "6befdfe0f117...",
+          "sha_actual": "5780e803ce36...",
+          "bytes_actual": 18437
         }
       ],
       "nuevos": [
+        "maer_agent_setup.sh",
         "detectar_ollama.py",
         "instalar.sh",
         "maer_tester.py",
+        "maer_agent_setup.log",
+        "+x",
         "Análisis_Proyecto_MAER.md",
         "PLAN_TRABAJO_MAER_4.0.md",
+        "detectar_ollama.py.bak",
+        "maer_tester.py.bak",
         "Makefile",
         "MAER_Iniciar.command",
+        "maer_consola.py.bak",
         "iniciar_maer_ngrok.py",
         "GUIA_MAER.txt",
         "lanzador_maer.py",
@@ -246,6 +309,10 @@
         "MAER_Iniciar.bat",
         "README_MAER.txt",
         "maer_iniciar.sh",
+        "maer_guardian.py.bak",
+        "MAER_AGENT_README.md",
+        "lanzador_maer.py.bak",
+        "maer_agent_setup.logchmod",
         "CLAUDE.md"
       ],
       "errores": []

@@ -47,7 +47,7 @@ MAER.atajos = {
     if (e.ctrlKey || e.metaKey) partes.push('ctrl');
     if (e.altKey)   partes.push('alt');
     if (e.shiftKey) partes.push('shift');
-    const tecla = e.key.toLowerCase();
+    const tecla = (e.key || '').toLowerCase();
     if (!['control','alt','shift','meta'].includes(tecla)) {
       partes.push(tecla);
     }

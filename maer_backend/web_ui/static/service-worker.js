@@ -4,8 +4,8 @@
    Leonel Houssen Mojica — Ecatepec MX — 2026
 ══════════════════════════════════════════════════════════ */
 
-const CACHE_NAME   = 'maer-v4-cache';
-const CACHE_STATIC = 'maer-v4-static';
+const CACHE_NAME   = 'maer-v7-cache';
+const CACHE_STATIC = 'maer-v7-static';
 
 // Assets que se cachean al instalar el SW (shell de la app)
 const PRECACHE_URLS = [
@@ -99,8 +99,8 @@ async function cacheFirst(request) {
 /* Estrategia: Network First */
 async function networkFirst(request) {
   try {
-    const response = await fetch(request, { signal: AbortSignal.timeout(8000) });
-    if (response.ok) {
+    const response = await fetch(request);
+    if (response.ok && request.method === 'GET') {
       const cache = await caches.open(CACHE_NAME);
       cache.put(request, response.clone());
     }

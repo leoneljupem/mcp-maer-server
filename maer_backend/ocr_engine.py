@@ -38,6 +38,11 @@ _ocr_cache = {}
 _cache_loaded = False
 
 
+import threading
+
+# ── Semáforo para control de concurrencia OCR ──
+_ocr_semaphore = threading.Semaphore(4)  # Máximo 4 procesos OCR simultáneos
+
 def _load_cache(cache_path: str = None):
     """Carga el cache OCR desde disco."""
     global _ocr_cache, _cache_loaded
@@ -67,16 +72,22 @@ def _save_cache(cache_path: str = None):
 def file_hash(path: Path) -> str:
     """SHA-256 del archivo para cacheo."""
     h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
-            h.update(chunk)
-    return h.hexdigest()
+    try:
+        with open(path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+        return h.hexdigest()
+    except Exception as e:
+        logger.warning(f"Error calculando hash para {path}: {e}")
+        return ""
 
 
 def get_cached_ocr(path: Path, cache_path: str = None) -> Optional[str]:
     """Retorna texto OCR cacheado si existe y el archivo no cambió."""
     _load_cache(cache_path)
     fh = file_hash(path)
+    if not fh:
+        return None
     entry = _ocr_cache.get(str(path))
     if entry and entry.get("hash") == fh:
         logger.info(f"Cache hit OCR: {path.name}")
@@ -178,8 +189,6 @@ def cv2_to_pil(cv2_img: np.ndarray) -> Image.Image:
 
 def ocr_tesseract(image: Image.Image, lang: str = None) -> str:
     """OCR con Tesseract, usando tessdata-best si está disponible."""
-    import os
-
     import pytesseract
 
     lang = lang or OCR_LANGS
@@ -257,63 +266,61 @@ def ocr_paddleocr(image: Image.Image, lang: str = None) -> str:
 
 def ocr_auto(image: Image.Image, lang: str = None) -> dict:
     """
-    Ejecuta OCR con el motor avanzado (surya/docTR/TrOCR) cuando está disponible,
-    o cae al stack clásico (EasyOCR/Tesseract/PaddleOCR) si no lo está.
-    Retorna: {engine, text, quality, all_results}
+    Ejecuta OCR con el motor avanzado o clásico, protegido por semáforo.
     """
-    # Intentar primero con el orquestador avanzado
-    try:
-        from maer_backend.maer_ocr_advanced import ocr_advanced
+    with _ocr_semaphore:
+        # Intentar primero con el orquestador avanzado
+        try:
+            from maer_backend.maer_ocr_advanced import ocr_advanced
 
-        result = ocr_advanced(image, hint="auto")
-        if result.get("ok") and result.get("quality", 0) >= 0.35:
-            return {
-                "engine": result.get("engine", "advanced"),
-                "text": result.get("text", ""),
-                "all_results": {"advanced": len(result.get("text", ""))},
-            }
-    except Exception as e:
-        logger.debug(f"Motor avanzado no disponible, usando clásico: {e}")
+            result = ocr_advanced(image, hint="auto")
+            if result.get("ok") and result.get("quality", 0) >= 0.35:
+                return {
+                    "engine": result.get("engine", "advanced"),
+                    "text": result.get("text", ""),
+                    "all_results": {"advanced": len(result.get("text", ""))},
+                }
+        except Exception as e:
+            logger.debug(f"Motor avanzado no disponible, usando clásico: {e}")
 
-    # Stack clásico como fallback
-    results = {}
+        # Stack clásico como fallback
+        results = {}
 
-    text_tess = ocr_tesseract(image, lang)
-    results["tesseract"] = text_tess
+        text_tess = ocr_tesseract(image, lang)
+        results["tesseract"] = text_tess
 
-    text_easy = ocr_easyocr(image)
-    if text_easy:
-        results["easyocr"] = text_easy
+        text_easy = ocr_easyocr(image)
+        if text_easy:
+            results["easyocr"] = text_easy
 
-    text_paddle = ocr_paddleocr(image, lang)
-    if text_paddle:
-        results["paddleocr"] = text_paddle
+        text_paddle = ocr_paddleocr(image, lang)
+        if text_paddle:
+            results["paddleocr"] = text_paddle
 
-    def _quality_score(text: str) -> float:
-        if not text:
-            return 0.0
-        valid = sum(
-            1 for c in text if c.isalnum() or c.isspace() or c in ".,;:áéíóúñüÁÉÍÓÚÑÜ"
-        )
-        ratio = valid / len(text) if text else 0
-        return len(text) * ratio
+        def _quality_score(text: str) -> float:
+            if not text:
+                return 0.0
+            valid = sum(
+                1 for c in text if c.isalnum() or c.isspace() or c in ".,;:áéíóúñüÁÉÍÓÚÑÜ"
+            )
+            return float(valid)
 
-    best_engine = "tesseract"
-    best_text = text_tess
-    best_score = _quality_score(text_tess)
+        best_engine = "tesseract"
+        best_text = text_tess
+        best_score = _quality_score(text_tess)
 
-    for engine, text in results.items():
-        score = _quality_score(text)
-        if score > best_score * 1.15:
-            best_engine = engine
-            best_text = text
-            best_score = score
+        for engine, text in results.items():
+            score = _quality_score(text)
+            if score > best_score * 1.15:
+                best_engine = engine
+                best_text = text
+                best_score = score
 
-    return {
-        "engine": best_engine,
-        "text": best_text,
-        "all_results": {k: len(v) for k, v in results.items()},
-    }
+        return {
+            "engine": best_engine,
+            "text": best_text,
+            "all_results": {k: len(v) for k, v in results.items()},
+        }
 
 
 def ocr_single_engine(

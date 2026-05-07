@@ -289,4 +289,54 @@ NSS: ${nss}${curp ? `\nCURP: ${curp}` : ''}`;
     document.body.appendChild(ol);
     MAER.voz?.hablar('Mostrando plazos legales del IMSS.');
   },
+
+  /* ── AUDITORÍA DE SEMANAS COTIZADAS ── */
+  async auditarSemanas(filePath) {
+    MAER._log(`🔍 Auditando semanas de: ${filePath}`);
+    try {
+      const res = await MAER._call('/api/pension-audit', { path: filePath });
+      if (res.ok) {
+        const d = res.data;
+        let html = `
+        <div style="background:rgba(56,189,248,0.1); border:1px solid var(--accent); border-radius:10px; padding:15px; margin-top:10px">
+          <div style="font-size:16px; font-weight:bold; color:var(--accent); margin-bottom:10px">🦁 Auditoría de Pensión MAER</div>
+          
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:15px">
+            <div class="card" style="margin:0; padding:10px">
+              <div style="font-size:11px; color:var(--muted)">Semanas Totales</div>
+              <div style="font-size:18px; font-weight:bold">${d.total_semanas}</div>
+            </div>
+            <div class="card" style="margin:0; padding:10px">
+              <div style="font-size:11px; color:var(--muted)">Ley Aplicable</div>
+              <div style="font-size:14px; font-weight:bold; color:#fbbf24">${d.ley}</div>
+            </div>
+            <div class="card" style="margin:0; padding:10px">
+              <div style="font-size:11px; color:var(--muted)">Salario Promedio</div>
+              <div style="font-size:14px; font-weight:bold">${d.salario_promedio}</div>
+            </div>
+            <div class="card" style="margin:0; padding:10px">
+              <div style="font-size:11px; color:var(--muted)">Conservación</div>
+              <div style="font-size:14px; font-weight:bold">${d.conservacion_años} años</div>
+            </div>
+          </div>
+
+          <div style="font-size:12px; font-weight:bold; margin-bottom:5px">📋 Historial Laboral Detectado:</div>
+          <div style="max-height:150px; overflow-y:auto; font-size:10px; background:rgba(0,0,0,0.2); padding:5px; border-radius:5px">
+            ${d.historial.map(row => `<div style="border-bottom:1px solid #333; padding:3px">${row.join(' | ')}</div>`).join('')}
+          </div>
+          
+          <div style="margin-top:10px; font-size:11px; color:#4ade80">
+            💡 Sugerencia: ${d.ley.includes('1973') ? 'Puede calificar para Modalidad 40 para maximizar pensión.' : 'Se recomienda revisar saldo de AFORE.'}
+          </div>
+        </div>`;
+        
+        MAER.chat._addMsg('sys', html);
+        MAER.voz?.hablar(`Auditoría completa. Detecté ${d.total_semanas} semanas bajo la ${d.ley}.`);
+      } else {
+        MAER.chat._addMsg('sys', '❌ Error en auditoría: ' + res.msg);
+      }
+    } catch(e) {
+      MAER._log('❌ Error de conexión en auditoría.');
+    }
+  }
 };

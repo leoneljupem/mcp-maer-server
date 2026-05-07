@@ -139,11 +139,10 @@ MAER.diagnostico = {
     const modFaltantes = [];
     modulos.forEach(([path, label]) => {
       const parts = path.split('.');
-      let obj = window;
-      let cargado = true;
-      for (const p of parts) {
-        obj = obj?.[p];
-        if (obj === undefined || obj === null) { cargado = false; break; }
+      // En vez de iterar desde window, comprobamos directamente desde MAER
+      let cargado = false;
+      if (parts[0] === 'MAER') {
+        cargado = MAER[parts[1]] !== undefined && MAER[parts[1]] !== null;
       }
       if (cargado) modOk++;
       else { modErr++; modFaltantes.push(label); }
@@ -487,4 +486,21 @@ MAER.diagnostico = {
       alert(`❌ Error en test RFC: ${res.msg || 'Sin respuesta'}`);
     }
   },
+
+  async repararMaestro() {
+    const status = document.getElementById('repair-status');
+    if (!status) return;
+    if (!confirm('Esto reinstalará dependencias y reparará archivos. ¿Continuar?')) return;
+    status.innerHTML = '<div style="color:#60a5fa">⏳ Reparando...</div>';
+    try {
+      const res = await MAER._call('/api/force-repair');
+      if (res.ok) {
+        status.innerHTML = `<div style="color:#4ade80">✅ Éxito.</div><pre style="color:#9ca3af;font-size:10px">${res.data.logs}</pre>`;
+      } else {
+        status.innerHTML = `<div style="color:#ef4444">❌ Error: ${res.msg}</div>`;
+      }
+    } catch(e) {
+      status.innerHTML = `<div style="color:#ef4444">❌ Servidor Offline.</div>`;
+    }
+  }
 };

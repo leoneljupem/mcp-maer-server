@@ -1,0 +1,2 @@
+#!/bin/bash
+/Users/houssenm/miniforge3_x86/envs/maer_env/bin/python /Users/houssenm/mcp-maer-server/maer_radar.py "$@"

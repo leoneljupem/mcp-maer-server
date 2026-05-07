@@ -564,7 +564,7 @@ MAER.imagenes = {
     if (!area) return;
     area.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px">🔍 Verificando motores OCR…</div>';
 
-    const res = await MAER._call('/api/ocr-pro-status', {});
+    const res = await MAER._call('/api/ocr-pro-status');
     if (!res.ok) {
       area.innerHTML = `<div class="alert alert-warning">Error: ${res.msg}</div>`;
       return;

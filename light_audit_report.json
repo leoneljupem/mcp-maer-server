@@ -1,0 +1,21 @@
+{
+  "syntax_errors": [],
+  "import_errors": [
+    {
+      "file": "/Users/houssenm/mcp-maer-server/maer_stress_test.py",
+      "error": "Traceback (most recent call last):\n  File \"/Users/houssenm/mcp-maer-server/maer_light_audit.py\", line 31, in <module>\n    spec.loader.exec_module(mod)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1023, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/Users/houssenm/mcp-maer-server/maer_stress_test.py\", line 15, in <module>\n    from maer_backend.maer_pdf_analyzer import action_analyze_file\nImportError: cannot import name 'action_analyze_file' from 'maer_backend.maer_pdf_analyzer' (/Users/houssenm/mcp-maer-server/maer_backend/maer_pdf_analyzer.py)\n"
+    },
+    {
+      "file": "/Users/houssenm/mcp-maer-server/respaldo_maer/maer_backup_81de81_20260402_151146/server.py",
+      "error": "Traceback (most recent call last):\n  File \"/Users/houssenm/mcp-maer-server/maer_light_audit.py\", line 31, in <module>\n    spec.loader.exec_module(mod)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1023, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/Users/houssenm/mcp-maer-server/respaldo_maer/maer_backup_81de81_20260402_151146/server.py\", line 83, in <module>\n    app.mount(\"/static\", StaticFiles(directory=str(STATIC_DIR)), name=\"static\")\n                         ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/starlette/staticfiles.py\", line 56, in __init__\n    raise RuntimeError(f\"Directory '{directory}' does not exist\")\nRuntimeError: Directory '/Users/houssenm/mcp-maer-server/respaldo_maer/maer_backup_81de81_20260402_151146/static' does not exist\n"
+    },
+    {
+      "file": "/Users/houssenm/mcp-maer-server/respaldo_maer/maer_v3.1_20260401_222222/server.py",
+      "error": "Traceback (most recent call last):\n  File \"/Users/houssenm/mcp-maer-server/maer_light_audit.py\", line 31, in <module>\n    spec.loader.exec_module(mod)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1023, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/Users/houssenm/mcp-maer-server/respaldo_maer/maer_v3.1_20260401_222222/server.py\", line 65, in <module>\n    app.mount(\"/static\", StaticFiles(directory=str(STATIC_DIR)), name=\"static\")\n                         ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/starlette/staticfiles.py\", line 56, in __init__\n    raise RuntimeError(f\"Directory '{directory}' does not exist\")\nRuntimeError: Directory '/Users/houssenm/mcp-maer-server/respaldo_maer/maer_v3.1_20260401_222222/static' does not exist\n"
+    },
+    {
+      "file": "/Users/houssenm/mcp-maer-server/respaldo_maer/maer_backup_104de104_fase2_20260403_111238/server.py",
+      "error": "Traceback (most recent call last):\n  File \"/Users/houssenm/mcp-maer-server/maer_light_audit.py\", line 31, in <module>\n    spec.loader.exec_module(mod)\n    ~~~~~~~~~~~~~~~~~~~~~~~^^^^^\n  File \"<frozen importlib._bootstrap_external>\", line 1023, in exec_module\n  File \"<frozen importlib._bootstrap>\", line 488, in _call_with_frames_removed\n  File \"/Users/houssenm/mcp-maer-server/respaldo_maer/maer_backup_104de104_fase2_20260403_111238/server.py\", line 83, in <module>\n    app.mount(\"/static\", StaticFiles(directory=str(STATIC_DIR)), name=\"static\")\n                         ~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/Library/Frameworks/Python.framework/Versions/3.13/lib/python3.13/site-packages/starlette/staticfiles.py\", line 56, in __init__\n    raise RuntimeError(f\"Directory '{directory}' does not exist\")\nRuntimeError: Directory '/Users/houssenm/mcp-maer-server/respaldo_maer/maer_backup_104de104_fase2_20260403_111238/static' does not exist\n"
+    }
+  ]
+}

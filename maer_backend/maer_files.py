@@ -17,6 +17,35 @@ _PROJECT_DIR = _THIS_DIR.parent.resolve()
 if str(_PROJECT_DIR) not in sys.path:
     sys.path.insert(0, str(_PROJECT_DIR))
 
+# Stdlib helpers usados en varias funciones — mover al tope para flake8
+import io
+import time
+import shutil
+import subprocess
+import urllib.request as urllib_request
+
+# Librerías opcionales (no fallar si no están instaladas)
+try:
+    import cv2
+except Exception:
+    cv2 = None
+try:
+    import numpy as np
+except Exception:
+    np = None
+try:
+    import pytesseract
+except Exception:
+    pytesseract = None
+try:
+    import fitz  # PyMuPDF
+except Exception:
+    fitz = None
+try:
+    import anthropic
+except Exception:
+    anthropic = None
+
 
 # ── Logging JSON estructurado ──
 logging.basicConfig(
@@ -44,11 +73,14 @@ from PIL import Image
 from pypdf import PdfReader
 
 # ── Config ──
-API_CURP_URL = os.environ.get(
-    "API_CURP_URL", "https://api-curp-renapo.ejemplo.com/curp"
-)
+API_CURP_URL = os.environ.get("API_CURP_URL", "https://api-curp-renapo.ejemplo.com/curp")
 API_CURP_TOKEN = os.environ.get("API_CURP_TOKEN", "")
 MAER_OCR_ENGINE = os.environ.get("MAER_OCR_ENGINE", "auto")
+
+# ── Regex Documentos Oficiales MX Avanzados (Soporte para Pensiones) ──
+PENSION_RES_REGEX = re.compile(r"Resolución de Pensión|Negativa de Pensión|Asignación Familiar", re.IGNORECASE)
+PASAPORTE_REGEX = re.compile(r"\b[G]\d{8}\b", re.IGNORECASE)
+CEDULA_REGEX = re.compile(r"\b\d{7,8}\b")
 
 TEXT_EXTS = {
     ".txt",
@@ -227,8 +259,6 @@ def curp_valida(curp: str):
     if not m:
         return False
     # Formato correcto — retornar la CURP válida
-    # (El dígito verificador se usa solo como indicador, no como filtro de rechazo)
-    return curp
     return curp
 
 
@@ -286,8 +316,8 @@ def file_hash_sha256(path: Path) -> str:
 
 def _preprocesar_imagen_ocr(img_pil):
     """Preprocesa imagen para maximizar calidad OCR en documentos IMSS escaneados."""
-    import cv2
-    import numpy as np
+    if cv2 is None or np is None:
+        raise ImportError("cv2 and numpy are required for _preprocesar_imagen_ocr")
 
     # Convertir a array numpy
     img_np = np.array(img_pil)
@@ -330,14 +360,13 @@ def _preprocesar_imagen_ocr(img_pil):
             thresh, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_LANCZOS4
         )
 
-    from PIL import Image
-
     return Image.fromarray(thresh)
 
 
 def _ocr_pdf_mejorado(path: Path, max_pages: int = 50, prefijo_texto: str = "") -> str:
     """OCR mejorado usando PyMuPDF + deskew + OpenCV + Tesseract para PDFs escaneados."""
-    import pytesseract
+    if pytesseract is None:
+        raise ImportError("pytesseract is required for _ocr_pdf_mejorado")
 
     # Config Tesseract optimizada para documentos oficiales en español
     TESS_CONFIG = "--oem 3 --psm 6 -l spa+eng"
@@ -345,7 +374,8 @@ def _ocr_pdf_mejorado(path: Path, max_pages: int = 50, prefijo_texto: str = "") 
 
     # Intentar con PyMuPDF primero (más rápido y mejor calidad que pdf2image)
     try:
-        import fitz  # PyMuPDF
+        if fitz is None:
+            raise ImportError("PyMuPDF (fitz) is required for _ocr_pdf_mejorado")
 
         doc = fitz.open(str(path))
         total = min(len(doc), max_pages)
@@ -356,9 +386,6 @@ def _ocr_pdf_mejorado(path: Path, max_pages: int = 50, prefijo_texto: str = "") 
                 mat = fitz.Matrix(300 / 72, 300 / 72)
                 pix = page.get_pixmap(matrix=mat, colorspace=fitz.csGRAY)
                 img_data = pix.tobytes("png")
-                import io
-
-                from PIL import Image
 
                 img = Image.open(io.BytesIO(img_data))
                 img_proc = _preprocesar_imagen_ocr(img)
@@ -455,13 +482,12 @@ def extract_text_generic(path: Path, use_ocr_for_pdf: bool = True) -> str:
             pass
         # Fallback Tesseract mejorado con preprocesado
         try:
-            import pytesseract
+                if pytesseract is None:
+                    return f"[ERROR OCR IMAGEN: pytesseract no instalado]"
 
-            img = Image.open(str(path))
-            img_proc = _preprocesar_imagen_ocr(img)
-            return pytesseract.image_to_string(
-                img_proc, config="--oem 3 --psm 6 -l spa+eng"
-            )
+                img = Image.open(str(path))
+                img_proc = _preprocesar_imagen_ocr(img)
+                return pytesseract.image_to_string(img_proc, config="--oem 3 --psm 6 -l spa+eng")
         except Exception as e:
             return f"[ERROR OCR IMAGEN: {e}]"
     if is_text_like(path):
@@ -1333,6 +1359,93 @@ def action_renapo_verify_identity(payload: dict):
     except Exception as e:
         return make_response(False, "RENAPO_VERIFY_FAIL", str(e))
 
+def action_deep_search(payload: dict):
+    base_dir = payload.get("base_dir")
+    query = payload.get("query")
+    fuzzy_match = payload.get("fuzzy_match", True)
+    
+    idx_path = Path(base_dir) / "maer_index.json"
+    if not idx_path.exists():
+        return make_response(False, "INDEX_NOT_FOUND", "Index no encontrado. Ejecuta maer_index_full primero.")
+        
+    try:
+        with open(idx_path, 'r', encoding='utf-8') as f:
+            entries = json.load(f)
+    except Exception as e:
+        return make_response(False, "INDEX_READ_ERROR", f"Error leyendo: {e}")
+        
+    results = []
+    q_lower = query.lower()
+    
+    for entry in entries:
+        snippet = str(entry.get("snippet", "")).lower()
+        path_str = str(entry.get("path", "")).lower()
+        if fuzzy_match:
+            try:
+                from thefuzz import fuzz
+                if fuzz.partial_ratio(q_lower, snippet) > 80 or fuzz.partial_ratio(q_lower, path_str) > 80:
+                    results.append(entry)
+            except ImportError:
+                if q_lower in snippet or q_lower in path_str:
+                    results.append(entry)
+        else:
+            if q_lower in snippet or q_lower in path_str:
+                results.append(entry)
+                
+    for r in results:
+        if "snippet" in r:
+            r["snippet_preview"] = r["snippet"][:300]
+            del r["snippet"]
+            
+    return make_response(True, "DEEP_SEARCH_OK", f"{len(results)} resultados encontrados.", {"results": results[:50]})
+
+def action_workspace_analyzer(payload: dict):
+    base_dir = payload.get("base_dir")
+    try:
+        import sys
+        script_dir = "/Users/houssenm/mcp-maer-server/scripts"
+        if script_dir not in sys.path:
+            sys.path.append(script_dir)
+        import analyze_workspace
+        import io
+        import contextlib
+        f = io.StringIO()
+        with contextlib.redirect_stdout(f):
+            analyze_workspace.analyze_workspace(base_dir)
+        report_json = f.getvalue()
+        try:
+            report_dict = json.loads(report_json)
+        except:
+            report_dict = {"raw": report_json}
+        return make_response(True, "WORKSPACE_ANALYZED", "Análisis completado", report_dict)
+    except Exception as e:
+        return make_response(False, "WORKSPACE_ANALYSIS_ERROR", str(e))
+
+def action_generate_pension_roadmap(payload: dict):
+    """
+    Genera una hoja de ruta (Roadmap) personalizada basada en los documentos encontrados.
+    """
+    curp = payload.get("curp")
+    if not curp:
+        return make_response(False, "EMPTY_CURP", "Se requiere CURP para generar roadmap")
+    
+    # 1. Obtener datos del cliente del índice/auditoría
+    audit_res = audit_identity() # Usar el auditor que ya tenemos
+    # (Simulación de búsqueda de documentos faltantes basada en el set estándar)
+    required_docs = ["INE", "CURP", "Acta de Nacimiento", "Comprobante de Domicilio", "Estado de Cuenta AFORE", "Semanas Cotizadas"]
+    # ... lógica para detectar cuáles faltan ...
+    
+    prompt = f"Genera una hoja de ruta legal para un pensionado con CURP {curp}. "
+    prompt += "Enumera los pasos: 1. Documentación faltante, 2. Trámite ante IMSS, 3. Mejora de pensión (si aplica). "
+    prompt += "Usa un tono profesional pero empático."
+    
+    try:
+        # Usar el LLM configurado
+        from maer_backend.maer_ollama import chat as ollama_chat
+        res = ollama_chat(prompt)
+        return make_response(True, "ROADMAP_OK", "Hoja de ruta generada con IA", {"roadmap": res["text"]})
+    except Exception as e:
+        return make_response(False, "LLM_ERROR", str(e))
 
 # ═══════════════════════════════════════════════════════════
 # Dispatcher
@@ -1406,17 +1519,13 @@ def _llm_ollama(
         pass  # Fallback a método directo si no está disponible el módulo
 
     # Fallback: intento directo con detección básica
-    import json as _json
-    import shutil
-    import subprocess
-    import urllib.request
 
     ollama_url = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 
     # Si no está activo, intentar arrancarlo
     def _activo():
         try:
-            urllib.request.urlopen(f"{ollama_url}/api/tags", timeout=3)
+            urllib_request.urlopen(f"{ollama_url}/api/tags", timeout=3)
             return True
         except Exception as e:
             return False
@@ -2619,6 +2728,61 @@ def action_llm_chat(args):
             f"[CONTEXTO DEL DOCUMENTO]\n{context}\n[FIN CONTEXTO]\n\n{prompt}"
         )
 
+    # ════ NLP INTENT DETECTOR: Funcionalidad por Lenguaje Natural ════
+    prompt_lower = prompt.lower().strip()
+    import re
+    # Detectar intención de Búsqueda Profunda y Mover
+    if "busca" in prompt_lower or "buscar" in prompt_lower:
+        match = re.search(r'(?i)busca(?:r)?\s+(?:a\s+|el\s+|la\s+|los\s+|las\s+|informacion\s+de\s+|archivos\s+de\s+|la\s+palabra\s+)?([a-zA-Z0-9_\s]+)', prompt)
+        if match:
+            query = match.group(1).strip()
+            # Filtrar palabras vacías
+            if query.lower() not in ["", "a", "el", "la", "los", "las", "informacion", "archivos", "un", "una", "por favor", "en"]:
+                # Ejecutar Búsqueda Profunda (Interior de imágenes, PDFs, Word, tolerando errores)
+                base_dir = "/Users/houssenm" 
+                s_res = action_deep_search({"base_dir": base_dir, "query": query, "fuzzy_match": True})
+                resultados = s_res.get("data", {}).get("results", [])
+                
+                if resultados:
+                    html_resp = f"🦁 ¡Entendido! He ejecutado una <b>Búsqueda Profunda Multimodal</b> buscando <code>{query}</code>.<br><br>"
+                    html_resp += f"✅ Encontré <b>{len(resultados)} archivos</b>. (Revisé el interior de imágenes, PDFs y documentos, alternando mayúsculas/minúsculas y tolerando variaciones).<br><br>"
+                    html_resp += "<b>¿Qué deseas hacer con estos archivos?</b><br><br>"
+                    
+                    # Generar ID temporal para guardar las rutas y poder moverlas al dar clic
+                    import time, json
+                    search_id = str(int(time.time()))
+                    tmp_file = Path("/Users/houssenm/mcp-maer-server/scripts") / f"search_results_{search_id}.json"
+                    tmp_file.parent.mkdir(exist_ok=True)
+                    paths = [r["path"] for r in resultados]
+                    with open(tmp_file, "w", encoding="utf-8") as f:
+                        json.dump({"query": query, "paths": paths}, f)
+                    
+                    html_resp += f"""
+                    <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+                      <button class="btn btn-primary" onclick="
+                        MAER.chat._addMsg('sys', '⏳ Moviendo archivos...');
+                        MAER._call('/api/move-search-results', {{'search_id': '{search_id}', 'query': '{query}'}}).then(r => {{
+                           if(r.ok) {{ MAER.chat._addMsg('sys', '✅ Éxito: ' + r.msg); }}
+                           else {{ MAER.chat._addMsg('sys', '❌ Error: ' + r.msg); }}
+                        }})
+                      ">📁 Mover todos a carpeta "{query.title()}"</button>
+                    </div>
+                    """
+                    
+                    return make_response(True, "CHAT_NLP_SEARCH", "Búsqueda NLP", {
+                        "respuesta": html_resp,
+                        "response": html_resp,
+                        "engine": "nlp_maer_core"
+                    })
+                else:
+                    html_resp = f"🦁 Realicé una búsqueda profunda de <code>{query}</code> en el interior de tus imágenes y documentos, pero no encontré ninguna coincidencia."
+                    return make_response(True, "CHAT_NLP_SEARCH", "Sin resultados", {
+                        "respuesta": html_resp,
+                        "response": html_resp,
+                        "engine": "nlp_maer_core"
+                    })
+    # ════ FIN NLP INTENT DETECTOR ════
+
     # Si se pide el diccionario local directamente
     if motor in ("diccionario", "local", "diccionario_local"):
         result = _llm_diccionario_local(final_prompt)
@@ -2734,6 +2898,8 @@ ACTIONS = {
     "llm_extract_json": action_llm_extract_json,
     "llm_chat": action_llm_chat,
     "renapo_verify_identity": action_renapo_verify_identity,
+    "deep_search": action_deep_search,
+    "workspace_analyzer": action_workspace_analyzer,
 }
 
 

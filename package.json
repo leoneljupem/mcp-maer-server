@@ -19,6 +19,9 @@
     "test:llm":     "$HOME/miniforge3_x86/envs/maer_env/bin/python -m pytest tests/test_llm_cascade.py::TestSystemPrompt tests/test_llm_cascade.py::TestDiccionarioLocal tests/test_llm_cascade.py::TestPreferenciaModelos -v",
     "test:rapido":  "$HOME/miniforge3_x86/envs/maer_env/bin/python -m pytest tests/ -q",
     "lint":         "$HOME/miniforge3_x86/envs/maer_env/bin/python -m py_compile maer_backend/maer_files.py maer_backend/ocr_engine.py maer_backend/maer.py && echo '✓ Sin errores de sintaxis'",
+    "home-audit":   "$HOME/miniforge3_x86/envs/maer_env/bin/python scripts/home_audit_app.py --serve",
+    "home-audit:reports": "$HOME/miniforge3_x86/envs/maer_env/bin/python scripts/home_audit_app.py --write-reports",
+    "home-audit:move-safe": "$HOME/miniforge3_x86/envs/maer_env/bin/python scripts/home_audit_app.py --move-safe",
     "env:check":    "$HOME/miniforge3_x86/envs/maer_env/bin/python -c \"import torch, easyocr, paddleocr, deepface, fastapi, anthropic, groq, langchain; print('✓ Entorno maer_env OK — Groq SDK incluido')\"",
     "dev":          "node --watch index.mjs"
   },

@@ -18,11 +18,30 @@ import { spawn } from "child_process";
 import path from "path";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
+import fs from "fs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const PY_BACKEND = path.join(__dirname, "maer_backend", "maer_files.py");
-const PY_EXEC = path.join(process.env.HOME || "/Users/houssenm", "miniforge3_x86", "envs", "maer_env", "bin", "python");
+
+// Detección dinámica del ejecutable de Python
+const possiblePyPaths = [
+  path.join(__dirname, ".venv", "bin", "python"),
+  path.join(__dirname, "venv", "bin", "python"),
+  path.join(process.env.HOME || "/Users/houssenm", "miniforge3_x86", "envs", "maer_env", "bin", "python"),
+  "/opt/homebrew/bin/python3",
+  "/usr/local/bin/python3",
+  "/usr/bin/python3",
+  "python3"
+];
+
+let PY_EXEC = "python3";
+for (const p of possiblePyPaths) {
+  if (p === "python3" || fs.existsSync(p)) {
+    PY_EXEC = p;
+    if (fs.existsSync(p)) break; // Si encontramos uno real absoluto, detenemos
+  }
+}
 
 function runPythonAction(action, payload) {
   return new Promise((resolve, reject) => {
@@ -42,8 +61,8 @@ function runPythonAction(action, payload) {
     });
 
     py.on("close", (code) => {
-      if (!out && err) {
-        return reject(new Error(`Python error: ${err}`));
+      if (code !== 0) {
+        return reject(new Error(`Python falló con código ${code}. Salida de error: ${err}`));
       }
       try {
         const parsed = JSON.parse(out || "{}");
@@ -482,6 +501,30 @@ const toolDefinitions = [
       required: ["path"],
     },
   },
+  {
+    name: "maer_deep_search",
+    description: "Búsqueda masiva y difusa (fuzzy search) de palabras o frases (mayúsculas/minúsculas) en documentos, imágenes y PDFs usando NLP y distancias.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base_dir: { type: "string", description: "Carpeta base a buscar" },
+        query: { type: "string", description: "Palabra o frase a buscar" },
+        fuzzy_match: { type: "boolean", description: "Permitir similitud o variaciones (default true)" },
+      },
+      required: ["base_dir", "query"],
+    },
+  },
+  {
+    name: "maer_workspace_analyzer",
+    description: "Analizador de carpetas para encontrar proyectos duplicados, código similar o archivos basura innecesarios y sugerir limpieza o fusión.",
+    inputSchema: {
+      type: "object",
+      properties: {
+        base_dir: { type: "string", description: "Carpeta base a analizar (ej. /Users/houssenm/Proyectos)" },
+      },
+      required: ["base_dir"],
+    },
+  }
 ];
 
 // ═══════════════════════════════════════════════════════════
@@ -526,6 +569,8 @@ async function handleTool(name, args = {}) {
     maer_llm_summarize: "llm_summarize",
     maer_llm_extract_json: "llm_extract_json",
     maer_verify_identity: "renapo_verify_identity",
+    maer_deep_search: "deep_search",
+    maer_workspace_analyzer: "workspace_analyzer",
   };
 
   const pyAction = toolActionMap[name];

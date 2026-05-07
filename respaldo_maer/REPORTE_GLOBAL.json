@@ -1,0 +1,29 @@
+{
+  "timestamp": "2026-05-06T12:16:45.698965",
+  "portafolios": [
+    {
+      "curp": "LOOA531113HTCPBN09",
+      "archivos_originales": [
+        "/Users/houssenm/mcp-maer-server/data/expedientes/expediente_imss_LOOA531113HTCPBN09_20260415_002734.pdf",
+        "/Users/houssenm/mcp-maer-server/data/expedientes/expediente_imss_LOOA531113HTCPBN09_20260411_052006.pdf",
+        "/Users/houssenm/mcp-maer-server/data/expedientes/expediente_imss_LOOA531113HTCPBN09_20260415_001752.pdf",
+        "/Users/houssenm/mcp-maer-server/data/expedientes/expediente_imss_LOOA531113HTCPBN09_20260415_001735.pdf",
+        "/Users/houssenm/mcp-maer-server/data/expedientes/expediente_imss_LOOA531113HTCPBN09_20260415_002821.pdf"
+      ],
+      "portfolio_generado": "/Users/houssenm/mcp-maer-server/respaldo_maer/PORTAFOLIOS_GLOBALES/PORTAFOLIO_MAER_LOOA531113HTCPBN09_20260506.pdf"
+    },
+    {
+      "curp": "SAHE800107MDFNRN01",
+      "archivos_originales": [
+        "/Users/houssenm/mcp-maer-server/data/expedientes/expediente_imss_SAHE800107MDFNRN01_20260411_052110.pdf"
+      ],
+      "portfolio_generado": "/Users/houssenm/mcp-maer-server/respaldo_maer/PORTAFOLIOS_GLOBALES/PORTAFOLIO_MAER_SAHE800107MDFNRN01_20260506.pdf"
+    }
+  ],
+  "auditoria_identidad": {
+    "ok": true,
+    "conflicts": [],
+    "resumen": "Auditoría Forense completada. 0 conflictos detectados.",
+    "biometric_check": "PASS"
+  }
+}

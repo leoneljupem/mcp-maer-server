@@ -44,6 +44,9 @@ const MAER = {
     this.stats.init();
     this.poder.init();
     this.diagnostico.init();
+    if (MAER.terminal)    MAER.terminal.init();
+    if (MAER.legal)       MAER.legal.init();
+    if (MAER.aprendizaje) MAER.aprendizaje.init();
     this.memoria._render();
     this.sistema._renderBrowser();
     this.sistema._renderPerf();
@@ -134,6 +137,18 @@ const MAER = {
       c.scrollTop = c.scrollHeight;
     }
     console.log('[MAER]', msg.replace(/<[^>]+>/g,''));
+  },
+
+  /* ── SISTEMA ── */
+  sistema: {
+    logout() {
+      document.cookie = "maer_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+      window.location.href = '/static/login.html';
+    },
+    async refresh() {
+      const d = await MAER._call('/api/verificar-dependencias');
+      if (d.ok) MAER._log(`📡 Sistema OK: ${d.msg}`);
+    }
   },
 
   /* ── ESTADÍSTICAS ── */
@@ -247,6 +262,12 @@ const MAER = {
       const timeout = setTimeout(() => controller.abort(), opts.timeout || 15000);
       const res = await fetch(url, { ...options, signal: controller.signal });
       clearTimeout(timeout);
+      
+      if (res.status === 401) {
+        window.location.href = '/static/login.html';
+        return { ok: false, msg: 'Sesión expirada' };
+      }
+      
       const data = await res.json();
       if (accion) MAER.progreso?.hide();
       return data;

@@ -30,5 +30,61 @@
     "device": "panel_sistema",
     "ts": "2026-04-25 18:47:02",
     "leido": true
+  },
+  {
+    "id": 5,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 07:55:56",
+    "leido": true
+  },
+  {
+    "id": 6,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 08:14:18",
+    "leido": true
+  },
+  {
+    "id": 7,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 08:50:10",
+    "leido": true
+  },
+  {
+    "id": 8,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 08:56:09",
+    "leido": true
+  },
+  {
+    "id": 9,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 08:59:15",
+    "leido": true
+  },
+  {
+    "id": 10,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 09:45:49",
+    "leido": true
+  },
+  {
+    "id": 11,
+    "mensaje": "MAER prueba de conexión exitosa.",
+    "fuente": "maer_ui",
+    "device": "panel_sistema",
+    "ts": "2026-05-06 09:56:02",
+    "leido": true
   }
 ]
