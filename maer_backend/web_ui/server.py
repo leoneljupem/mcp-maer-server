@@ -84,14 +84,6 @@ app = FastAPI(
     version="2.0.0",
 )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 # Anti-cache para desarrollo: forzar recarga de JS/CSS/HTML
 class NoCacheMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -126,6 +118,17 @@ class AuthMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(AuthMiddleware) # Blindaje de seguridad total activo 🛡️
 
+# CORS SIEMPRE al final: queda como middleware más externo para que las
+# respuestas de AuthMiddleware (401/redirect) también lleven cabeceras CORS.
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["*"],
+)
+
 # Restaurar watcher al arrancar (en background para no bloquear startup)
 def _startup_watcher():
     try:
@@ -157,7 +160,14 @@ async def api_login(payload: dict):
     if password == MAER_PASSWORD:
         from fastapi.responses import JSONResponse
         response = JSONResponse(content={"ok": True, "message": "Acceso concedido"})
-        response.set_cookie(key="maer_session", value="MAER_SECURE_TOKEN_2026", httponly=True)
+        response.set_cookie(
+            key="maer_session",
+            value="MAER_SECURE_TOKEN_2026",
+            httponly=True,
+            samesite="lax",
+            max_age=60 * 60 * 12,
+            path="/",
+        )
         return response
     return make_response(False, "AUTH_ERROR", "Contraseña incorrecta")
 
@@ -3282,6 +3292,19 @@ async def api_ocr_install_engine(payload: dict):
                              f"Error instalando '{engine}': {result.get('error', '')}", result)
     except Exception as e:
         return make_response(False, "ENGINE_INSTALL_EXC", str(e))
+
+
+
+@app.post("/api/set-api-key")
+async def api_set_api_key(payload: dict, response: Request):
+    """Recibe y activa temporalmente la API Key de Anthropic desde la interfaz."""
+    key   = payload.get("key", "").strip()
+    model = payload.get("model", "claude-sonnet-4-20250514")
+    if not key or not key.startswith("sk-ant"):
+        return make_response(False, "INVALID_KEY", "API Key inválida — debe comenzar con sk-ant")
+    os.environ["ANTHROPIC_API_KEY"] = key
+    os.environ["CLAUDE_MODEL"]      = model
+    return make_response(True, "KEY_SET", f"API Key de Anthropic activada · Modelo: {model}")
 
 
 def main():

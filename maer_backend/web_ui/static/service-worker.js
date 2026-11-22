@@ -4,8 +4,8 @@
    Leonel Houssen Mojica — Ecatepec MX — 2026
 ══════════════════════════════════════════════════════════ */
 
-const CACHE_NAME   = 'maer-v7-cache';
-const CACHE_STATIC = 'maer-v7-static';
+const CACHE_NAME   = 'maer-v8-cache';
+const CACHE_STATIC = 'maer-v8-static';
 
 // Assets que se cachean al instalar el SW (shell de la app)
 const PRECACHE_URLS = [
@@ -66,6 +66,15 @@ self.addEventListener('fetch', event => {
 
   // API: Network First (siempre datos frescos)
   if (API_ROUTES.some(r => url.pathname.startsWith(r))) {
+    event.respondWith(networkFirst(event.request));
+    return;
+  }
+
+  // Documentos y código (HTML/JS/CSS): Network First para no servir versiones viejas
+  const esCodigo = event.request.mode === 'navigate'
+    || url.pathname === '/'
+    || /\.(html|js|css|json)$/i.test(url.pathname);
+  if (esCodigo) {
     event.respondWith(networkFirst(event.request));
     return;
   }

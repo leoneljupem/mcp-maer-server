@@ -115,7 +115,7 @@ MAER.chat = {
     }
 
     // 4. Diccionario de 120+ patrones
-    const dictResp = MAER_buscarRespuesta(userMsg);
+    const dictResp = MAER_buscarRespuesta(userMsg, { sinFallback: true });
     if (dictResp) {
       this._addMsg('maer', dictResp);
       MAER._saveToHistory(userMsg, dictResp);

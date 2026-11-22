@@ -1,84 +1,59 @@
-/* ══════════════════════════════════════════════════════════
-   MAER 4.0 — Módulo Modo Compacto
-   BLOQUE 11 — UI reducida para tablet/pantalla pequeña
-   Leonel Houssen Mojica — Ecatepec MX — 2026
-══════════════════════════════════════════════════════════ */
-
+// 🦁 MAER — Modo Compacto
 MAER.compacto = {
+  _activo: false,
 
-  activo: false,
-  STORAGE_KEY: 'maer_compacto',
-
-  /* ── INIT ── */
   init() {
-    // Cargar estado guardado
-    this.activo = localStorage.getItem(this.STORAGE_KEY) === 'true';
-    if (this.activo) this._aplicar();
-    this._syncToggle();
-
-    // Auto-detectar pantalla pequeña
-    if (window.innerWidth < 768 && !localStorage.getItem(this.STORAGE_KEY)) {
-      this.activar();
-      MAER._log('📱 Modo compacto activado automáticamente (pantalla < 768px).');
-    }
-
-    // Listener para resize
-    window.addEventListener('resize', () => this._checkResize());
+    const saved = localStorage.getItem('maer_compacto');
+    this._activo = saved === 'true' || saved === '1';
+    if (this._activo) this._aplicar();
+    const cb = document.getElementById('cfg-compacto');
+    if (cb) cb.checked = this._activo;
   },
 
-  /* ── TOGGLE ── */
   toggle() {
-    if (this.activo) this.desactivar();
+    if (this._activo) this.desactivar();
     else this.activar();
   },
 
-  /* ── ACTIVAR ── */
+  get activo() { return this._activo; },
+
   activar() {
-    this.activo = true;
+    this._activo = true;
+    localStorage.setItem('maer_compacto', 'true');
     this._aplicar();
-    this._guardar();
-    MAER.voz?.hablar('Modo compacto activado.');
-    this._syncToggle();
   },
 
-  /* ── DESACTIVAR ── */
   desactivar() {
-    this.activo = false;
-    document.body.classList.remove('compact');
-    this._guardar();
-    MAER.voz?.hablar('Modo compacto desactivado.');
-    this._syncToggle();
+    this._activo = false;
+    localStorage.setItem('maer_compacto', 'false');
+    this._quitar();
   },
 
-  /* ── APLICAR CLASE CSS ── */
-  _aplicar() {
-    document.body.classList.add('compact');
-  },
-
-  /* ── GUARDAR ── */
-  _guardar() {
-    localStorage.setItem(this.STORAGE_KEY, this.activo.toString());
-  },
-
-  /* ── SYNC UI ── */
-  _syncToggle() {
-    const toggle = document.getElementById('cfg-compacto');
-    if (toggle) toggle.checked = this.activo;
-  },
-
-  /* ── AUTO-DETECT ── */
-  _checkResize() {
-    // Sugerir compacto si pantalla se reduce
-    if (window.innerWidth < 768 && !this.activo) {
-      // No auto-activar, solo sugerir
-    }
-  },
-
-  /* ── ESTADO ── */
   estado() {
-    return {
-      activo: this.activo,
-      viewport: window.innerWidth + 'x' + window.innerHeight
-    };
+    const w = window.innerWidth;
+    const viewport = w < 600 ? 'movil' : w < 1024 ? 'tablet' : 'escritorio';
+    return { activo: this._activo, viewport, ancho: w };
+  },
+
+  _aplicar() {
+    if (!document.getElementById('maer-compact-css')) {
+      const link = document.createElement('link');
+      link.id = 'maer-compact-css';
+      link.rel = 'stylesheet';
+      link.href = '/static/css/maer-compact.css';
+      document.head.appendChild(link);
+    }
+    document.body.classList.add('compact');
+    const cb = document.getElementById('cfg-compacto');
+    if (cb) cb.checked = true;
+    MAER.chat?._addMsg?.('sys', '📱 Modo compacto activado.');
+  },
+
+  _quitar() {
+    document.getElementById('maer-compact-css')?.remove();
+    document.body.classList.remove('compact');
+    const cb = document.getElementById('cfg-compacto');
+    if (cb) cb.checked = false;
+    MAER.chat?._addMsg?.('sys', '📱 Modo compacto desactivado.');
   }
 };

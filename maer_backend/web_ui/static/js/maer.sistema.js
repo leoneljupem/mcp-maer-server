@@ -8,6 +8,13 @@ MAER.sistema = {
 
   _perfInterval: null,
 
+  /* ── CERRAR SESIÓN ── */
+  logout() {
+    document.cookie = "maer_session=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+    try { sessionStorage.clear(); } catch (e) {}
+    window.location.href = '/static/login.html';
+  },
+
   /* ── REFRESH COMPLETO ── */
   async refresh() {
     await Promise.all([

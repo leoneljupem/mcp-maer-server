@@ -7,7 +7,7 @@
 /* ── Objeto MAER global ── */
 const MAER = {
   version: '3.1',
-  API:     'http://localhost:8765',
+  API:     (location.protocol === 'http:' || location.protocol === 'https:') ? location.origin : 'http://localhost:8765',
 
   config: {
     vozActiva:   true,
@@ -81,6 +81,17 @@ const MAER = {
     document.addEventListener('keydown', _saludar, { once: true });
   },
 
+  /* ── NORMALIZAR URL DEL SERVIDOR (evitar CORS localhost vs 127.0.0.1) ── */
+  _normServer(url) {
+    if (!url) return '';
+    try {
+      const u = new URL(url, location.origin);
+      const loop = h => ['localhost', '127.0.0.1', '0.0.0.0', '::1'].includes(h);
+      if (loop(u.hostname) && loop(location.hostname) && u.port === location.port) return location.origin;
+      return u.origin;
+    } catch (e) { return ''; }
+  },
+
   /* ── RESTAURAR CONFIG ── */
   _restoreConfig() {
     try {
@@ -88,7 +99,10 @@ const MAER = {
       Object.assign(this.config, saved);
     } catch(e) {}
     const su = localStorage.getItem('maer_server');
-    if (su) { this.API = su; const el=document.getElementById('cfg-server'); if(el) el.value=su; }
+    const norm = this._normServer(su);
+    if (norm) { this.API = norm; }
+    const el = document.getElementById('cfg-server');
+    if (el) el.value = this.API;
     // Sync toggles
     ['cfg-voz','voz-toggle'].forEach(id => {
       const el = document.getElementById(id);
@@ -250,7 +264,7 @@ const MAER = {
   },
 
   async _call(endpoint, payload, opts = {}) {
-    const serverUrl = document.getElementById('cfg-server')?.value?.trim() || this.API;
+    const serverUrl = this._normServer(document.getElementById('cfg-server')?.value?.trim()) || this.API;
     const accion = this._progresoAccion(endpoint);
     if (accion) MAER.progreso?.show(accion);
     try {
@@ -279,7 +293,7 @@ const MAER = {
   },
 
   async _upload(endpoint, formData) {
-    const serverUrl = document.getElementById('cfg-server')?.value?.trim() || this.API;
+    const serverUrl = this._normServer(document.getElementById('cfg-server')?.value?.trim()) || this.API;
     MAER.progreso?.show('upload');
     try {
       const res = await fetch(serverUrl + endpoint, { method: 'POST', body: formData });
