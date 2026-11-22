@@ -187,26 +187,57 @@ PREFERENCIA_MODELOS = [
 _THINKING_MODELS = {"qwen3", "qwen3.5", "deepseek-r1", "openthinker", "r1"}
 
 
+def _modelo_apto_chat(modelo: Dict) -> bool:
+    """Descarta modelos que no pueden responder chat de texto en esta máquina."""
+    nombre = str(modelo.get("name") or "").lower()
+    detalles = modelo.get("details") or {}
+    family = str(detalles.get("family") or "").lower()
+    caps = detalles.get("capabilities") or modelo.get("capabilities") or []
+    if isinstance(caps, str):
+        caps = [caps]
+    caps = [str(c).lower() for c in caps]
+
+    # Modelos cloud: requieren cuenta/red y responden 403.
+    if modelo.get("remote_host") or modelo.get("remote_model"):
+        return False
+    if ":cloud" in nombre or "cloud" in nombre:
+        return False
+    # Modelos de embedding: no generan texto.
+    if "embed" in family or "embed" in nombre or "bert" in family:
+        return False
+    # Modelos de visión (mllama/llava): arquitectura no soportada por el runtime local.
+    if "mllama" in family or "llava" in family or "vision" in nombre or "vision" in caps:
+        return False
+    return True
+
+
 def elegir_modelo(modelos: List[Dict]) -> Optional[str]:
     """
-    Elige el mejor modelo disponible según preferencia predefinida.
-    Si OLLAMA_MODEL está en .env, lo usa directamente.
+    Elige el mejor modelo local de texto según preferencia predefinida.
+    OLLAMA_MODEL se respeta solo si existe y es apto para chat de texto.
     """
-    env_model = os.environ.get("OLLAMA_MODEL", "")
-    if env_model:
-        # Verificar que exista
-        nombres = [m["name"] for m in modelos]
-        if env_model in nombres or any(env_model in n for n in nombres):
-            return env_model
+    if not modelos:
+        return None
+
+    aptos = [m for m in modelos if _modelo_apto_chat(m)]
+    if not aptos:
+        return None
 
     nombres = [m["name"] for m in modelos]
-    for pref in PREFERENCIA_MODELOS:
-        for n in nombres:
-            if pref in n.lower():
-                return n
+    env_model = os.environ.get("OLLAMA_MODEL", "")
+    if env_model and (env_model in nombres or any(env_model in n for n in nombres)):
+        for m in aptos:
+            if env_model == m["name"] or env_model in m["name"]:
+                return m["name"]
 
-    # Si no hay preferencia, usar el primero (mayor tamaño = más capaz)
-    return nombres[0] if nombres else None
+    # Dentro de la misma preferencia, el modelo más ligero responde más rápido.
+    aptos.sort(key=lambda m: (m.get("size_mb", 0), m["name"]))
+    for pref in PREFERENCIA_MODELOS:
+        for m in aptos:
+            if pref in m["name"].lower():
+                return m["name"]
+
+    return aptos[0]["name"]
 
 
 # ─── Chat con Ollama ──────────────────────────────────────────────────────────
@@ -243,40 +274,63 @@ def chat(
     if not modelos:
         raise ValueError("No hay modelos Ollama descargados. Usa: ollama pull llama3.2")
 
-    model = model or elegir_modelo(modelos)
+    modelo_auto = elegir_modelo(modelos)
+    model = model or modelo_auto
     if not model:
         raise ValueError("No se pudo determinar el modelo a usar")
 
-    body = {"model": model, "prompt": prompt, "stream": stream}
-    if system:
-        body["system"] = system
+    # Si el modelo elegido falla (instalado roto, arquitectura no soportada, etc.),
+    # probar los siguientes modelos locales aptos antes de rendirse.
+    candidatos = [model]
+    if model == modelo_auto:
+        for m in sorted(
+            (x for x in modelos if _modelo_apto_chat(x)),
+            key=lambda x: (x.get("size_mb", 0), x["name"]),
+        ):
+            if m["name"] not in candidatos:
+                candidatos.append(m["name"])
+    candidatos = candidatos[:4]
 
-    data = json.dumps(body).encode()
-    req = urllib.request.Request(
-        f"{_ollama_url()}/api/generate",
-        data=data,
-        headers={"Content-Type": "application/json"},
+    ultimo_error = None
+    for candidato in candidatos:
+        body = {"model": candidato, "prompt": prompt, "stream": stream}
+        if system:
+            body["system"] = system
+
+        data = json.dumps(body).encode()
+        req = urllib.request.Request(
+            f"{_ollama_url()}/api/generate",
+            data=data,
+            headers={"Content-Type": "application/json"},
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                resp = json.loads(r.read())
+        except Exception as e:
+            ultimo_error = e
+            continue
+
+        raw_text = resp.get("response", "")
+
+        # Eliminar bloques <think>...</think> de modelos de razonamiento
+        is_thinking = any(t in candidato.lower() for t in _THINKING_MODELS)
+        if is_thinking or "<think>" in raw_text:
+            import re as _re
+
+            clean = _re.sub(r"<think>.*?</think>", "", raw_text, flags=_re.DOTALL).strip()
+            raw_text = clean if clean else raw_text  # fallback si todo era thinking
+
+        return {
+            "ok": True,
+            "text": raw_text,
+            "engine": f"ollama/{candidato}",
+            "tokens": resp.get("eval_count", 0),
+            "model": candidato,
+        }
+
+    raise ConnectionError(
+        f"Ollama respondió con error en todos los modelos probados: {ultimo_error}"
     )
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        resp = json.loads(r.read())
-
-    raw_text = resp.get("response", "")
-
-    # Eliminar bloques <think>...</think> de modelos de razonamiento
-    is_thinking = any(t in model.lower() for t in _THINKING_MODELS)
-    if is_thinking or "<think>" in raw_text:
-        import re as _re
-
-        clean = _re.sub(r"<think>.*?</think>", "", raw_text, flags=_re.DOTALL).strip()
-        raw_text = clean if clean else raw_text  # fallback si todo era thinking
-
-    return {
-        "ok": True,
-        "text": raw_text,
-        "engine": f"ollama/{model}",
-        "tokens": resp.get("eval_count", 0),
-        "model": model,
-    }
 
 
 # ─── Pull de un modelo ────────────────────────────────────────────────────────

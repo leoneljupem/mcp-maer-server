@@ -72,7 +72,11 @@ class TestEstructura:
     def test_no_hay_archivos_gigantes(self):
         raiz = Path(__file__).parent.parent
         limite_mb = 10
-        excluir = ["node_modules", ".git", "models", "miniforge", ".gguf"]
+        # .venv está en .gitignore: sus binarios no forman parte del repo.
+        excluir = [
+            "node_modules", ".git", "models", "miniforge", ".gguf", ".venv",
+            "tessdata", ".traineddata",  # modelos de OCR necesarios, no archivos del repo
+        ]
         grandes = []
         for f in raiz.rglob("*"):
             if not f.is_file():
