@@ -486,13 +486,16 @@ async def api_server_info():
 
 @app.post("/api/llm-chat")
 async def api_llm_chat(payload: dict):
+    # action_llm_chat es síncrono y puede tardar (cascada LLM): ejecutarlo en un
+    # hilo evita bloquear el event loop de uvicorn y dejar el servidor colgado.
+    import asyncio
     from maer_backend.maer_files import action_llm_chat
 
     # Normalizar: el JS envía "message", la acción espera "prompt"
     if "message" in payload and "prompt" not in payload:
         payload = dict(payload)
         payload["prompt"] = payload["message"]
-    return action_llm_chat(payload)
+    return await asyncio.to_thread(action_llm_chat, payload)
 
 
 @app.get("/api/llm-status")
