@@ -25,6 +25,14 @@ from watchdog.events import FileSystemEventHandler
 
 logger = logging.getLogger("maer.server")
 
+# ── PATH DEL SISTEMA ──
+# Los binarios instalados con Homebrew (tesseract, pdftoppm, gs, etc.) viven en
+# /usr/local/bin o /opt/homebrew/bin. Si el proceso se inicia con un PATH
+# reducido, `shutil.which` y las librerías que invocan subprocess no los ven.
+for _bin_dir in ("/usr/local/bin", "/opt/homebrew/bin"):
+    if _bin_dir not in os.environ.get("PATH", "").split(os.pathsep):
+        os.environ["PATH"] = _bin_dir + os.pathsep + os.environ.get("PATH", "")
+
 # ── CONFIGURACIÓN DE CARPETAS ──
 BASE_DIR = Path("/Users/houssenm/mcp-maer-server")
 HOTFOLDER = Path("/Users/houssenm/Desktop/MAER_INBOX")
@@ -2828,7 +2836,9 @@ async def api_verificar_dependencias():
     result["chrome"] = any(p and Path(p).exists() for p in chrome_paths)
 
     # PDF tools
-    result["poppler_pdftoppm"] = bool(shutil.which("pdftoppm"))
+    _pdftoppm = shutil.which("pdftoppm")
+    result["poppler_pdftoppm"] = bool(_pdftoppm)
+    result["poppler_path"]     = _pdftoppm
     result["ghostscript"]      = bool(shutil.which("gs"))
 
     result["python_packages"]  = py_ok

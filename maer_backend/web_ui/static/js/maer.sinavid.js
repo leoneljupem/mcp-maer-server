@@ -282,7 +282,7 @@ MAER.sinavid = {
       { n: 'Conda',         ok: d.conda,               info: d.conda_path },
       { n: 'Ollama (LLM)',  ok: d.ollama,              info: d.ollama ? 'Activo en localhost:11434' : 'No activo — instala desde ollama.ai' },
       { n: 'Google Chrome', ok: d.chrome,              info: '' },
-      { n: 'Poppler',       ok: d.poppler_pdftoppm,    info: '' },
+      { n: 'Poppler',       ok: d.poppler_pdftoppm,    info: d.poppler_path },
     ];
 
     const sysRows = sistemas.map(s => `
